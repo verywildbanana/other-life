@@ -11,10 +11,9 @@ export async function GET() {
     .limit(1)
     .single()
 
+  // 내부 정보 최소화 — last_ingest/personas 수는 외부 노출 제외
   return NextResponse.json({
     status: 'ok',
-    db: 'ok',
-    last_ingest: data?.collected_at ?? null,
-    personas: listPersonas().length,
+    db: data ? 'ok' : 'empty',
   })
 }
