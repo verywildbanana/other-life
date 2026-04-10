@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { createServiceClient } from '@/lib/supabase/server'
 import { loadPersona } from '@/lib/personas'
 import { IngestItem } from '@/types'
@@ -102,6 +103,11 @@ export async function POST(
           .in('video_id', old.map((r: { video_id: string }) => r.video_id))
       }
     }
+  }
+
+  // 새 영상이 저장됐으면 해당 페이지 ISR 캐시 즉시 무효화
+  if (toInsert.length > 0) {
+    revalidatePath(`/p/${persona_id}`)
   }
 
   return NextResponse.json({ status: 'ok', saved: toInsert.length, skipped })

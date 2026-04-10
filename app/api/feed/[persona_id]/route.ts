@@ -20,7 +20,7 @@ export async function GET(
   // 캐싱 허용 (CDN 엣지 캐시 30분) + 스크래핑 억제
   return NextResponse.json(feed, {
     headers: {
-      'Cache-Control': 'public, s-maxage=1800, stale-while-revalidate=3600',
+      'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
       'X-Robots-Tag': 'noindex',
     },
   })
