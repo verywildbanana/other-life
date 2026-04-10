@@ -5,12 +5,85 @@ import { FeedResponse, Video, Persona } from '@/types'
 
 type Lang = 'ko' | 'en' | 'ja'
 
+// UI 레이블 다국어 맵
+const LABELS = {
+  subtitle: {
+    ko: 'YouTube 알고리즘 시뮬레이터',
+    en: 'YouTube Algorithm Simulator',
+    ja: 'YouTubeアルゴリズム シミュレーター',
+  },
+  selectPersona: {
+    ko: '페르소나 선택',
+    en: 'Select Persona',
+    ja: 'ペルソナを選択',
+  },
+  langToggle: {
+    ko: '언어 변경',
+    en: 'Switch language',
+    ja: '言語を変更',
+  },
+  accumulated: {
+    ko: (n: number) => `누적 ${n}/500개`,
+    en: (n: number) => `${n}/500 videos`,
+    ja: (n: number) => `累計 ${n}/500件`,
+  },
+  lastUpdated: {
+    ko: '최근 갱신',
+    en: 'Last updated',
+    ja: '最終更新',
+  },
+  countSuffix: {
+    ko: (n: number) => `${n}개`,
+    en: (n: number) => `${n} videos`,
+    ja: (n: number) => `${n}件`,
+  },
+  noFeed: {
+    ko: '아직 수집된 피드가 없습니다.',
+    en: 'No feed collected yet.',
+    ja: 'まだフィードが収集されていません。',
+  },
+  noResults: {
+    ko: '결과 없음',
+    en: 'No results',
+    ja: '結果なし',
+  },
+  noThumbnail: {
+    ko: '썸네일 없음',
+    en: 'No thumbnail',
+    ja: 'サムネイルなし',
+  },
+  scoreSuffix: {
+    ko: (n: number) => `${n}점`,
+    en: (n: number) => `${n}pts`,
+    ja: (n: number) => `${n}点`,
+  },
+  homeFeed: {
+    ko: '홈피드',
+    en: 'Home',
+    ja: 'ホーム',
+  },
+  search: {
+    ko: '검색',
+    en: 'Search',
+    ja: '検索',
+  },
+} as const
+
+function t(key: keyof typeof LABELS, lang: Lang): string {
+  const val = LABELS[key][lang]
+  return typeof val === 'function' ? '' : (val as string)
+}
+
 function getLangTitle(video: Video, lang: Lang): string {
   const i18n = video.titles_i18n ?? {}
   const en = (i18n.en as string) || video.title
   if (lang === 'ko') return (i18n.ko as string) || en
   if (lang === 'ja') return (i18n.ja as string) || en
   return en
+}
+
+function getPersonaName(persona: Persona, lang: Lang): string {
+  return persona.name_i18n?.[lang] ?? persona.name
 }
 
 function scoreColor(score: number): string {
@@ -62,7 +135,9 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
             <h1 className="text-lg font-semibold tracking-tight">
               <a href="/" className="hover:text-zinc-300">Persona Feed</a>
             </h1>
-            <p className="text-[11px] text-zinc-500 leading-tight">YouTube 알고리즘 시뮬레이터</p>
+            <p className="text-[11px] text-zinc-500 leading-tight">
+              {t('subtitle', lang)}
+            </p>
           </div>
           {/* 언어 토글 */}
           <div className="flex rounded-lg overflow-hidden border border-zinc-700 text-xs font-medium shrink-0">
@@ -75,7 +150,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
                     ? 'bg-zinc-100 text-zinc-900'
                     : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
                 }`}
-                aria-label={`언어 변경: ${l.toUpperCase()}`}
+                aria-label={`${t('langToggle', lang)}: ${l.toUpperCase()}`}
               >
                 {l.toUpperCase()}
               </button>
@@ -89,10 +164,12 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
             value={persona.id}
             onChange={e => { window.location.href = `/p/${e.target.value}` }}
             className="flex-1 min-w-0 bg-zinc-800 border border-zinc-700 text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-zinc-500"
-            aria-label="페르소나 선택"
+            aria-label={t('selectPersona', lang)}
           >
             {allPersonas.map(p => (
-              <option key={p.id} value={p.id}>{p.name}</option>
+              <option key={p.id} value={p.id}>
+                {getPersonaName(p, lang)}
+              </option>
             ))}
           </select>
         </div>
@@ -102,10 +179,12 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
       {feed && (
         <div className="px-4 py-2 text-xs text-zinc-400 border-b border-zinc-800">
           <div className="flex items-center justify-between flex-wrap gap-1">
-            <span>{feed.persona_name} · 누적 {feed.total_accumulated}/500개</span>
+            <span>
+              {getPersonaName(persona, lang)} · {(LABELS.accumulated[lang] as (n: number) => string)(feed.total_accumulated)}
+            </span>
             {feed.dates[0] && (
               <span className="text-zinc-600">
-                최근 갱신: {feed.dates[0].date} ({feed.dates[0].videos.length}개)
+                {t('lastUpdated', lang)}: {feed.dates[0].date} ({(LABELS.countSuffix[lang] as (n: number) => string)(feed.dates[0].videos.length)})
               </span>
             )}
           </div>
@@ -115,7 +194,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
       {/* 피드 없음 */}
       {!feed && (
         <div className="flex items-center justify-center py-32 text-zinc-500 text-sm">
-          아직 수집된 피드가 없습니다.
+          {t('noFeed', lang)}
         </div>
       )}
 
@@ -123,12 +202,15 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
       {feed && (
         <main className="px-6 py-6 max-w-7xl mx-auto">
           {allVideos.length === 0 && (
-            <p className="text-zinc-500 text-sm text-center py-16">결과 없음</p>
+            <p className="text-zinc-500 text-sm text-center py-16">{t('noResults', lang)}</p>
           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {allVideos.map((video, idx) => {
               const isNew = video.date === today
               const title = getLangTitle(video, lang)
+              const feedSourceLabel = video.feed_source === 'home_feed'
+                ? t('homeFeed', lang)
+                : (video.keyword ?? t('search', lang))
               return (
                 <a
                   key={video.video_id}
@@ -148,7 +230,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
                     />
                   ) : (
                     <div className="w-full aspect-video bg-zinc-800 flex items-center justify-center text-zinc-600 text-xs">
-                      썸네일 없음
+                      {t('noThumbnail', lang)}
                     </div>
                   )}
                   <div className="p-3">
@@ -166,7 +248,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
                         {video.channel}
                       </span>
                       <span className={`text-xs font-semibold ${scoreColor(video.score)}`}>
-                        {video.score}점
+                        {(LABELS.scoreSuffix[lang] as (n: number) => string)(video.score)}
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5 mt-1">
@@ -174,7 +256,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
                         #{idx + 1}
                       </span>
                       <span className="text-[10px] bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded truncate">
-                        {video.feed_source === 'home_feed' ? '홈피드' : (video.keyword ?? '')}
+                        {feedSourceLabel}
                       </span>
                     </div>
                     <div className="flex items-center gap-1 mt-1.5 flex-wrap">

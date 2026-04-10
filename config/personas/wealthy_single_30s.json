@@ -1,7 +1,17 @@
 {
   "id": "wealthy_single_30s",
   "name": "30대 싱글 자산가",
+  "name_i18n": {
+    "ko": "30대 싱글 자산가",
+    "en": "Wealthy Single in 30s",
+    "ja": "30代シングル富裕層"
+  },
   "description": "자산 100억 이상, 자산 소득 생활, quiet luxury 소비 성향",
+  "description_i18n": {
+    "ko": "자산 100억 이상, 자산 소득 생활, quiet luxury 소비 성향",
+    "en": "Net worth 10M+ USD, living on asset income, quiet luxury lifestyle",
+    "ja": "純資産100億円超、資産収入生活、クワイエットラグジュアリー志向"
+  },
   "keywords": [
     "요트 세일링",
     "sailing yacht lifestyle",

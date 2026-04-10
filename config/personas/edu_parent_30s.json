@@ -1,7 +1,17 @@
 {
   "id": "edu_parent_30s",
   "name": "30대 교육열 학부모",
+  "name_i18n": {
+    "ko": "30대 교육열 학부모",
+    "en": "Education-Driven Parent in 30s",
+    "ja": "30代教育熱心な保護者"
+  },
   "description": "강남/송파권 거주, 자녀 교육 및 학군 부동산에 관심 많은 30대 학부모",
+  "description_i18n": {
+    "ko": "강남/송파권 거주, 자녀 교육 및 학군 부동산에 관심 많은 30대 학부모",
+    "en": "Lives in Gangnam/Songpa area, 30s parent focused on children's education and school district real estate",
+    "ja": "江南/松坡エリア在住、子どもの教育と学区不動産に関心の高い30代保護者"
+  },
   "youtube_account": "cinemadesktop@gmail.com",
   "cdp_port": 9226,
   "keywords": [

@@ -31,6 +31,8 @@ export interface Persona {
   id: string
   name: string
   description: string
+  name_i18n?: Record<string, string>
+  description_i18n?: Record<string, string>
 }
 
 export interface IngestItem {
