@@ -219,6 +219,18 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
                   rel="noopener noreferrer"
                   title={video.title}
                   className="block bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden transition-transform duration-200 hover:-translate-y-1 hover:shadow-[0_8px_24px_rgba(0,0,0,0.4)]"
+                  onClick={() => {
+                    if (typeof window !== 'undefined' && typeof (window as any).gtag === 'function') {
+                      ;(window as any).gtag('event', 'video_click', {
+                        video_id: video.video_id,
+                        video_title: title,
+                        persona_id: persona.id,
+                        position: idx + 1,
+                        feed_source: video.feed_source,
+                        lang,
+                      })
+                    }
+                  }}
                 >
                   {video.thumbnail_url ? (
                     // eslint-disable-next-line @next/next/no-img-element

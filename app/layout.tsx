@@ -25,6 +25,9 @@ export const metadata: Metadata = {
       'x-default': `${BASE_URL}/p/wealthy_single_30s`,
     },
   },
+  verification: {
+    google: 'ARx7X1sVLfQHWKRkaF2bRaxvzfA-8nHXxJpQS4wMTSc',
+  },
   openGraph: {
     type: 'website',
     title: 'Persona Feed — YouTube 알고리즘 시뮬레이터',
