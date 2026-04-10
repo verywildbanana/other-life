@@ -1,0 +1,44 @@
+export interface Video {
+  video_id: string
+  persona_id: string
+  title: string
+  channel: string
+  url: string
+  thumbnail_url: string
+  view_count: number
+  keyword: string
+  score: number
+  collected_at: string
+  feed_source: string
+  collected_date: string | null
+  titles_i18n: Record<string, string>
+}
+
+export interface DateGroup {
+  date: string
+  feed_source: string
+  videos: Video[]
+}
+
+export interface FeedResponse {
+  persona_id: string
+  persona_name: string
+  total_accumulated: number
+  dates: DateGroup[]
+}
+
+export interface Persona {
+  id: string
+  name: string
+  description: string
+}
+
+export interface IngestItem {
+  id: string
+  title: string
+  channel: string
+  url: string
+  thumbnail: string
+  view_count: number
+  titles_i18n: Record<string, string>
+}
