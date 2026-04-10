@@ -15,6 +15,7 @@ type StatsResponse = { videos: VideoStats; access_logs: AccessLogs }
 type VideoRow = {
   video_id: string
   title: string
+  titles_i18n?: Record<string, string>
   channel: string
   url: string
   score: number
@@ -311,7 +312,7 @@ export default function AdminPage() {
                         rel="noopener noreferrer"
                         className="hover:text-zinc-300 line-clamp-1"
                       >
-                        {v.title}
+                        {v.titles_i18n?.ko || v.title}
                       </a>
                     </td>
                     <td className="py-2 pr-4 text-zinc-500 text-xs truncate max-w-[8rem]">

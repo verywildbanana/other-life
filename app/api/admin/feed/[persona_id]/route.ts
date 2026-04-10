@@ -19,7 +19,7 @@ export async function GET(
 
   const { data, error } = await supabase
     .from('videos')
-    .select('video_id, title, channel, url, score, collected_date, feed_source')
+    .select('video_id, title, channel, url, score, collected_date, feed_source, titles_i18n')
     .eq('persona_id', persona_id)
     .order('collected_date', { ascending: false })
     .order('score', { ascending: false })
