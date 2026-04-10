@@ -1,23 +1,26 @@
 import { MetadataRoute } from 'next'
 import { listPersonas } from '@/lib/personas'
 
+const BASE_URL = 'https://other-life.vercel.app'
+
+// Google Search Console에 제출되는 sitemap.xml 자동 생성
 export default function sitemap(): MetadataRoute.Sitemap {
   const personas = listPersonas()
 
-  const personaEntries = personas.map(p => ({
-    url: `https://other-life.vercel.app/p/${p.id}`,
+  const personaRoutes = personas.map((p) => ({
+    url: `${BASE_URL}/p/${p.id}`,
     lastModified: new Date(),
-    changeFrequency: 'daily' as const,
-    priority: 0.8,
+    changeFrequency: 'hourly' as const,
+    priority: 0.9,
   }))
 
   return [
     {
-      url: 'https://other-life.vercel.app',
+      url: BASE_URL,
       lastModified: new Date(),
-      changeFrequency: 'daily',
-      priority: 1,
+      changeFrequency: 'daily' as const,
+      priority: 1.0,
     },
-    ...personaEntries,
+    ...personaRoutes,
   ]
 }
