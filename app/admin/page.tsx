@@ -36,14 +36,13 @@ export default function AdminPage() {
   const [feedLoading, setFeedLoading] = useState(false)
   const [feedMsg, setFeedMsg] = useState('')
 
-  // 진입 시 인증 확인
+  // 진입 시 인증 확인 — stats와 personas 병렬 로드
   useEffect(() => {
-    fetchStats().then(data => {
+    Promise.all([fetchStats(), loadPersonas()]).then(([data]) => {
       if (data) {
         setVideoStats(data.videos)
         setAccessLogs(data.access_logs)
         setView('dashboard')
-        loadPersonas()
       }
     })
   }, [])
@@ -54,7 +53,7 @@ export default function AdminPage() {
     return res.json()
   }
 
-  async function loadPersonas() {
+  async function loadPersonas(): Promise<void> {
     const res = await fetch('/api/personas')
     const data = await res.json()
     setPersonas(data.personas ?? [])
@@ -69,12 +68,11 @@ export default function AdminPage() {
       credentials: 'include',
     })
     if (res.ok) {
-      const data = await fetchStats()
+      const [data] = await Promise.all([fetchStats(), loadPersonas()])
       if (data) {
         setVideoStats(data.videos)
         setAccessLogs(data.access_logs)
         setView('dashboard')
-        loadPersonas()
       }
     } else {
       setLoginError('토큰이 올바르지 않습니다.')
@@ -154,6 +152,11 @@ export default function AdminPage() {
     )
   }
 
+  // 페르소나 ID → 한글 이름 조회 헬퍼
+  function personaName(pid: string): string {
+    return personas.find(p => p.id === pid)?.name ?? pid
+  }
+
   // 일별 접근 수 — 최근 7일 정렬
   const dailyEntries = Object.entries(accessLogs?.daily ?? {}).sort((a, b) => a[0].localeCompare(b[0]))
   const maxDaily = Math.max(...dailyEntries.map(([, v]) => v), 1)
@@ -162,7 +165,7 @@ export default function AdminPage() {
     <>
       <header className="border-b border-zinc-800 px-6 py-4 flex items-center justify-between sticky top-0 bg-zinc-950 z-10">
         <div>
-          <h1 className="text-xl font-semibold">Admin Dashboard</h1>
+          <h1 className="text-xl font-semibold">관리자 대시보드</h1>
           <p className="text-xs text-zinc-500 mt-0.5">Persona Feed 관리</p>
         </div>
         <div className="flex items-center gap-3">
@@ -197,7 +200,7 @@ export default function AdminPage() {
                 <p className="text-xs text-zinc-500 mb-2">페르소나별 요청</p>
                 {Object.entries(accessLogs.by_persona).map(([pid, cnt]) => (
                   <div key={pid} className="flex items-center justify-between text-xs mb-1">
-                    <span className="text-zinc-400 truncate max-w-[70%]">{pid}</span>
+                    <span className="text-zinc-400 truncate max-w-[70%]">{personaName(pid)}</span>
                     <span className="font-semibold">{cnt}</span>
                   </div>
                 ))}
@@ -245,7 +248,7 @@ export default function AdminPage() {
             ) : (
               Object.entries(videoStats).map(([pid, info]) => (
                 <div key={pid} className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
-                  <p className="text-xs text-zinc-500 mb-1">{pid}</p>
+                  <p className="text-xs text-zinc-500 mb-1">{personaName(pid)}</p>
                   <p className="text-2xl font-bold">
                     {info.total}
                     <span className="text-sm font-normal text-zinc-500">개</span>
