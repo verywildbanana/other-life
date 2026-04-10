@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getPublicFeed } from '@/lib/feed'
+import { logFeedAccess } from '@/lib/access-log'
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ persona_id: string }> },
 ) {
   const { persona_id } = await params
+
+  // 비동기 접근 로그 기록 (응답 지연 없음)
+  logFeedAccess(req, persona_id)
+
   const feed = await getPublicFeed(persona_id)
 
   if (!feed) {
