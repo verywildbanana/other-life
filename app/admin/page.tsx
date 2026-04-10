@@ -3,8 +3,14 @@
 import { useEffect, useState } from 'react'
 import { Persona } from '@/types'
 
-type StatsEntry = { total: number; latest_date: string | null }
-type Stats = Record<string, StatsEntry>
+type VideoStats = Record<string, { total: number; latest_date: string | null }>
+type AccessLogs = {
+  total_7d: number
+  by_persona: Record<string, number>
+  by_country: Record<string, number>
+  daily: Record<string, number>
+}
+type StatsResponse = { videos: VideoStats; access_logs: AccessLogs }
 
 type VideoRow = {
   video_id: string
@@ -22,7 +28,8 @@ export default function AdminPage() {
   const [view, setView] = useState<View>('login')
   const [token, setToken] = useState('')
   const [loginError, setLoginError] = useState<string | null>(null)
-  const [stats, setStats] = useState<Stats>({})
+  const [videoStats, setVideoStats] = useState<VideoStats>({})
+  const [accessLogs, setAccessLogs] = useState<AccessLogs | null>(null)
   const [personas, setPersonas] = useState<Persona[]>([])
   const [selectedPersona, setSelectedPersona] = useState('')
   const [videos, setVideos] = useState<VideoRow[]>([])
@@ -33,14 +40,15 @@ export default function AdminPage() {
   useEffect(() => {
     fetchStats().then(data => {
       if (data) {
-        setStats(data)
+        setVideoStats(data.videos)
+        setAccessLogs(data.access_logs)
         setView('dashboard')
         loadPersonas()
       }
     })
   }, [])
 
-  async function fetchStats(): Promise<Stats | null> {
+  async function fetchStats(): Promise<StatsResponse | null> {
     const res = await fetch('/api/admin/stats', { credentials: 'include' })
     if (!res.ok) return null
     return res.json()
@@ -63,7 +71,8 @@ export default function AdminPage() {
     if (res.ok) {
       const data = await fetchStats()
       if (data) {
-        setStats(data)
+        setVideoStats(data.videos)
+        setAccessLogs(data.access_logs)
         setView('dashboard')
         loadPersonas()
       }
@@ -76,7 +85,8 @@ export default function AdminPage() {
     await fetch('/api/admin/logout', { method: 'POST', credentials: 'include' })
     setView('login')
     setToken('')
-    setStats({})
+    setVideoStats({})
+    setAccessLogs(null)
     setVideos([])
   }
 
@@ -144,6 +154,10 @@ export default function AdminPage() {
     )
   }
 
+  // 일별 접근 수 — 최근 7일 정렬
+  const dailyEntries = Object.entries(accessLogs?.daily ?? {}).sort((a, b) => a[0].localeCompare(b[0]))
+  const maxDaily = Math.max(...dailyEntries.map(([, v]) => v), 1)
+
   return (
     <>
       <header className="border-b border-zinc-800 px-6 py-4 flex items-center justify-between sticky top-0 bg-zinc-950 z-10">
@@ -164,97 +178,159 @@ export default function AdminPage() {
         </div>
       </header>
 
-      <section className="px-6 py-6 max-w-7xl mx-auto">
-        {/* 통계 카드 */}
-        <h2 className="text-sm font-semibold text-zinc-400 mb-3">페르소나별 누적 현황</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-          {Object.entries(stats).length === 0 ? (
-            <p className="text-zinc-500 text-sm">데이터 없음</p>
-          ) : (
-            Object.entries(stats).map(([pid, info]) => (
-              <div key={pid} className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
-                <p className="text-xs text-zinc-500 mb-1">{pid}</p>
-                <p className="text-2xl font-bold">
-                  {info.total}
-                  <span className="text-sm font-normal text-zinc-500">개</span>
-                </p>
-                <p className="text-xs text-zinc-600 mt-1">최근: {info.latest_date ?? '-'}</p>
+      <section className="px-6 py-6 max-w-7xl mx-auto space-y-10">
+
+        {/* ── 접근 로그 통계 (최근 7일) ── */}
+        <div>
+          <h2 className="text-sm font-semibold text-zinc-400 mb-3">접근 통계 — 최근 7일</h2>
+          {accessLogs ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+              {/* 총 요청 */}
+              <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+                <p className="text-xs text-zinc-500 mb-1">총 API 요청</p>
+                <p className="text-3xl font-bold">{accessLogs.total_7d.toLocaleString()}</p>
+                <p className="text-xs text-zinc-600 mt-1">7일간 누적</p>
               </div>
-            ))
+
+              {/* 페르소나별 */}
+              <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+                <p className="text-xs text-zinc-500 mb-2">페르소나별 요청</p>
+                {Object.entries(accessLogs.by_persona).map(([pid, cnt]) => (
+                  <div key={pid} className="flex items-center justify-between text-xs mb-1">
+                    <span className="text-zinc-400 truncate max-w-[70%]">{pid}</span>
+                    <span className="font-semibold">{cnt}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* 국가별 */}
+              <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+                <p className="text-xs text-zinc-500 mb-2">국가별 top10</p>
+                {Object.entries(accessLogs.by_country).map(([country, cnt]) => (
+                  <div key={country} className="flex items-center justify-between text-xs mb-1">
+                    <span className="text-zinc-400">{country || '(unknown)'}</span>
+                    <span className="font-semibold">{cnt}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* 일별 바 차트 */}
+              <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+                <p className="text-xs text-zinc-500 mb-3">일별 추이</p>
+                <div className="flex items-end gap-1 h-20">
+                  {dailyEntries.map(([day, cnt]) => (
+                    <div key={day} className="flex-1 flex flex-col items-center gap-1">
+                      <div
+                        className="w-full bg-zinc-600 rounded-sm"
+                        style={{ height: `${Math.round((cnt / maxDaily) * 72)}px` }}
+                        title={`${day}: ${cnt}건`}
+                      />
+                      <span className="text-[9px] text-zinc-600">{day.slice(5)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <p className="text-zinc-500 text-sm">로그 없음 (아직 접근 기록 없음)</p>
           )}
         </div>
 
-        {/* 피드 관리 */}
-        <div className="flex items-center gap-4 mb-4">
-          <h2 className="text-sm font-semibold text-zinc-400">피드 관리</h2>
-          <select
-            value={selectedPersona}
-            onChange={e => {
-              setSelectedPersona(e.target.value)
-              loadFeed(e.target.value)
-            }}
-            className="bg-zinc-800 border border-zinc-700 text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-zinc-500"
-          >
-            <option value="">페르소나 선택...</option>
-            {personas.map(p => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
+        {/* ── 영상 누적 현황 ── */}
+        <div>
+          <h2 className="text-sm font-semibold text-zinc-400 mb-3">페르소나별 누적 현황</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {Object.entries(videoStats).length === 0 ? (
+              <p className="text-zinc-500 text-sm">데이터 없음</p>
+            ) : (
+              Object.entries(videoStats).map(([pid, info]) => (
+                <div key={pid} className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+                  <p className="text-xs text-zinc-500 mb-1">{pid}</p>
+                  <p className="text-2xl font-bold">
+                    {info.total}
+                    <span className="text-sm font-normal text-zinc-500">개</span>
+                  </p>
+                  <p className="text-xs text-zinc-600 mt-1">최근: {info.latest_date ?? '-'}</p>
+                </div>
+              ))
+            )}
+          </div>
         </div>
 
-        {feedMsg && <p className="text-sm text-zinc-500 mb-4">{feedMsg}</p>}
-
-        {feedLoading && (
-          <div className="flex items-center gap-2 text-zinc-500 text-sm py-8">
-            <div className="w-4 h-4 border-2 border-zinc-600 border-t-zinc-300 rounded-full animate-spin" />
-            불러오는 중...
-          </div>
-        )}
-
-        {!feedLoading && videos.length > 0 && (
-          <table className="w-full text-sm border-collapse">
-            <thead>
-              <tr className="border-b border-zinc-800 text-zinc-400 text-left">
-                <th className="py-2 pr-4 font-medium">제목</th>
-                <th className="py-2 pr-4 font-medium w-32">채널</th>
-                <th className="py-2 pr-4 font-medium w-16 text-right">점수</th>
-                <th className="py-2 pr-4 font-medium w-24">날짜</th>
-                <th className="py-2 font-medium w-16"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {videos.map(v => (
-                <tr key={v.video_id} className="border-b border-zinc-800/50 hover:bg-zinc-900/50">
-                  <td className="py-2 pr-4">
-                    <a
-                      href={v.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="hover:text-zinc-300 line-clamp-1"
-                    >
-                      {v.title}
-                    </a>
-                  </td>
-                  <td className="py-2 pr-4 text-zinc-500 text-xs truncate max-w-[8rem]">
-                    {v.channel}
-                  </td>
-                  <td className="py-2 pr-4 text-right text-xs">{v.score}</td>
-                  <td className="py-2 pr-4 text-zinc-500 text-xs">{v.collected_date}</td>
-                  <td className="py-2">
-                    <button
-                      onClick={() => deleteVideo(selectedPersona, v.video_id)}
-                      className="text-xs text-red-400 hover:text-red-300 border border-red-900 px-2 py-0.5 rounded"
-                    >
-                      삭제
-                    </button>
-                  </td>
-                </tr>
+        {/* ── 피드 관리 ── */}
+        <div>
+          <div className="flex items-center gap-4 mb-4">
+            <h2 className="text-sm font-semibold text-zinc-400">피드 관리</h2>
+            <select
+              value={selectedPersona}
+              onChange={e => {
+                setSelectedPersona(e.target.value)
+                loadFeed(e.target.value)
+              }}
+              className="bg-zinc-800 border border-zinc-700 text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-zinc-500"
+            >
+              <option value="">페르소나 선택...</option>
+              {personas.map(p => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
               ))}
-            </tbody>
-          </table>
-        )}
+            </select>
+          </div>
+
+          {feedMsg && <p className="text-sm text-zinc-500 mb-4">{feedMsg}</p>}
+
+          {feedLoading && (
+            <div className="flex items-center gap-2 text-zinc-500 text-sm py-8">
+              <div className="w-4 h-4 border-2 border-zinc-600 border-t-zinc-300 rounded-full animate-spin" />
+              불러오는 중...
+            </div>
+          )}
+
+          {!feedLoading && videos.length > 0 && (
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr className="border-b border-zinc-800 text-zinc-400 text-left">
+                  <th className="py-2 pr-4 font-medium">제목</th>
+                  <th className="py-2 pr-4 font-medium w-32">채널</th>
+                  <th className="py-2 pr-4 font-medium w-16 text-right">점수</th>
+                  <th className="py-2 pr-4 font-medium w-24">날짜</th>
+                  <th className="py-2 font-medium w-16"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {videos.map(v => (
+                  <tr key={v.video_id} className="border-b border-zinc-800/50 hover:bg-zinc-900/50">
+                    <td className="py-2 pr-4">
+                      <a
+                        href={v.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:text-zinc-300 line-clamp-1"
+                      >
+                        {v.title}
+                      </a>
+                    </td>
+                    <td className="py-2 pr-4 text-zinc-500 text-xs truncate max-w-[8rem]">
+                      {v.channel}
+                    </td>
+                    <td className="py-2 pr-4 text-right text-xs">{v.score}</td>
+                    <td className="py-2 pr-4 text-zinc-500 text-xs">{v.collected_date}</td>
+                    <td className="py-2">
+                      <button
+                        onClick={() => deleteVideo(selectedPersona, v.video_id)}
+                        className="text-xs text-red-400 hover:text-red-300 border border-red-900 px-2 py-0.5 rounded"
+                      >
+                        삭제
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
       </section>
     </>
   )
