@@ -10,10 +10,21 @@ const geist = Geist({
   subsets: ['latin'],
 })
 
+const BASE_URL = 'https://other-life.vercel.app'
+
 export const metadata: Metadata = {
   title: 'Persona Feed — YouTube 알고리즘 시뮬레이터',
   description:
     '페르소나 기반 YouTube 피드 시뮬레이터. 다양한 관심사를 가진 페르소나가 실제로 어떤 영상을 추천받는지 확인하세요.',
+  alternates: {
+    canonical: BASE_URL,
+    languages: {
+      'ko': `${BASE_URL}/p/wealthy_single_30s`,
+      'en': `${BASE_URL}/p/wealthy_single_30s`,
+      'ja': `${BASE_URL}/p/wealthy_single_30s`,
+      'x-default': `${BASE_URL}/p/wealthy_single_30s`,
+    },
+  },
   openGraph: {
     type: 'website',
     title: 'Persona Feed — YouTube 알고리즘 시뮬레이터',
