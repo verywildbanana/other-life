@@ -1,11 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getPaginatedFeed } from '@/lib/feed'
 import { logFeedAccess } from '@/lib/access-log'
+import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ persona_id: string }> },
 ) {
+  // Rate Limit: IP당 60회/분
+  const ip = getClientIp(req)
+  const rl = checkRateLimit(ip, 60, 60)
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: 'Too many requests' },
+      {
+        status: 429,
+        headers: {
+          'Retry-After': String(Math.ceil((rl.resetAt - Date.now()) / 1000)),
+          'X-RateLimit-Limit': '60',
+          'X-RateLimit-Remaining': '0',
+        },
+      },
+    )
+  }
+
   const { persona_id } = await params
   const { searchParams } = req.nextUrl
 
