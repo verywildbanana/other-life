@@ -31,10 +31,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     alternates: {
       canonical: url,
       languages: {
-        'ko': url,
-        'en': url,
-        'ja': url,
-        'x-default': url,
+        'ko-KR': `${BASE_URL}/p/${persona_id}`,
+        'en-US': `${BASE_URL}/p/${persona_id}`,
+        'ja-JP': `${BASE_URL}/p/${persona_id}`,
+        'x-default': `${BASE_URL}/p/${persona_id}`,
       },
     },
     openGraph: {

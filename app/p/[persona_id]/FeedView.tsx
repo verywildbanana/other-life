@@ -61,7 +61,15 @@ const LABELS = {
     en: 'No thumbnail',
     ja: 'サムネイルなし',
   },
+  feedback: {
+    ko: '피드백',
+    en: 'Feedback',
+    ja: 'フィードバック',
+  },
 } as const
+
+// 피드백 Google Forms URL
+const FEEDBACK_URL = 'https://docs.google.com/forms/d/1KrlXFTtoR2mxM-Z7lxzEEzPWegQjeZln9BWaHOY7oiA/viewform'
 
 function t(key: keyof typeof LABELS, lang: Lang): string {
   const val = LABELS[key][lang]
@@ -78,6 +86,13 @@ function getLangTitle(video: Video, lang: Lang): string {
 
 function getPersonaName(persona: Persona, lang: Lang): string {
   return persona.name_i18n?.[lang] ?? persona.name
+}
+
+// GA4 이벤트 전송 헬퍼
+function gtag(event: string, params: Record<string, unknown>) {
+  if (typeof window !== 'undefined' && typeof (window as any).gtag === 'function') {
+    ;(window as any).gtag('event', event, params)
+  }
 }
 
 
@@ -121,6 +136,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
       setHasMore(data.has_more)
       setNextOffset(data.next_offset)
       setTotal(data.total_accumulated)
+      gtag('infinite_scroll_load', { persona_id: persona.id, offset: nextOffset, loaded: data.videos.length })
     } catch {
       // 에러 무시 (네트워크 오류 등)
     } finally {
@@ -144,6 +160,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
   }, [loadMore])
 
   function switchLang(l: Lang) {
+    gtag('language_switch', { from: lang, to: l, persona_id: persona.id })
     setLang(l)
     localStorage.setItem('feed_lang', l)
   }
@@ -186,7 +203,10 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
         <div className="flex items-center gap-2">
           <select
             value={persona.id}
-            onChange={e => { window.location.href = `/p/${e.target.value}` }}
+            onChange={e => {
+              gtag('persona_switch', { from: persona.id, to: e.target.value, lang })
+              window.location.href = `/p/${e.target.value}`
+            }}
             className="flex-1 min-w-0 bg-zinc-800 border border-zinc-700 text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-zinc-500"
             aria-label={t('selectPersona', lang)}
           >
@@ -239,18 +259,13 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
                   rel="noopener noreferrer"
                   title={video.title}
                   className="flex flex-col bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden transition-transform duration-200 hover:-translate-y-1 hover:shadow-[0_8px_24px_rgba(0,0,0,0.4)]"
-                  onClick={() => {
-                    if (typeof window !== 'undefined' && typeof (window as any).gtag === 'function') {
-                      ;(window as any).gtag('event', 'video_click', {
-                        video_id: video.video_id,
-                        video_title: title,
-                        persona_id: persona.id,
-                        position: idx + 1,
-                        feed_source: video.feed_source,
-                        lang,
-                      })
-                    }
-                  }}
+                  onClick={() => gtag('video_click', {
+                    video_id: video.video_id,
+                    video_title: title,
+                    persona_id: persona.id,
+                    position: idx + 1,
+                    lang,
+                  })}
                 >
                   {video.thumbnail_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -318,6 +333,21 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
           )}
         </main>
       )}
+
+      {/* 피드백 플로팅 버튼 */}
+      <a
+        href={FEEDBACK_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={() => gtag('feedback_click', { persona_id: persona.id, lang })}
+        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-medium px-4 py-2.5 rounded-full shadow-lg border border-zinc-700 transition-colors"
+        aria-label={t('feedback', lang)}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.77 9.77 0 01-4-.83L3 20l1.09-3.27C3.4 15.46 3 13.77 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+        </svg>
+        {t('feedback', lang)}
+      </a>
     </>
   )
 }
