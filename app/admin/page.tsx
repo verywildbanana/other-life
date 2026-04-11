@@ -23,6 +23,15 @@ type VideoRow = {
   feed_source: string
 }
 
+type FeedbackRow = {
+  id: string
+  persona_id: string | null
+  rating: number | null
+  comment: string | null
+  lang: string | null
+  created_at: string
+}
+
 type View = 'login' | 'dashboard'
 
 export default function AdminPage() {
@@ -36,10 +45,12 @@ export default function AdminPage() {
   const [videos, setVideos] = useState<VideoRow[]>([])
   const [feedLoading, setFeedLoading] = useState(false)
   const [feedMsg, setFeedMsg] = useState('')
+  const [feedbacks, setFeedbacks] = useState<FeedbackRow[]>([])
+  const [triggerStatus, setTriggerStatus] = useState<Record<string, string>>({})
 
-  // 진입 시 인증 확인 — stats와 personas 병렬 로드
+  // 진입 시 인증 확인 — stats, personas, feedbacks 병렬 로드
   useEffect(() => {
-    Promise.all([fetchStats(), loadPersonas()]).then(([data]) => {
+    Promise.all([fetchStats(), loadPersonas(), loadFeedbacks()]).then(([data]) => {
       if (data) {
         setVideoStats(data.videos)
         setAccessLogs(data.access_logs)
@@ -60,6 +71,26 @@ export default function AdminPage() {
     setPersonas(data.personas ?? [])
   }
 
+  async function loadFeedbacks(): Promise<void> {
+    const res = await fetch('/api/admin/feedbacks', { credentials: 'include' })
+    if (!res.ok) return
+    const data = await res.json()
+    setFeedbacks(data.feedbacks ?? [])
+  }
+
+  async function triggerCollect(personaId: string) {
+    setTriggerStatus(prev => ({ ...prev, [personaId]: 'requesting' }))
+    const res = await fetch(`/api/admin/trigger/${personaId}`, {
+      method: 'POST',
+      credentials: 'include',
+    })
+    const data = await res.json()
+    const msg = data.status === 'queued' ? '✅ 큐에 추가됨' :
+                data.status === 'already_queued' ? '⏳ 이미 대기 중' : '❌ 실패'
+    setTriggerStatus(prev => ({ ...prev, [personaId]: msg }))
+    setTimeout(() => setTriggerStatus(prev => ({ ...prev, [personaId]: '' })), 3000)
+  }
+
   async function handleLogin() {
     setLoginError(null)
     const res = await fetch('/api/admin/login', {
@@ -69,7 +100,7 @@ export default function AdminPage() {
       credentials: 'include',
     })
     if (res.ok) {
-      const [data] = await Promise.all([fetchStats(), loadPersonas()])
+      const [data] = await Promise.all([fetchStats(), loadPersonas(), loadFeedbacks()])
       if (data) {
         setVideoStats(data.videos)
         setAccessLogs(data.access_logs)
@@ -259,6 +290,59 @@ export default function AdminPage() {
               ))
             )}
           </div>
+        </div>
+
+        {/* ── 수동 수집 트리거 ── */}
+        <div>
+          <h2 className="text-sm font-semibold text-zinc-400 mb-3">수동 수집 트리거</h2>
+          <p className="text-xs text-zinc-500 mb-3">버튼 클릭 시 Ubuntu 봇이 다음 실행 시 즉시 수집을 시작합니다.</p>
+          <div className="flex flex-wrap gap-3">
+            {personas.map(p => (
+              <div key={p.id} className="flex items-center gap-2">
+                <button
+                  onClick={() => triggerCollect(p.id)}
+                  disabled={triggerStatus[p.id] === 'requesting'}
+                  className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-sm px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  ▶ {p.name} 수집
+                </button>
+                {triggerStatus[p.id] && (
+                  <span className="text-xs text-zinc-400">{triggerStatus[p.id]}</span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── 피드백 목록 ── */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold text-zinc-400">피드백 목록</h2>
+            <span className="text-xs text-zinc-500">{feedbacks.length}건</span>
+          </div>
+          {feedbacks.length === 0 ? (
+            <p className="text-zinc-500 text-sm">아직 피드백이 없습니다.</p>
+          ) : (
+            <div className="space-y-2">
+              {feedbacks.map(fb => (
+                <div key={fb.id} className="bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 flex items-start gap-4">
+                  <div className="shrink-0 text-amber-400 text-sm font-semibold w-12">
+                    {fb.rating ? '★'.repeat(fb.rating) : '—'}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-zinc-200 break-words">{fb.comment || <span className="text-zinc-600 italic">코멘트 없음</span>}</p>
+                    <div className="flex items-center gap-2 mt-1 text-[11px] text-zinc-500">
+                      <span>{personaName(fb.persona_id ?? '')}</span>
+                      <span>·</span>
+                      <span>{fb.lang?.toUpperCase()}</span>
+                      <span>·</span>
+                      <span>{fb.created_at?.slice(0, 16).replace('T', ' ')}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* ── 피드 관리 ── */}

@@ -3,6 +3,96 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { FeedPageResponse, Video, Persona } from '@/types'
 
+// ── 피드백 모달 컴포넌트 ──────────────────────────────────────────────────────
+interface FeedbackModalProps {
+  lang: Lang
+  personaId: string
+  onClose: () => void
+}
+
+const FEEDBACK_LABELS = {
+  title: { ko: '피드백 남기기', en: 'Leave Feedback', ja: 'フィードバック' },
+  ratingLabel: { ko: '서비스는 어떠셨나요?', en: 'How was your experience?', ja: 'ご感想をお聞かせください' },
+  commentPlaceholder: { ko: '의견을 자유롭게 남겨주세요 (선택)', en: 'Share your thoughts (optional)', ja: 'ご意見をお聞かせください（任意）' },
+  submit: { ko: '제출', en: 'Submit', ja: '送信' },
+  submitting: { ko: '제출 중...', en: 'Submitting...', ja: '送信中...' },
+  thanks: { ko: '감사합니다! 소중한 의견이 반영됩니다.', en: 'Thank you for your feedback!', ja: 'ご意見ありがとうございます！' },
+  close: { ko: '닫기', en: 'Close', ja: '閉じる' },
+}
+
+function FeedbackModal({ lang, personaId, onClose }: FeedbackModalProps) {
+  const [rating, setRating] = useState(0)
+  const [hovered, setHovered] = useState(0)
+  const [comment, setComment] = useState('')
+  const [status, setStatus] = useState<'idle' | 'submitting' | 'done'>('idle')
+
+  async function handleSubmit() {
+    if (rating === 0) return
+    setStatus('submitting')
+    try {
+      await fetch('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ persona_id: personaId, rating, comment, lang }),
+      })
+      setStatus('done')
+      setTimeout(onClose, 2000)
+    } catch {
+      setStatus('idle')
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 px-4 pb-4 sm:pb-0">
+      <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+        {status === 'done' ? (
+          <p className="text-center text-sm text-emerald-400 py-4">{FEEDBACK_LABELS.thanks[lang]}</p>
+        ) : (
+          <>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold">{FEEDBACK_LABELS.title[lang]}</h3>
+              <button onClick={onClose} className="text-zinc-500 hover:text-zinc-300 text-lg leading-none">×</button>
+            </div>
+            <p className="text-xs text-zinc-400 mb-3">{FEEDBACK_LABELS.ratingLabel[lang]}</p>
+            {/* 별점 */}
+            <div className="flex gap-2 mb-4">
+              {[1, 2, 3, 4, 5].map(n => (
+                <button
+                  key={n}
+                  onClick={() => setRating(n)}
+                  onMouseEnter={() => setHovered(n)}
+                  onMouseLeave={() => setHovered(0)}
+                  className={`text-2xl transition-transform hover:scale-110 ${
+                    n <= (hovered || rating) ? 'text-amber-400' : 'text-zinc-600'
+                  }`}
+                >
+                  ★
+                </button>
+              ))}
+            </div>
+            {/* 코멘트 */}
+            <textarea
+              value={comment}
+              onChange={e => setComment(e.target.value)}
+              placeholder={FEEDBACK_LABELS.commentPlaceholder[lang]}
+              maxLength={500}
+              rows={3}
+              className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-zinc-500 mb-4"
+            />
+            <button
+              onClick={handleSubmit}
+              disabled={rating === 0 || status === 'submitting'}
+              className="w-full bg-zinc-100 text-zinc-900 font-medium py-2 rounded-lg text-sm hover:bg-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {status === 'submitting' ? FEEDBACK_LABELS.submitting[lang] : FEEDBACK_LABELS.submit[lang]}
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
 type Lang = 'ko' | 'en' | 'ja'
 
 const LABELS = {
@@ -68,9 +158,6 @@ const LABELS = {
   },
 } as const
 
-// 피드백 Google Forms URL
-const FEEDBACK_URL = 'https://docs.google.com/forms/d/1KrlXFTtoR2mxM-Z7lxzEEzPWegQjeZln9BWaHOY7oiA/viewform'
-
 function t(key: keyof typeof LABELS, lang: Lang): string {
   const val = LABELS[key][lang]
   return typeof val === 'function' ? '' : (val as string)
@@ -109,6 +196,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
   const [nextOffset, setNextOffset] = useState(feed?.next_offset ?? 0)
   const [isLoading, setIsLoading] = useState(false)
   const [total, setTotal] = useState(feed?.total_accumulated ?? 0)
+  const [showFeedback, setShowFeedback] = useState(false)
   const sentinelRef = useRef<HTMLDivElement>(null)
 
   // 언어 설정 복원 (localStorage)
@@ -335,19 +423,28 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
       )}
 
       {/* 피드백 플로팅 버튼 */}
-      <a
-        href={FEEDBACK_URL}
-        target="_blank"
-        rel="noopener noreferrer"
-        onClick={() => gtag('feedback_click', { persona_id: persona.id, lang })}
-        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-medium px-4 py-2.5 rounded-full shadow-lg border border-zinc-700 transition-colors"
+      <button
+        onClick={() => {
+          gtag('feedback_click', { persona_id: persona.id, lang })
+          setShowFeedback(true)
+        }}
+        className="fixed bottom-6 right-6 z-40 flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-medium px-4 py-2.5 rounded-full shadow-lg border border-zinc-700 transition-colors"
         aria-label={t('feedback', lang)}
       >
         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.77 9.77 0 01-4-.83L3 20l1.09-3.27C3.4 15.46 3 13.77 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
         </svg>
         {t('feedback', lang)}
-      </a>
+      </button>
+
+      {/* 피드백 모달 */}
+      {showFeedback && (
+        <FeedbackModal
+          lang={lang}
+          personaId={persona.id}
+          onClose={() => setShowFeedback(false)}
+        />
+      )}
     </>
   )
 }
