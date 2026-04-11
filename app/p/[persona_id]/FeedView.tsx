@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { FeedPageResponse, Video, Persona } from '@/types'
 
 type Lang = 'ko' | 'en' | 'ja'
@@ -30,11 +30,6 @@ const LABELS = {
     ko: (n: number, total: number) => `${n} / ${total}개 표시 중`,
     en: (n: number, total: number) => `Showing ${n} of ${total}`,
     ja: (n: number, total: number) => `${n} / ${total}件表示中`,
-  },
-  loadMore: {
-    ko: '더 보기',
-    en: 'Load more',
-    ja: 'もっと見る',
   },
   loading: {
     ko: '불러오는 중...',
@@ -119,6 +114,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
   const [nextOffset, setNextOffset] = useState(feed?.next_offset ?? 0)
   const [isLoading, setIsLoading] = useState(false)
   const [total, setTotal] = useState(feed?.total_accumulated ?? 0)
+  const sentinelRef = useRef<HTMLDivElement>(null)
 
   // 언어 설정 복원 (localStorage)
   useEffect(() => {
@@ -133,6 +129,21 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     setNextOffset(feed?.next_offset ?? 0)
     setTotal(feed?.total_accumulated ?? 0)
   }, [feed, persona.id])
+
+  // IntersectionObserver — sentinel이 뷰포트에 들어오면 자동 로드
+  useEffect(() => {
+    const sentinel = sentinelRef.current
+    if (!sentinel) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) loadMore()
+      },
+      { rootMargin: '200px' }, // 바닥에서 200px 전에 미리 로드
+    )
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [loadMore])
 
   function switchLang(l: Lang) {
     setLang(l)
@@ -332,16 +343,18 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
             })}
           </div>
 
-          {/* 더 보기 버튼 */}
+          {/* 무한 스크롤 sentinel + 로딩 인디케이터 */}
           {hasMore && (
-            <div className="flex justify-center mt-8">
-              <button
-                onClick={loadMore}
-                disabled={isLoading}
-                className="px-6 py-2.5 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm text-zinc-200 rounded-lg border border-zinc-700 transition-colors"
-              >
-                {isLoading ? t('loading', lang) : `${t('loadMore', lang)} (${total - videos.length}${lang === 'ja' ? '件' : lang === 'en' ? ' more' : '개 더'})`}
-              </button>
+            <div ref={sentinelRef} className="flex justify-center py-8">
+              {isLoading && (
+                <div className="flex items-center gap-2 text-zinc-500 text-sm">
+                  <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                  </svg>
+                  {t('loading', lang)}
+                </div>
+              )}
             </div>
           )}
         </main>
