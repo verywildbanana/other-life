@@ -1,16 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { createHash } from 'crypto'
-import { getClientIp, checkRateLimit } from '@/lib/rate-limit'
+
+function getClientIp(req: NextRequest): string {
+  return (
+    req.headers.get('cf-connecting-ip') ??
+    req.headers.get('x-real-ip') ??
+    req.headers.get('x-forwarded-for')?.split(',')[0].trim() ??
+    'unknown'
+  )
+}
 
 export async function POST(req: NextRequest) {
-  // Rate Limit: IP당 5회/10분 (스팸 방지)
-  const ip = getClientIp(req)
-  const rl = checkRateLimit(ip, 5, 600)
-  if (!rl.allowed) {
-    return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
-  }
-
   const body = await req.json().catch(() => null)
   if (!body) return NextResponse.json({ error: 'Invalid body' }, { status: 400 })
 
@@ -23,7 +24,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Comment too long' }, { status: 400 })
   }
 
-  // IP 단방향 해시 (개인정보 보호)
+  const ip = getClientIp(req)
   const salt = process.env.HASH_SALT ?? ''
   const ip_hash = createHash('sha256').update(ip + salt).digest('hex').slice(0, 16)
 

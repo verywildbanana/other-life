@@ -1,26 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getPaginatedFeed } from '@/lib/feed'
 import { logFeedAccess } from '@/lib/access-log'
-import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
+import { verifyToken, COOKIE_NAME } from '@/lib/feed-token'
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ persona_id: string }> },
 ) {
-  // Rate Limit: IP당 60회/분
-  const ip = getClientIp(req)
-  const rl = checkRateLimit(ip, 60, 60)
-  if (!rl.allowed) {
+  // 토큰 검증 — 우리 서비스 페이지에서 발급된 세션만 허용
+  const token = req.cookies.get(COOKIE_NAME)?.value
+  const ua = req.headers.get('user-agent') ?? ''
+  const verify = verifyToken(token, ua)
+
+  if (!verify.ok) {
+    // 디버깅에 이유 노출 금지 — 외부에는 동일한 401만 반환
     return NextResponse.json(
-      { error: 'Too many requests' },
-      {
-        status: 429,
-        headers: {
-          'Retry-After': String(Math.ceil((rl.resetAt - Date.now()) / 1000)),
-          'X-RateLimit-Limit': '60',
-          'X-RateLimit-Remaining': '0',
-        },
-      },
+      { error: 'Unauthorized' },
+      { status: 401, headers: { 'Cache-Control': 'no-store' } },
     )
   }
 
@@ -39,14 +35,9 @@ export async function GET(
     return NextResponse.json({ error: '피드 없음' }, { status: 404 })
   }
 
-  // 첫 페이지는 CDN 캐시 허용, 이후 페이지는 항상 신선한 데이터
-  const cacheControl = offset === 0
-    ? 'public, s-maxage=60, stale-while-revalidate=300'
-    : 'no-store'
-
   return NextResponse.json(feed, {
     headers: {
-      'Cache-Control': cacheControl,
+      'Cache-Control': 'no-store', // 토큰 인증 후 응답은 CDN 캐시 금지
       'X-Robots-Tag': 'noindex',
     },
   })
