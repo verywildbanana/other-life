@@ -61,21 +61,6 @@ const LABELS = {
     en: 'No thumbnail',
     ja: 'サムネイルなし',
   },
-  scoreSuffix: {
-    ko: (n: number) => `${n}점`,
-    en: (n: number) => `${n}pts`,
-    ja: (n: number) => `${n}点`,
-  },
-  homeFeed: {
-    ko: '홈피드',
-    en: 'Home',
-    ja: 'ホーム',
-  },
-  search: {
-    ko: '검색',
-    en: 'Search',
-    ja: '検索',
-  },
 } as const
 
 function t(key: keyof typeof LABELS, lang: Lang): string {
@@ -95,11 +80,6 @@ function getPersonaName(persona: Persona, lang: Lang): string {
   return persona.name_i18n?.[lang] ?? persona.name
 }
 
-function scoreColor(score: number): string {
-  if (score >= 70) return 'text-emerald-400'
-  if (score >= 40) return 'text-yellow-400'
-  return 'text-zinc-400'
-}
 
 interface Props {
   feed: FeedPageResponse | null
@@ -130,6 +110,24 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     setTotal(feed?.total_accumulated ?? 0)
   }, [feed, persona.id])
 
+  const loadMore = useCallback(async () => {
+    if (isLoading || !hasMore) return
+    setIsLoading(true)
+    try {
+      const res = await fetch(`/api/feed/${persona.id}?offset=${nextOffset}&limit=20`)
+      if (!res.ok) return
+      const data: FeedPageResponse = await res.json()
+      setVideos(prev => [...prev, ...data.videos])
+      setHasMore(data.has_more)
+      setNextOffset(data.next_offset)
+      setTotal(data.total_accumulated)
+    } catch {
+      // 에러 무시 (네트워크 오류 등)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [isLoading, hasMore, nextOffset, persona.id])
+
   // IntersectionObserver — sentinel이 뷰포트에 들어오면 자동 로드
   useEffect(() => {
     const sentinel = sentinelRef.current
@@ -149,24 +147,6 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     setLang(l)
     localStorage.setItem('feed_lang', l)
   }
-
-  const loadMore = useCallback(async () => {
-    if (isLoading || !hasMore) return
-    setIsLoading(true)
-    try {
-      const res = await fetch(`/api/feed/${persona.id}?offset=${nextOffset}&limit=20`)
-      if (!res.ok) return
-      const data: FeedPageResponse = await res.json()
-      setVideos(prev => [...prev, ...data.videos])
-      setHasMore(data.has_more)
-      setNextOffset(data.next_offset)
-      setTotal(data.total_accumulated)
-    } catch {
-      // 에러 무시 (네트워크 오류 등)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [isLoading, hasMore, nextOffset, persona.id])
 
   const today = new Date().toISOString().slice(0, 10)
 
@@ -250,9 +230,6 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
             {videos.map((video, idx) => {
               const isNew = video.collected_date === today
               const title = getLangTitle(video, lang)
-              const feedSourceLabel = video.feed_source === 'home_feed'
-                ? t('homeFeed', lang)
-                : (video.keyword ?? t('search', lang))
               const dateLabel = video.published_at ?? video.collected_date
               return (
                 <a
@@ -298,34 +275,16 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
                       {title}
                     </p>
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-zinc-500 truncate max-w-[70%]">
+                      <span className="text-xs text-zinc-500 truncate max-w-[80%]">
                         {video.channel}
                       </span>
-                      <span className={`text-xs font-semibold ${scoreColor(video.score)}`}>
-                        {(LABELS.scoreSuffix[lang] as (n: number) => string)(video.score)}
-                      </span>
                     </div>
-                    <div className="flex items-center gap-1.5 mt-1">
-                      <span className={`text-[10px] font-bold ${idx < 3 ? 'text-amber-400' : 'text-zinc-600'}`}>
-                        #{idx + 1}
-                      </span>
-                      <span className="text-[10px] bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded truncate">
-                        {feedSourceLabel}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+                    <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                       {isNew && (
                         <span className="text-[10px] bg-emerald-600 text-white px-1.5 py-0.5 rounded font-semibold">
                           NEW
                         </span>
                       )}
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded ${
-                        video.feed_source === 'home_feed'
-                          ? 'bg-purple-900 text-purple-200'
-                          : 'bg-zinc-800 text-zinc-400'
-                      }`}>
-                        {video.feed_source === 'home_feed' ? 'Home Feed' : 'Search'}
-                      </span>
                       {dateLabel && (
                         <span
                           className={`text-[10px] ${video.published_at ? 'text-zinc-400' : 'text-zinc-600'}`}
