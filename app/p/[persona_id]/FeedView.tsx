@@ -3,6 +3,35 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { FeedPageResponse, Video, Persona } from '@/types'
 
+// ── 페이지 전환 Progress Bar ───────────────────────────────────────────────────
+function NavigationProgress({ active }: { active: boolean }) {
+  const [width, setWidth] = useState(0)
+
+  useEffect(() => {
+    if (!active) { setWidth(0); return }
+    // 빠르게 70%까지 올린 후 천천히 대기
+    setWidth(15)
+    const t1 = setTimeout(() => setWidth(50), 200)
+    const t2 = setTimeout(() => setWidth(70), 600)
+    const t3 = setTimeout(() => setWidth(85), 1500)
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3) }
+  }, [active])
+
+  if (!active && width === 0) return null
+
+  return (
+    <div className="fixed top-0 left-0 right-0 z-[100] h-0.5 bg-zinc-800">
+      <div
+        className="h-full bg-zinc-100 transition-all ease-out"
+        style={{
+          width: `${width}%`,
+          transitionDuration: width === 15 ? '150ms' : width === 50 ? '400ms' : '800ms',
+        }}
+      />
+    </div>
+  )
+}
+
 // ── 피드백 모달 컴포넌트 ──────────────────────────────────────────────────────
 interface FeedbackModalProps {
   lang: Lang
@@ -197,6 +226,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
   const [isLoading, setIsLoading] = useState(false)
   const [total, setTotal] = useState(feed?.total_accumulated ?? 0)
   const [showFeedback, setShowFeedback] = useState(false)
+  const [navigating, setNavigating] = useState(false)
   const sentinelRef = useRef<HTMLDivElement>(null)
 
   // 언어 설정 복원 (localStorage)
@@ -257,6 +287,9 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
 
   return (
     <>
+      {/* 페이지 전환 Progress Bar */}
+      <NavigationProgress active={navigating} />
+
       {/* 헤더 */}
       <header className="border-b border-zinc-800 px-4 py-3 sticky top-0 bg-zinc-950 z-10">
         <div className="flex items-center justify-between mb-2">
@@ -292,8 +325,10 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
           <select
             value={persona.id}
             onChange={e => {
-              gtag('persona_switch', { from: persona.id, to: e.target.value, lang })
-              window.location.href = `/p/${e.target.value}`
+              const next = e.target.value
+              gtag('persona_switch', { from: persona.id, to: next, lang })
+              setNavigating(true)
+              window.location.href = `/p/${next}`
             }}
             className="flex-1 min-w-0 bg-zinc-800 border border-zinc-700 text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-zinc-500"
             aria-label={t('selectPersona', lang)}
