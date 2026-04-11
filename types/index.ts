@@ -36,6 +36,16 @@ export interface Persona {
   description_i18n?: Record<string, string>
 }
 
+// 페이지네이션용 플랫 피드 응답
+export interface FeedPageResponse {
+  persona_id: string
+  persona_name: string
+  total_accumulated: number
+  videos: Video[]
+  has_more: boolean
+  next_offset: number
+}
+
 export interface IngestItem {
   id: string
   title: string

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { createServiceClient } from '@/lib/supabase/server'
 
 function verifyAdmin(req: NextRequest): boolean {
@@ -26,6 +27,9 @@ export async function DELETE(
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
+
+  // 삭제 즉시 해당 페르소나 페이지 ISR 캐시 무효화
+  revalidatePath(`/p/${persona_id}`)
 
   return NextResponse.json({ status: 'ok' })
 }

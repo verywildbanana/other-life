@@ -1,11 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { FeedResponse, Video, Persona } from '@/types'
+import { useState, useEffect, useCallback } from 'react'
+import { FeedPageResponse, Video, Persona } from '@/types'
 
 type Lang = 'ko' | 'en' | 'ja'
 
-// UI 레이블 다국어 맵
 const LABELS = {
   subtitle: {
     ko: 'YouTube 알고리즘 시뮬레이터',
@@ -27,10 +26,20 @@ const LABELS = {
     en: (n: number) => `${n}/500 videos`,
     ja: (n: number) => `累計 ${n}/500件`,
   },
-  lastUpdated: {
-    ko: '최근 갱신',
-    en: 'Last updated',
-    ja: '最終更新',
+  showing: {
+    ko: (n: number, total: number) => `${n} / ${total}개 표시 중`,
+    en: (n: number, total: number) => `Showing ${n} of ${total}`,
+    ja: (n: number, total: number) => `${n} / ${total}件表示中`,
+  },
+  loadMore: {
+    ko: '더 보기',
+    en: 'Load more',
+    ja: 'もっと見る',
+  },
+  loading: {
+    ko: '불러오는 중...',
+    en: 'Loading...',
+    ja: '読み込み中...',
   },
   published: {
     ko: '업로드',
@@ -41,11 +50,6 @@ const LABELS = {
     ko: '수집',
     en: 'collected',
     ja: '収集',
-  },
-  countSuffix: {
-    ko: (n: number) => `${n}개`,
-    en: (n: number) => `${n} videos`,
-    ja: (n: number) => `${n}件`,
   },
   noFeed: {
     ko: '아직 수집된 피드가 없습니다.',
@@ -103,13 +107,18 @@ function scoreColor(score: number): string {
 }
 
 interface Props {
-  feed: FeedResponse | null
+  feed: FeedPageResponse | null
   persona: Persona
   allPersonas: Persona[]
 }
 
 export default function FeedView({ feed, persona, allPersonas }: Props) {
   const [lang, setLang] = useState<Lang>('ko')
+  const [videos, setVideos] = useState<Video[]>(feed?.videos ?? [])
+  const [hasMore, setHasMore] = useState(feed?.has_more ?? false)
+  const [nextOffset, setNextOffset] = useState(feed?.next_offset ?? 0)
+  const [isLoading, setIsLoading] = useState(false)
+  const [total, setTotal] = useState(feed?.total_accumulated ?? 0)
 
   // 언어 설정 복원 (localStorage)
   useEffect(() => {
@@ -117,22 +126,36 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     if (saved && ['ko', 'en', 'ja'].includes(saved)) setLang(saved)
   }, [])
 
+  // 페르소나 변경 시 리셋
+  useEffect(() => {
+    setVideos(feed?.videos ?? [])
+    setHasMore(feed?.has_more ?? false)
+    setNextOffset(feed?.next_offset ?? 0)
+    setTotal(feed?.total_accumulated ?? 0)
+  }, [feed, persona.id])
+
   function switchLang(l: Lang) {
     setLang(l)
     localStorage.setItem('feed_lang', l)
   }
 
-  // 날짜별 영상 flat 전개 (최신 우선)
-  const allVideos: (Video & { date: string })[] = []
-  for (const group of feed?.dates ?? []) {
-    for (const v of group.videos) {
-      allVideos.push({ ...v, date: group.date })
+  const loadMore = useCallback(async () => {
+    if (isLoading || !hasMore) return
+    setIsLoading(true)
+    try {
+      const res = await fetch(`/api/feed/${persona.id}?offset=${nextOffset}&limit=20`)
+      if (!res.ok) return
+      const data: FeedPageResponse = await res.json()
+      setVideos(prev => [...prev, ...data.videos])
+      setHasMore(data.has_more)
+      setNextOffset(data.next_offset)
+      setTotal(data.total_accumulated)
+    } catch {
+      // 에러 무시 (네트워크 오류 등)
+    } finally {
+      setIsLoading(false)
     }
-  }
-  allVideos.sort((a, b) => {
-    if (a.date !== b.date) return a.date > b.date ? -1 : 1
-    return (b.collected_at ?? '') > (a.collected_at ?? '') ? 1 : -1
-  })
+  }, [isLoading, hasMore, nextOffset, persona.id])
 
   const today = new Date().toISOString().slice(0, 10)
 
@@ -168,7 +191,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
           </div>
         </div>
 
-        {/* 페르소나 선택 (다른 페르소나로 이동) */}
+        {/* 페르소나 선택 */}
         <div className="flex items-center gap-2">
           <select
             value={persona.id}
@@ -190,13 +213,11 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
         <div className="px-4 py-2 text-xs text-zinc-400 border-b border-zinc-800">
           <div className="flex items-center justify-between flex-wrap gap-1">
             <span>
-              {getPersonaName(persona, lang)} · {(LABELS.accumulated[lang] as (n: number) => string)(feed.total_accumulated)}
+              {getPersonaName(persona, lang)} · {(LABELS.accumulated[lang] as (n: number) => string)(total)}
             </span>
-            {feed.dates[0] && (
-              <span className="text-zinc-600">
-                {t('lastUpdated', lang)}: {feed.dates[0].date} ({(LABELS.countSuffix[lang] as (n: number) => string)(feed.dates[0].videos.length)})
-              </span>
-            )}
+            <span className="text-zinc-600">
+              {(LABELS.showing[lang] as (n: number, total: number) => string)(videos.length, total)}
+            </span>
           </div>
         </div>
       )}
@@ -211,16 +232,17 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
       {/* 피드 그리드 */}
       {feed && (
         <main className="px-6 py-6 max-w-7xl mx-auto">
-          {allVideos.length === 0 && (
+          {videos.length === 0 && (
             <p className="text-zinc-500 text-sm text-center py-16">{t('noResults', lang)}</p>
           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {allVideos.map((video, idx) => {
-              const isNew = video.date === today
+            {videos.map((video, idx) => {
+              const isNew = video.collected_date === today
               const title = getLangTitle(video, lang)
               const feedSourceLabel = video.feed_source === 'home_feed'
                 ? t('homeFeed', lang)
                 : (video.keyword ?? t('search', lang))
+              const dateLabel = video.published_at ?? video.collected_date
               return (
                 <a
                   key={video.video_id}
@@ -256,7 +278,6 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
                     </div>
                   )}
                   <div className="p-3">
-                    {/* SEO: data-ko/en/ja 속성에 번역 제목 모두 포함 → 크롤러가 읽을 수 있음 */}
                     <p
                       className="text-sm font-medium leading-snug line-clamp-2 mb-1.5"
                       data-ko={video.titles_i18n?.ko || video.title}
@@ -294,13 +315,14 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
                       }`}>
                         {video.feed_source === 'home_feed' ? 'Home Feed' : 'Search'}
                       </span>
-                      {video.published_at ? (
-                        <span className="text-[10px] text-zinc-400" title={`${t('published', lang)}: ${video.published_at}`}>
-                          {video.published_at}
-                        </span>
-                      ) : (
-                        <span className="text-[10px] text-zinc-600" title={`${t('collected', lang)}: ${video.date}`}>
-                          {video.date}
+                      {dateLabel && (
+                        <span
+                          className={`text-[10px] ${video.published_at ? 'text-zinc-400' : 'text-zinc-600'}`}
+                          title={video.published_at
+                            ? `${t('published', lang)}: ${video.published_at}`
+                            : `${t('collected', lang)}: ${video.collected_date}`}
+                        >
+                          {dateLabel}
                         </span>
                       )}
                     </div>
@@ -309,6 +331,19 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
               )
             })}
           </div>
+
+          {/* 더 보기 버튼 */}
+          {hasMore && (
+            <div className="flex justify-center mt-8">
+              <button
+                onClick={loadMore}
+                disabled={isLoading}
+                className="px-6 py-2.5 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm text-zinc-200 rounded-lg border border-zinc-700 transition-colors"
+              >
+                {isLoading ? t('loading', lang) : `${t('loadMore', lang)} (${total - videos.length}${lang === 'ja' ? '件' : lang === 'en' ? ' more' : '개 더'})`}
+              </button>
+            </div>
+          )}
         </main>
       )}
     </>

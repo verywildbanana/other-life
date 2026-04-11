@@ -1,6 +1,6 @@
 import { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { getFeedByPersona } from '@/lib/feed'
+import { getPaginatedFeed } from '@/lib/feed'
 import { loadPersona, listPersonas } from '@/lib/personas'
 import FeedView from './FeedView'
 
@@ -62,7 +62,7 @@ export default async function PersonaPage({ params }: Props) {
   if (!persona) notFound()
 
   const [feed, allPersonas] = await Promise.all([
-    getFeedByPersona(persona_id),
+    getPaginatedFeed(persona_id, 0, 20),
     Promise.resolve(listPersonas()),
   ])
 

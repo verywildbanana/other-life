@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getPublicFeed } from '@/lib/feed'
+import { getPaginatedFeed } from '@/lib/feed'
 import { logFeedAccess } from '@/lib/access-log'
 
 export async function GET(
@@ -7,20 +7,28 @@ export async function GET(
   { params }: { params: Promise<{ persona_id: string }> },
 ) {
   const { persona_id } = await params
+  const { searchParams } = req.nextUrl
 
-  // 비동기 접근 로그 기록 (응답 지연 없음)
-  logFeedAccess(req, persona_id)
+  const offset = Math.max(0, parseInt(searchParams.get('offset') ?? '0', 10))
+  const limit = Math.min(50, Math.max(1, parseInt(searchParams.get('limit') ?? '20', 10)))
 
-  const feed = await getPublicFeed(persona_id)
+  // 첫 페이지 요청만 접근 로그 기록
+  if (offset === 0) logFeedAccess(req, persona_id)
+
+  const feed = await getPaginatedFeed(persona_id, offset, limit)
 
   if (!feed) {
     return NextResponse.json({ error: '피드 없음' }, { status: 404 })
   }
 
-  // 캐싱 허용 (CDN 엣지 캐시 30분) + 스크래핑 억제
+  // 첫 페이지는 CDN 캐시 허용, 이후 페이지는 항상 신선한 데이터
+  const cacheControl = offset === 0
+    ? 'public, s-maxage=60, stale-while-revalidate=300'
+    : 'no-store'
+
   return NextResponse.json(feed, {
     headers: {
-      'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+      'Cache-Control': cacheControl,
       'X-Robots-Tag': 'noindex',
     },
   })
