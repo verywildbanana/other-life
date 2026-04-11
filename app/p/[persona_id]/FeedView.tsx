@@ -1,23 +1,31 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { FeedPageResponse, Video, Persona } from '@/types'
 
 // ── 페이지 전환 Progress Bar ───────────────────────────────────────────────────
 function NavigationProgress({ active }: { active: boolean }) {
   const [width, setWidth] = useState(0)
+  const [visible, setVisible] = useState(false)
 
   useEffect(() => {
-    if (!active) { setWidth(0); return }
-    // 빠르게 70%까지 올린 후 천천히 대기
-    setWidth(15)
-    const t1 = setTimeout(() => setWidth(50), 200)
-    const t2 = setTimeout(() => setWidth(70), 600)
-    const t3 = setTimeout(() => setWidth(85), 1500)
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3) }
+    if (active) {
+      setVisible(true)
+      setWidth(15)
+      const t1 = setTimeout(() => setWidth(50), 200)
+      const t2 = setTimeout(() => setWidth(75), 600)
+      const t3 = setTimeout(() => setWidth(90), 1500)
+      return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3) }
+    } else {
+      // 완료: 100%로 채운 뒤 페이드아웃
+      setWidth(100)
+      const t = setTimeout(() => { setVisible(false); setWidth(0) }, 300)
+      return () => clearTimeout(t)
+    }
   }, [active])
 
-  if (!active && width === 0) return null
+  if (!visible) return null
 
   return (
     <div className="fixed top-0 left-0 right-0 z-[100] h-0.5 bg-zinc-800">
@@ -25,7 +33,7 @@ function NavigationProgress({ active }: { active: boolean }) {
         className="h-full bg-zinc-100 transition-all ease-out"
         style={{
           width: `${width}%`,
-          transitionDuration: width === 15 ? '150ms' : width === 50 ? '400ms' : '800ms',
+          transitionDuration: width === 100 ? '200ms' : width === 15 ? '150ms' : '600ms',
         }}
       />
     </div>
@@ -219,7 +227,9 @@ interface Props {
 }
 
 export default function FeedView({ feed, persona, allPersonas }: Props) {
+  const router = useRouter()
   const [lang, setLang] = useState<Lang>('ko')
+  const [currentPersona, setCurrentPersona] = useState<Persona>(persona)
   const [videos, setVideos] = useState<Video[]>(feed?.videos ?? [])
   const [hasMore, setHasMore] = useState(feed?.has_more ?? false)
   const [nextOffset, setNextOffset] = useState(feed?.next_offset ?? 0)
@@ -235,32 +245,64 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     if (saved && ['ko', 'en', 'ja'].includes(saved)) setLang(saved)
   }, [])
 
-  // 페르소나 변경 시 리셋
+  // 서버에서 직접 접근 시 (URL 직접 입력, 새로고침) prop 동기화
   useEffect(() => {
+    setCurrentPersona(persona)
     setVideos(feed?.videos ?? [])
     setHasMore(feed?.has_more ?? false)
     setNextOffset(feed?.next_offset ?? 0)
     setTotal(feed?.total_accumulated ?? 0)
   }, [feed, persona.id])
 
+  // 클라이언트사이드 페르소나 전환 (새로고침 없음)
+  const switchPersona = useCallback(async (nextPersonaId: string) => {
+    const nextPersona = allPersonas.find(p => p.id === nextPersonaId)
+    if (!nextPersona || nextPersonaId === currentPersona.id) return
+
+    gtag('persona_switch', { from: currentPersona.id, to: nextPersonaId, lang })
+    setNavigating(true)
+
+    try {
+      const res = await fetch(`/api/feed/${nextPersonaId}?offset=0&limit=20`)
+      if (!res.ok) throw new Error('fetch failed')
+      const data: FeedPageResponse = await res.json()
+
+      // URL 업데이트 (새로고침 없이)
+      router.push(`/p/${nextPersonaId}`, { scroll: false })
+
+      // 상태 일괄 업데이트
+      setCurrentPersona(nextPersona)
+      setVideos(data.videos)
+      setHasMore(data.has_more)
+      setNextOffset(data.next_offset)
+      setTotal(data.total_accumulated)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    } catch {
+      // fetch 실패 시 기존 방식으로 폴백
+      window.location.href = `/p/${nextPersonaId}`
+    } finally {
+      setNavigating(false)
+    }
+  }, [currentPersona.id, allPersonas, lang, router])
+
   const loadMore = useCallback(async () => {
     if (isLoading || !hasMore) return
     setIsLoading(true)
     try {
-      const res = await fetch(`/api/feed/${persona.id}?offset=${nextOffset}&limit=20`)
+      const res = await fetch(`/api/feed/${currentPersona.id}?offset=${nextOffset}&limit=20`)
       if (!res.ok) return
       const data: FeedPageResponse = await res.json()
       setVideos(prev => [...prev, ...data.videos])
       setHasMore(data.has_more)
       setNextOffset(data.next_offset)
       setTotal(data.total_accumulated)
-      gtag('infinite_scroll_load', { persona_id: persona.id, offset: nextOffset, loaded: data.videos.length })
+      gtag('infinite_scroll_load', { persona_id: currentPersona.id, offset: nextOffset, loaded: data.videos.length })
     } catch {
       // 에러 무시 (네트워크 오류 등)
     } finally {
       setIsLoading(false)
     }
-  }, [isLoading, hasMore, nextOffset, persona.id])
+  }, [isLoading, hasMore, nextOffset, currentPersona.id])
 
   // IntersectionObserver — sentinel이 뷰포트에 들어오면 자동 로드
   useEffect(() => {
@@ -278,7 +320,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
   }, [loadMore])
 
   function switchLang(l: Lang) {
-    gtag('language_switch', { from: lang, to: l, persona_id: persona.id })
+    gtag('language_switch', { from: lang, to: l, persona_id: currentPersona.id })
     setLang(l)
     localStorage.setItem('feed_lang', l)
   }
@@ -323,13 +365,8 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
         {/* 페르소나 선택 */}
         <div className="flex items-center gap-2">
           <select
-            value={persona.id}
-            onChange={e => {
-              const next = e.target.value
-              gtag('persona_switch', { from: persona.id, to: next, lang })
-              setNavigating(true)
-              window.location.href = `/p/${next}`
-            }}
+            value={currentPersona.id}
+            onChange={e => switchPersona(e.target.value)}
             className="flex-1 min-w-0 bg-zinc-800 border border-zinc-700 text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-zinc-500"
             aria-label={t('selectPersona', lang)}
           >
@@ -343,11 +380,11 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
       </header>
 
       {/* 상태 바 */}
-      {feed && (
+      {(feed || videos.length > 0) && (
         <div className="px-4 py-2 text-xs text-zinc-400 border-b border-zinc-800">
           <div className="flex items-center justify-between flex-wrap gap-1">
             <span>
-              {getPersonaName(persona, lang)} · {(LABELS.accumulated[lang] as (n: number) => string)(total)}
+              {getPersonaName(currentPersona, lang)} · {(LABELS.accumulated[lang] as (n: number) => string)(total)}
             </span>
             <span className="text-zinc-600">
               {(LABELS.showing[lang] as (n: number, total: number) => string)(videos.length, total)}
@@ -357,14 +394,14 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
       )}
 
       {/* 피드 없음 */}
-      {!feed && (
+      {!feed && videos.length === 0 && (
         <div className="flex items-center justify-center py-32 text-zinc-500 text-sm">
           {t('noFeed', lang)}
         </div>
       )}
 
       {/* 피드 그리드 */}
-      {feed && (
+      {(feed || videos.length > 0) && (
         <main className="px-6 py-6 max-w-7xl mx-auto">
           {videos.length === 0 && (
             <p className="text-zinc-500 text-sm text-center py-16">{t('noResults', lang)}</p>
@@ -385,7 +422,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
                   onClick={() => gtag('video_click', {
                     video_id: video.video_id,
                     video_title: title,
-                    persona_id: persona.id,
+                    persona_id: currentPersona.id,
                     position: idx + 1,
                     lang,
                   })}
@@ -460,7 +497,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
       {/* 피드백 플로팅 버튼 */}
       <button
         onClick={() => {
-          gtag('feedback_click', { persona_id: persona.id, lang })
+          gtag('feedback_click', { persona_id: currentPersona.id, lang })
           setShowFeedback(true)
         }}
         className="fixed bottom-6 right-6 z-40 flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-medium px-4 py-2.5 rounded-full shadow-lg border border-zinc-700 transition-colors"
@@ -476,7 +513,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
       {showFeedback && (
         <FeedbackModal
           lang={lang}
-          personaId={persona.id}
+          personaId={currentPersona.id}
           onClose={() => setShowFeedback(false)}
         />
       )}
