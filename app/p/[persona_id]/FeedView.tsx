@@ -32,6 +32,16 @@ const LABELS = {
     en: 'Last updated',
     ja: '最終更新',
   },
+  published: {
+    ko: '업로드',
+    en: 'uploaded',
+    ja: '投稿',
+  },
+  collected: {
+    ko: '수집',
+    en: 'collected',
+    ja: '収集',
+  },
   countSuffix: {
     ko: (n: number) => `${n}개`,
     en: (n: number) => `${n} videos`,
@@ -284,7 +294,15 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
                       }`}>
                         {video.feed_source === 'home_feed' ? 'Home Feed' : 'Search'}
                       </span>
-                      <span className="text-[10px] text-zinc-500">{video.date}</span>
+                      {video.published_at ? (
+                        <span className="text-[10px] text-zinc-400" title={`${t('published', lang)}: ${video.published_at}`}>
+                          {video.published_at}
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-zinc-600" title={`${t('collected', lang)}: ${video.date}`}>
+                          {video.date}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </a>

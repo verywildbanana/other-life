@@ -74,6 +74,7 @@ export async function POST(
       collected_at: now,
       feed_source: 'home_feed',
       collected_date: today,
+      published_at: item.published_at ?? null,
       titles_i18n: item.titles_i18n ?? {},
     })
   }

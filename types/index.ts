@@ -11,6 +11,7 @@ export interface Video {
   collected_at: string
   feed_source: string
   collected_date: string | null
+  published_at: string | null  // YouTube 실제 업로드 날짜 (YYYY-MM-DD)
   titles_i18n: Record<string, string>
 }
 
@@ -43,4 +44,5 @@ export interface IngestItem {
   thumbnail: string
   view_count: number
   titles_i18n: Record<string, string>
+  published_at?: string | null  // YouTube 실제 업로드 날짜 (YYYY-MM-DD), 옵셔널
 }

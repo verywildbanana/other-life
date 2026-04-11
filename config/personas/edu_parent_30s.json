@@ -1,10 +1,10 @@
 {
   "id": "edu_parent_30s",
-  "name": "30대 교육열 학부모",
+  "name": "교육열 학부모",
   "name_i18n": {
-    "ko": "30대 교육열 학부모",
-    "en": "Education-Driven Parent in 30s",
-    "ja": "30代教育熱心な保護者"
+    "ko": "교육열 학부모",
+    "en": "Education-Driven Parent",
+    "ja": "教育熱心な保護者"
   },
   "description": "강남/송파권 거주, 자녀 교육 및 학군 부동산에 관심 많은 30대 학부모",
   "description_i18n": {

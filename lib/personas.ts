@@ -18,6 +18,8 @@ export function listPersonas(): Persona[] {
         id: data.id ?? file.replace('.json', ''),
         name: data.name ?? file.replace('.json', ''),
         description: data.description ?? '',
+        name_i18n: data.name_i18n ?? undefined,
+        description_i18n: data.description_i18n ?? undefined,
       }
     })
 }
