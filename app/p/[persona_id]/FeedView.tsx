@@ -238,7 +238,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
                   target="_blank"
                   rel="noopener noreferrer"
                   title={video.title}
-                  className="block bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden transition-transform duration-200 hover:-translate-y-1 hover:shadow-[0_8px_24px_rgba(0,0,0,0.4)]"
+                  className="flex flex-col bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden transition-transform duration-200 hover:-translate-y-1 hover:shadow-[0_8px_24px_rgba(0,0,0,0.4)]"
                   onClick={() => {
                     if (typeof window !== 'undefined' && typeof (window as any).gtag === 'function') {
                       ;(window as any).gtag('event', 'video_click', {
@@ -265,36 +265,36 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
                       {t('noThumbnail', lang)}
                     </div>
                   )}
-                  <div className="p-3">
+                  <div className="p-3 flex flex-col flex-1">
                     <p
-                      className="text-sm font-medium leading-snug line-clamp-2 mb-1.5"
+                      className="text-sm font-medium leading-snug line-clamp-2 mb-1.5 flex-1"
                       data-ko={video.titles_i18n?.ko || video.title}
                       data-en={video.titles_i18n?.en || video.title}
                       data-ja={video.titles_i18n?.ja || video.title}
                     >
                       {title}
                     </p>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-zinc-500 truncate max-w-[80%]">
+                    <div className="mt-auto pt-2">
+                      <span className="text-xs text-zinc-500 truncate block max-w-full mb-1.5">
                         {video.channel}
                       </span>
-                    </div>
-                    <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                      {isNew && (
-                        <span className="text-[10px] bg-emerald-600 text-white px-1.5 py-0.5 rounded font-semibold">
-                          NEW
-                        </span>
-                      )}
-                      {dateLabel && (
-                        <span
-                          className={`text-[10px] ${video.published_at ? 'text-zinc-400' : 'text-zinc-600'}`}
-                          title={video.published_at
-                            ? `${t('published', lang)}: ${video.published_at}`
-                            : `${t('collected', lang)}: ${video.collected_date}`}
-                        >
-                          {dateLabel}
-                        </span>
-                      )}
+                      <div className="flex items-center gap-1.5">
+                        {isNew && (
+                          <span className="text-[10px] bg-emerald-600 text-white px-1.5 py-0.5 rounded font-semibold">
+                            NEW
+                          </span>
+                        )}
+                        {dateLabel && (
+                          <span
+                            className={`text-[10px] ${video.published_at ? 'text-zinc-400' : 'text-zinc-600'}`}
+                            title={video.published_at
+                              ? `${t('published', lang)}: ${video.published_at}`
+                              : `${t('collected', lang)}: ${video.collected_date}`}
+                          >
+                            {dateLabel}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </a>
