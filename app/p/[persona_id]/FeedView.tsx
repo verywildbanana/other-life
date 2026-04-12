@@ -436,7 +436,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
       {/* 피드 그리드 */}
       {(feed || videos.length > 0) && (
         <main className="px-6 py-6 max-w-7xl mx-auto">
-          {videos.length === 0 && (
+          {videos.length === 0 && !navigating && (
             <p className="text-zinc-500 text-sm text-center py-16">{t('noResults', lang)}</p>
           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
