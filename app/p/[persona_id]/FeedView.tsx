@@ -240,6 +240,10 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
   const sentinelRef = useRef<HTMLDivElement>(null)
   // 현재 활성 페르소나 ID를 ref로도 보관 — loadMore가 비동기 완료 시점에 페르소나가 바뀌었는지 확인용
   const activePersonaIdRef = useRef<string>(persona.id)
+  // loadMore 동시 실행 방지 — state는 리렌더 전까지 반영 안 되므로 ref로 동기 가드
+  const isLoadingRef = useRef(false)
+  // switchPersona 후 router.push가 유발하는 useEffect([feed, persona.id]) 덮어쓰기 방지
+  const skipNextPropSyncRef = useRef(false)
 
   // 언어 설정 복원 (localStorage)
   useEffect(() => {
@@ -248,7 +252,12 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
   }, [])
 
   // 서버에서 직접 접근 시 (URL 직접 입력, 새로고침) prop 동기화
+  // switchPersona 후 router.push가 이 effect를 트리거하는 경우에는 건너뜀 (skipNextPropSyncRef)
   useEffect(() => {
+    if (skipNextPropSyncRef.current) {
+      skipNextPropSyncRef.current = false
+      return
+    }
     setCurrentPersona(persona)
     setVideos(feed?.videos ?? [])
     setHasMore(feed?.has_more ?? false)
@@ -262,20 +271,26 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     if (!nextPersona || nextPersonaId === currentPersona.id) return
 
     gtag('persona_switch', { from: currentPersona.id, to: nextPersonaId, lang })
-    // ref를 즉시 갱신 — 이미 실행 중인 loadMore가 완료 후 결과를 버리게 함
+
+    // ref 즉시 갱신 — inflight loadMore가 응답 도착 시 stale 체크로 결과를 버리게 함
     activePersonaIdRef.current = nextPersonaId
+
+    // 이전 페르소나 상태 즉시 초기화 — 이전 컨텐츠(다음 페이지 포함)가 화면에 남지 않도록
+    setVideos([])
+    setHasMore(false)
+    setNextOffset(0)
     setNavigating(true)
-    setHasMore(false) // 새 loadMore 트리거 차단
 
     try {
       const res = await fetch(`/api/feed/${nextPersonaId}?offset=0&limit=20`)
       if (!res.ok) throw new Error('fetch failed')
       const data: FeedPageResponse = await res.json()
 
-      // URL 업데이트 (새로고침 없이)
+      // router.push → Next.js가 ISR props로 useEffect([feed, persona.id])를 재발동하여
+      // 여기서 세팅한 상태를 덮어쓰는 것을 방지
+      skipNextPropSyncRef.current = true
       router.push(`/p/${nextPersonaId}`, { scroll: false })
 
-      // 상태 일괄 업데이트 (ref는 이미 위에서 갱신됨)
       setCurrentPersona(nextPersona)
       setVideos(data.videos)
       setHasMore(data.has_more)
@@ -291,7 +306,10 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
   }, [currentPersona.id, allPersonas, lang, router])
 
   const loadMore = useCallback(async () => {
-    if (isLoading || !hasMore) return
+    // isLoadingRef: state가 리렌더 전까지 반영 안 되는 문제 → ref로 동기 가드
+    // IntersectionObserver가 리렌더 전에 재발화해도 중복 실행 차단
+    if (isLoadingRef.current || !hasMore) return
+    isLoadingRef.current = true
     setIsLoading(true)
     // fetch 시작 시점의 페르소나 ID를 캡처 — 응답 도착 전에 페르소나가 바뀌면 결과 버림
     const personaAtStart = currentPersona.id
@@ -301,7 +319,12 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
       const data: FeedPageResponse = await res.json()
       // 응답 도착 시점에 페르소나가 바뀌었으면 stale 결과이므로 무시
       if (personaAtStart !== activePersonaIdRef.current) return
-      setVideos(prev => [...prev, ...data.videos])
+      // video_id 기준 중복 제거 — 혹시라도 API가 겹치는 데이터를 반환하는 경우 방어
+      setVideos(prev => {
+        const existingIds = new Set(prev.map(v => v.video_id))
+        const newVideos = data.videos.filter(v => !existingIds.has(v.video_id))
+        return [...prev, ...newVideos]
+      })
       setHasMore(data.has_more)
       setNextOffset(data.next_offset)
       setTotal(data.total_accumulated)
@@ -309,9 +332,10 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     } catch {
       // 에러 무시 (네트워크 오류 등)
     } finally {
+      isLoadingRef.current = false
       setIsLoading(false)
     }
-  }, [isLoading, hasMore, nextOffset, currentPersona.id])
+  }, [hasMore, nextOffset, currentPersona.id])
 
   // IntersectionObserver — sentinel이 뷰포트에 들어오면 자동 로드
   useEffect(() => {
