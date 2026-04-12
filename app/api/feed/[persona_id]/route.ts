@@ -14,9 +14,10 @@ export async function GET(
   const verify = await verifyToken(token, ua)
 
   if (!verify.ok) {
-    // 의심 요청 로깅 + 임계값 초과 시 Telegram 알림 (fire-and-forget)
+    // 의심 요청 로깅 + 임계값 초과 시 Telegram 알림
+    // await 필수: fire-and-forget이면 Vercel이 응답 후 함수 즉시 종료 → DB 저장 안 됨
     const { persona_id: pid } = await params
-    logSuspicious(req, pid ?? 'unknown', verify.reason).catch(() => {})
+    await logSuspicious(req, pid ?? 'unknown', verify.reason)
 
     // 디버깅에 이유 노출 금지 — 외부에는 동일한 401만 반환
     return NextResponse.json(
