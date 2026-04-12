@@ -269,6 +269,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     activePersonaIdRef.current = nextPersonaId
 
     // 이전 페르소나 상태 즉시 초기화 — 이전 컨텐츠(다음 페이지 포함)가 화면에 남지 않도록
+    setCurrentPersona(nextPersona)  // 페르소나 이름 즉시 반영
     setVideos([])
     setHasMore(false)
     setNextOffset(0)
@@ -283,7 +284,6 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
       // → 서버 컴포넌트 재실행 없음 → ISR props 덮어쓰기 없음
       window.history.pushState(null, '', `/p/${nextPersonaId}`)
 
-      setCurrentPersona(nextPersona)
       setVideos(data.videos)
       setHasMore(data.has_more)
       setNextOffset(data.next_offset)
