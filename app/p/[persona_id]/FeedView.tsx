@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useRouter } from 'next/navigation'
 import { FeedPageResponse, Video, Persona } from '@/types'
 
 // ── 페이지 전환 Progress Bar ───────────────────────────────────────────────────
@@ -227,7 +226,6 @@ interface Props {
 }
 
 export default function FeedView({ feed, persona, allPersonas }: Props) {
-  const router = useRouter()
   const [lang, setLang] = useState<Lang>('ko')
   const [currentPersona, setCurrentPersona] = useState<Persona>(persona)
   const [videos, setVideos] = useState<Video[]>(feed?.videos ?? [])
@@ -242,8 +240,6 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
   const activePersonaIdRef = useRef<string>(persona.id)
   // loadMore 동시 실행 방지 — state는 리렌더 전까지 반영 안 되므로 ref로 동기 가드
   const isLoadingRef = useRef(false)
-  // switchPersona 후 router.push가 유발하는 useEffect([feed, persona.id]) 덮어쓰기 방지
-  const skipNextPropSyncRef = useRef(false)
 
   // 언어 설정 복원 (localStorage)
   useEffect(() => {
@@ -252,12 +248,9 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
   }, [])
 
   // 서버에서 직접 접근 시 (URL 직접 입력, 새로고침) prop 동기화
-  // switchPersona 후 router.push가 이 effect를 트리거하는 경우에는 건너뜀 (skipNextPropSyncRef)
+  // window.history.pushState 사용으로 Next.js navigation이 트리거되지 않아 이 effect는
+  // 초기 마운트 시에만 발동됨 (브라우저 직접 접근 / 새로고침)
   useEffect(() => {
-    if (skipNextPropSyncRef.current) {
-      skipNextPropSyncRef.current = false
-      return
-    }
     setCurrentPersona(persona)
     setVideos(feed?.videos ?? [])
     setHasMore(feed?.has_more ?? false)
@@ -286,10 +279,9 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
       if (!res.ok) throw new Error('fetch failed')
       const data: FeedPageResponse = await res.json()
 
-      // router.push → Next.js가 ISR props로 useEffect([feed, persona.id])를 재발동하여
-      // 여기서 세팅한 상태를 덮어쓰는 것을 방지
-      skipNextPropSyncRef.current = true
-      router.push(`/p/${nextPersonaId}`, { scroll: false })
+      // window.history.pushState: URL만 업데이트, Next.js navigation 트리거 안 함
+      // → 서버 컴포넌트 재실행 없음 → ISR props 덮어쓰기 없음
+      window.history.pushState(null, '', `/p/${nextPersonaId}`)
 
       setCurrentPersona(nextPersona)
       setVideos(data.videos)
@@ -303,7 +295,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     } finally {
       setNavigating(false)
     }
-  }, [currentPersona.id, allPersonas, lang, router])
+  }, [currentPersona.id, allPersonas, lang])
 
   const loadMore = useCallback(async () => {
     // isLoadingRef: state가 리렌더 전까지 반영 안 되는 문제 → ref로 동기 가드
