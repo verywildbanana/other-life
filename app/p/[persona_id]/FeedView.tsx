@@ -238,6 +238,8 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
   const [showFeedback, setShowFeedback] = useState(false)
   const [navigating, setNavigating] = useState(false)
   const sentinelRef = useRef<HTMLDivElement>(null)
+  // 현재 활성 페르소나 ID를 ref로도 보관 — loadMore가 비동기 완료 시점에 페르소나가 바뀌었는지 확인용
+  const activePersonaIdRef = useRef<string>(persona.id)
 
   // 언어 설정 복원 (localStorage)
   useEffect(() => {
@@ -260,9 +262,10 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     if (!nextPersona || nextPersonaId === currentPersona.id) return
 
     gtag('persona_switch', { from: currentPersona.id, to: nextPersonaId, lang })
+    // ref를 즉시 갱신 — 이미 실행 중인 loadMore가 완료 후 결과를 버리게 함
+    activePersonaIdRef.current = nextPersonaId
     setNavigating(true)
-    // fetch 대기 중 IntersectionObserver가 이전 페르소나 loadMore를 트리거하지 않도록 즉시 차단
-    setHasMore(false)
+    setHasMore(false) // 새 loadMore 트리거 차단
 
     try {
       const res = await fetch(`/api/feed/${nextPersonaId}?offset=0&limit=20`)
@@ -272,7 +275,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
       // URL 업데이트 (새로고침 없이)
       router.push(`/p/${nextPersonaId}`, { scroll: false })
 
-      // 상태 일괄 업데이트
+      // 상태 일괄 업데이트 (ref는 이미 위에서 갱신됨)
       setCurrentPersona(nextPersona)
       setVideos(data.videos)
       setHasMore(data.has_more)
@@ -290,10 +293,14 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
   const loadMore = useCallback(async () => {
     if (isLoading || !hasMore) return
     setIsLoading(true)
+    // fetch 시작 시점의 페르소나 ID를 캡처 — 응답 도착 전에 페르소나가 바뀌면 결과 버림
+    const personaAtStart = currentPersona.id
     try {
-      const res = await fetch(`/api/feed/${currentPersona.id}?offset=${nextOffset}&limit=20`)
+      const res = await fetch(`/api/feed/${personaAtStart}?offset=${nextOffset}&limit=20`)
       if (!res.ok) return
       const data: FeedPageResponse = await res.json()
+      // 응답 도착 시점에 페르소나가 바뀌었으면 stale 결과이므로 무시
+      if (personaAtStart !== activePersonaIdRef.current) return
       setVideos(prev => [...prev, ...data.videos])
       setHasMore(data.has_more)
       setNextOffset(data.next_offset)
