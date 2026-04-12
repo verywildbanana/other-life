@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getPaginatedFeed } from '@/lib/feed'
 import { logFeedAccess } from '@/lib/access-log'
 import { verifyToken, COOKIE_NAME } from '@/lib/feed-token'
+import { logSuspicious } from '@/lib/suspicious'
 
 export async function GET(
   req: NextRequest,
@@ -13,6 +14,10 @@ export async function GET(
   const verify = await verifyToken(token, ua)
 
   if (!verify.ok) {
+    // 의심 요청 로깅 + 임계값 초과 시 Telegram 알림 (fire-and-forget)
+    const { persona_id: pid } = await params
+    logSuspicious(req, pid ?? 'unknown', verify.reason).catch(() => {})
+
     // 디버깅에 이유 노출 금지 — 외부에는 동일한 401만 반환
     return NextResponse.json(
       { error: 'Unauthorized' },
