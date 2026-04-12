@@ -10,7 +10,7 @@ export async function GET(
   // 토큰 검증 — 우리 서비스 페이지에서 발급된 세션만 허용
   const token = req.cookies.get(COOKIE_NAME)?.value
   const ua = req.headers.get('user-agent') ?? ''
-  const verify = verifyToken(token, ua)
+  const verify = await verifyToken(token, ua)
 
   if (!verify.ok) {
     // 디버깅에 이유 노출 금지 — 외부에는 동일한 401만 반환

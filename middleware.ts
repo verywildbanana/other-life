@@ -8,7 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { issueToken, verifyToken, COOKIE_NAME, TOKEN_TTL_MS } from '@/lib/feed-token'
 
-export function middleware(req: NextRequest) {
+export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
 
   // /p/* 페이지 진입 시만 토큰 발급
@@ -18,11 +18,11 @@ export function middleware(req: NextRequest) {
   const existing = req.cookies.get(COOKIE_NAME)?.value
 
   // 기존 토큰이 유효하면 그대로 통과
-  const result = verifyToken(existing, ua)
+  const result = await verifyToken(existing, ua)
   if (result.ok) return NextResponse.next()
 
   // 신규 발급 (만료, 없음, UA 불일치 모두 재발급)
-  const token = issueToken(ua)
+  const token = await issueToken(ua)
   const res = NextResponse.next()
   res.cookies.set(COOKIE_NAME, token, {
     httpOnly: true,          // JS에서 접근 불가 (XSS 방지)
