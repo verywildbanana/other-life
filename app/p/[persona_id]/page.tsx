@@ -62,7 +62,7 @@ export default async function PersonaPage({ params }: Props) {
   if (!persona) notFound()
 
   const [feed, allPersonas] = await Promise.all([
-    getPaginatedFeed(persona_id, 0, 20),
+    getPaginatedFeed(persona_id, 0, 10), // 초기 HTML 노출 10개로 제한 (스크래핑 비용 증가)
     Promise.resolve(listPersonas()),
   ])
 

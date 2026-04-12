@@ -10,10 +10,11 @@ export async function POST(req: NextRequest) {
 
   const res = NextResponse.json({ status: 'ok' })
   res.cookies.set('admin_token', token, {
-    httpOnly: true,
-    sameSite: 'lax',
-    path: '/',
-    maxAge: 60 * 60 * 24, // 24시간
+    httpOnly: true,   // JS 접근 차단 (XSS 방어)
+    secure: true,     // HTTPS 전용
+    sameSite: 'strict', // CSRF 방어 강화 (lax → strict)
+    path: '/',        // /api/admin/* 포함 전체 경로에 전송
+    maxAge: 60 * 60 * 8, // 8시간 (기존 24시간 → 보안 강화)
   })
   return res
 }

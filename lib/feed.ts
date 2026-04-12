@@ -1,4 +1,4 @@
-import { createServerClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/server'
 import { DateGroup, FeedPageResponse, FeedResponse, Video } from '@/types'
 import { loadPersona } from '@/lib/personas'
 
@@ -26,7 +26,7 @@ export async function getFeedByPersona(personaId: string): Promise<FeedResponse 
   const persona = loadPersona(personaId)
   if (!persona) return null
 
-  const supabase = createServerClient()
+  const supabase = createServiceClient()
 
   // 날짜 목록 조회
   const { data: dateRows, error } = await supabase
@@ -109,7 +109,7 @@ export async function getPaginatedFeed(
   const persona = loadPersona(personaId)
   if (!persona) return null
 
-  const supabase = createServerClient()
+  const supabase = createServiceClient()
 
   // 전체 개수
   const { count } = await supabase

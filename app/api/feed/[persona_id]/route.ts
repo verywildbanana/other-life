@@ -3,6 +3,7 @@ import { getPaginatedFeed } from '@/lib/feed'
 import { logFeedAccess } from '@/lib/access-log'
 import { verifyToken, COOKIE_NAME } from '@/lib/feed-token'
 import { logSuspicious } from '@/lib/suspicious'
+import { getClientIp, hashIp, checkFeedRateLimit } from '@/lib/rate-limit'
 
 export async function GET(
   req: NextRequest,
@@ -32,8 +33,19 @@ export async function GET(
   const offset = Math.max(0, parseInt(searchParams.get('offset') ?? '0', 10))
   const limit = Math.min(50, Math.max(1, parseInt(searchParams.get('limit') ?? '20', 10)))
 
-  // 첫 페이지 요청만 접근 로그 기록
-  if (offset === 0) logFeedAccess(req, persona_id)
+  // Rate Limit: 분당 60회 초과 시 429 (access_logs 기반, Supabase DB 활용)
+  // 첫 페이지 요청만 카운트 (페이지네이션 로딩은 허용)
+  if (offset === 0) {
+    const ipHash = hashIp(getClientIp(req))
+    const { limited } = await checkFeedRateLimit(ipHash, 60 * 1000, 60)
+    if (limited) {
+      return NextResponse.json(
+        { error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' },
+        { status: 429, headers: { 'Retry-After': '60', 'Cache-Control': 'no-store' } },
+      )
+    }
+    logFeedAccess(req, persona_id)
+  }
 
   const feed = await getPaginatedFeed(persona_id, offset, limit)
 
