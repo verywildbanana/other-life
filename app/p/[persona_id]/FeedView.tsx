@@ -261,6 +261,8 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
 
     gtag('persona_switch', { from: currentPersona.id, to: nextPersonaId, lang })
     setNavigating(true)
+    // fetch 대기 중 IntersectionObserver가 이전 페르소나 loadMore를 트리거하지 않도록 즉시 차단
+    setHasMore(false)
 
     try {
       const res = await fetch(`/api/feed/${nextPersonaId}?offset=0&limit=20`)
