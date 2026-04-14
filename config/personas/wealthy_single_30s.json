@@ -1,10 +1,10 @@
 {
   "id": "wealthy_single_30s",
-  "name": "실리콘밸리 창업자",
+  "name": "실리콘밸리 Exit한 젊은 자산가",
   "name_i18n": {
-    "ko": "실리콘밸리 창업자",
-    "en": "Silicon Valley Founder",
-    "ja": "シリコンバレー起業家"
+    "ko": "실리콘밸리 Exit한 젊은 자산가",
+    "en": "Young Wealthy Founder After Silicon Valley Exit",
+    "ja": "シリコンバレーExit後の若き資産家"
   },
   "description": "30대 스타트업 창업자. Series B Exit 후 FIRE 달성. 요트·럭셔리 여행·엔젤 투자가 일상.",
   "description_i18n": {
