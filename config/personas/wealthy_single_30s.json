@@ -1,16 +1,16 @@
 {
   "id": "wealthy_single_30s",
-  "name": "싱글 자산가",
+  "name": "실리콘밸리 창업자",
   "name_i18n": {
-    "ko": "싱글 자산가",
-    "en": "Wealthy Single",
-    "ja": "シングル富裕層"
+    "ko": "실리콘밸리 창업자",
+    "en": "Silicon Valley Founder",
+    "ja": "シリコンバレー起業家"
   },
-  "description": "자산 100억 이상, 자산 소득 생활, quiet luxury 소비 성향",
+  "description": "30대 스타트업 창업자. Series B Exit 후 FIRE 달성. 요트·럭셔리 여행·엔젤 투자가 일상.",
   "description_i18n": {
-    "ko": "자산 100억 이상, 자산 소득 생활, quiet luxury 소비 성향",
-    "en": "Net worth 10M+ USD, living on asset income, quiet luxury lifestyle",
-    "ja": "純資産100億円超、資産収入生活、クワイエットラグジュアリー志向"
+    "ko": "30대 스타트업 창업자. Series B Exit 후 FIRE 달성. 요트·럭셔리 여행·엔젤 투자가 일상.",
+    "en": "30s startup founder. Achieved FIRE after Series B exit. Yachts, luxury travel, and angel investing are everyday life.",
+    "ja": "30代スタートアップ創業者。Series B Exitを経てFIRE達成。ヨット・高級旅行・エンジェル投資が日常。"
   },
   "keywords": [
     "요트 세일링",
