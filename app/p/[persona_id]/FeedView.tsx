@@ -440,17 +440,37 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
                 <a
                   key={video.video_id}
                   href={video.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
                   title={video.title}
                   className="flex flex-col bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden transition-transform duration-200 hover:-translate-y-1 hover:shadow-[0_8px_24px_rgba(0,0,0,0.4)]"
-                  onClick={() => gtag('video_click', {
-                    video_id: video.video_id,
-                    video_title: title,
-                    persona_id: currentPersona.id,
-                    position: idx + 1,
-                    lang,
-                  })}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    gtag('video_click', {
+                      video_id: video.video_id,
+                      video_title: title,
+                      persona_id: currentPersona.id,
+                      position: idx + 1,
+                      lang,
+                    })
+                    const ua = navigator.userAgent
+                    const isIOS = /iPhone|iPad|iPod/i.test(ua)
+                    const isAndroid = /Android/i.test(ua)
+                    if (isIOS) {
+                      // iOS: YouTube 앱 딥링크 시도, 300ms 후 앱 없으면 웹으로 fallback
+                      const appUrl = `vnd.youtube://${video.video_id}`
+                      const webUrl = `https://www.youtube.com/watch?v=${video.video_id}`
+                      const start = Date.now()
+                      window.location.href = appUrl
+                      setTimeout(() => {
+                        if (Date.now() - start < 1500) window.open(webUrl, '_blank')
+                      }, 300)
+                    } else if (isAndroid) {
+                      // Android: intent 스킴으로 YouTube 앱 강제 오픈
+                      window.location.href = `intent://www.youtube.com/watch?v=${video.video_id}#Intent;scheme=https;package=com.google.android.youtube;S.browser_fallback_url=https://www.youtube.com/watch?v=${video.video_id};end`
+                    } else {
+                      // PC: 새 탭
+                      window.open(video.url, '_blank')
+                    }
+                  }}
                 >
                   {video.thumbnail_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
