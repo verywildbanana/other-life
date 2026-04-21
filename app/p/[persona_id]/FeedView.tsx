@@ -257,9 +257,11 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     if (saved && ['ko', 'en', 'ja'].includes(saved)) setLang(saved)
   }, [])
 
-  // hover 지원 여부 감지 (터치 기기 제외)
+  // 터치 기기 감지 — maxTouchPoints 사용 (hover 미디어쿼리는 Chrome DevTools 에뮬레이션에서도 true라 부정확)
+  // maxTouchPoints > 0 이면 터치 기기(실제 모바일 + DevTools 에뮬레이션 모두 정확)
   useEffect(() => {
-    setSupportsHover(window.matchMedia('(hover: hover)').matches)
+    const isTouch = navigator.maxTouchPoints > 0
+    setSupportsHover(!isTouch)
   }, [])
 
   // 데스크톱 hover 핸들러
