@@ -6,6 +6,9 @@ import { Persona } from '@/types'
 type VideoStats = Record<string, { total: number; latest_date: string | null }>
 type AccessLogs = {
   total_7d: number
+  unique_ips: number
+  external_unique_ips: number
+  my_ip_hash: string
   by_persona: Record<string, number>
   by_country: Record<string, number>
   daily: Record<string, number>
@@ -219,7 +222,14 @@ export default function AdminPage() {
         <div>
           <h2 className="text-sm font-semibold text-zinc-400 mb-3">접근 통계 — 최근 7일</h2>
           {accessLogs ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
+              {/* 외부 방문자 (나 제외) */}
+              <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+                <p className="text-xs text-zinc-500 mb-1">외부 방문자 <span className="text-zinc-600">(나 제외)</span></p>
+                <p className="text-3xl font-bold text-emerald-400">{accessLogs.external_unique_ips.toLocaleString()}</p>
+                <p className="text-xs text-zinc-600 mt-1">7일간 unique IP · 전체 {accessLogs.unique_ips}명</p>
+              </div>
+
               {/* 총 요청 */}
               <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
                 <p className="text-xs text-zinc-500 mb-1">총 API 요청</p>
