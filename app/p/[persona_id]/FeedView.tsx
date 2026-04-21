@@ -291,24 +291,30 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
           if (!videoId) return
 
           if (entry.isIntersecting && entry.intersectionRatio >= 0.8) {
-            // 카드 80% 이상 화면에 진입 → 1초 후 중앙 스크롤 + 재생
-            // scrollIntoView를 타이머 밖에서 호출하면 스크롤 애니메이션 중 Observer 재발화로 타이머 캔슬됨
+            // 카드 80% 이상 진입 → 아직 타이머 없을 때만 등록 (중복 방지)
+            if (mobilePlayTimers.current.has(videoId)) return
             const el = entry.target
             const timer = setTimeout(() => {
               el.scrollIntoView({ behavior: 'smooth', block: 'center' })
               setMobilePlayingId(videoId)
             }, 1000)
             mobilePlayTimers.current.set(videoId, timer)
-          } else {
-            // 카드가 화면에서 벗어남 → 타이머 취소 + 재생 중단
+          } else if (!entry.isIntersecting) {
+            // 완전히 화면 밖으로 나갔을 때만 타이머 취소 + 재생 중단
+            // (0.8 아래로 잠깐 내려가는 건 무시 — scrollIntoView 애니메이션 중 깜박임 방지)
             const timer = mobilePlayTimers.current.get(videoId)
             if (timer) clearTimeout(timer)
             mobilePlayTimers.current.delete(videoId)
             setMobilePlayingId(prev => prev === videoId ? null : prev)
           }
+          // intersectionRatio 0~0.8 구간: 타이머만 취소, 재생 중인 건 유지
+          else {
+            const timer = mobilePlayTimers.current.get(videoId)
+            if (timer) { clearTimeout(timer); mobilePlayTimers.current.delete(videoId) }
+          }
         })
       },
-      { threshold: 0.8 },
+      { threshold: [0, 0.8] },  // 0: 완전 이탈 감지, 0.8: 진입 감지
     )
 
     // 모든 카드 observe
