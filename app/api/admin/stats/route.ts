@@ -55,5 +55,42 @@ export async function GET(req: NextRequest) {
     daily: dailyCount,
   }
 
-  return NextResponse.json({ videos: stats, access_logs: accessLogs })
+  // Admin 접근 로그 (최근 7일)
+  const { data: adminLogRows } = await supabase
+    .from('admin_logs')
+    .select('path, method, country, ip_hash, created_at')
+    .gte('created_at', since7d)
+    .order('created_at', { ascending: false })
+    .limit(200)
+
+  // path별 집계
+  const adminByPath: Record<string, number> = {}
+  const adminByCountry: Record<string, number> = {}
+  const adminByIp: Record<string, number> = {}
+
+  for (const row of adminLogRows ?? []) {
+    adminByPath[row.path] = (adminByPath[row.path] ?? 0) + 1
+    if (row.country) adminByCountry[row.country] = (adminByCountry[row.country] ?? 0) + 1
+    if (row.ip_hash) adminByIp[row.ip_hash] = (adminByIp[row.ip_hash] ?? 0) + 1
+  }
+
+  const adminLogs = {
+    total_7d: adminLogRows?.length ?? 0,
+    recent: (adminLogRows ?? []).slice(0, 50).map(r => ({
+      path: r.path,
+      method: r.method,
+      country: r.country,
+      ip_hash: r.ip_hash,
+      created_at: r.created_at,
+    })),
+    by_path: Object.entries(adminByPath)
+      .sort((a, b) => b[1] - a[1])
+      .reduce<Record<string, number>>((acc, [k, v]) => { acc[k] = v; return acc }, {}),
+    by_country: Object.entries(adminByCountry)
+      .sort((a, b) => b[1] - a[1])
+      .reduce<Record<string, number>>((acc, [k, v]) => { acc[k] = v; return acc }, {}),
+    unique_ips: Object.keys(adminByIp).length,
+  }
+
+  return NextResponse.json({ videos: stats, access_logs: accessLogs, admin_logs: adminLogs })
 }

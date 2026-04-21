@@ -7,9 +7,15 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { issueToken, verifyToken, COOKIE_NAME, TOKEN_TTL_MS } from '@/lib/feed-token'
+import { logAdminAccess } from '@/lib/admin-log'
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
+
+  // /admin, /api/admin/* 접근 로깅
+  if (pathname === '/admin' || pathname.startsWith('/api/admin/')) {
+    logAdminAccess(req)
+  }
 
   // /p/* 페이지 진입 시만 토큰 발급
   if (!pathname.startsWith('/p/')) return NextResponse.next()
@@ -35,5 +41,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/p/:path*'],
+  matcher: ['/p/:path*', '/admin', '/api/admin/:path*'],
 }
