@@ -557,28 +557,33 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
                     }
                   }}
                 >
-                  {hoveredId === video.video_id || mobilePlayingId === video.video_id ? (
-                    // 미리보기 — hover(데스크톱) or 스크롤 1초(모바일) YouTube embed 자동재생 (음소거)
-                    <iframe
-                      src={`https://www.youtube.com/embed/${video.video_id}?autoplay=1&mute=1&controls=${mobilePlayingId === video.video_id ? 1 : 0}&loop=1&playlist=${video.video_id}&modestbranding=1&rel=0`}
-                      className="w-full aspect-video bg-zinc-800"
-                      allow="autoplay; encrypted-media"
-                      referrerPolicy="strict-origin-when-cross-origin"
-                      title={video.title}
-                    />
-                  ) : video.thumbnail_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={video.thumbnail_url}
-                      alt={video.title}
-                      className="w-full aspect-video object-cover bg-zinc-800"
-                      loading={idx < 8 ? 'eager' : 'lazy'}
-                    />
-                  ) : (
-                    <div className="w-full aspect-video bg-zinc-800 flex items-center justify-center text-zinc-600 text-xs">
-                      {t('noThumbnail', lang)}
-                    </div>
-                  )}
+                  {/* 썸네일 + 미리보기 오버레이 컨테이너
+                      썸네일을 항상 뒤에 유지 → iframe 로딩 중 검은 화면 깜박임 방지 */}
+                  <div className="relative w-full aspect-video bg-zinc-800">
+                    {video.thumbnail_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={video.thumbnail_url}
+                        alt={video.title}
+                        className="absolute inset-0 w-full h-full object-cover"
+                        loading={idx < 8 ? 'eager' : 'lazy'}
+                      />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center text-zinc-600 text-xs">
+                        {t('noThumbnail', lang)}
+                      </div>
+                    )}
+                    {(hoveredId === video.video_id || mobilePlayingId === video.video_id) && (
+                      // iframe을 썸네일 위에 오버레이 — 로드 전까지 썸네일이 보여 깜박임 없음
+                      <iframe
+                        src={`https://www.youtube.com/embed/${video.video_id}?autoplay=1&mute=1&controls=${mobilePlayingId === video.video_id ? 1 : 0}&loop=1&playlist=${video.video_id}&modestbranding=1&rel=0`}
+                        className="absolute inset-0 w-full h-full"
+                        allow="autoplay; encrypted-media"
+                        referrerPolicy="strict-origin-when-cross-origin"
+                        title={video.title}
+                      />
+                    )}
+                  </div>
                   <div className="p-3 flex flex-col flex-1">
                     <p
                       className="text-sm font-medium leading-snug line-clamp-2 mb-1.5 flex-1"
