@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, memo } from 'react'
 import { FeedPageResponse, Video, Persona } from '@/types'
 
 // ── 페이지 전환 Progress Bar ───────────────────────────────────────────────────
@@ -219,6 +219,102 @@ function gtag(event: string, params: Record<string, unknown>) {
 }
 
 
+// ── VideoCard — memo로 분리해 isPlaying/isHovered 변경 시 해당 카드만 재렌더 ──────
+interface VideoCardProps {
+  video: Video
+  idx: number
+  lang: Lang
+  today: string
+  isPlaying: boolean
+  isHovered: boolean
+  personaId: string
+  onMouseEnter: (videoId: string) => void
+  onMouseLeave: () => void
+  onVideoClick: (video: Video, title: string, idx: number) => void
+}
+
+const VideoCard = memo(function VideoCard({
+  video, idx, lang, today, isPlaying, isHovered, personaId,
+  onMouseEnter, onMouseLeave, onVideoClick,
+}: VideoCardProps) {
+  const isNew = video.collected_date === today
+  const title = getLangTitle(video, lang)
+  const dateLabel = video.published_at ?? video.collected_date
+
+  return (
+    <a
+      href={video.url}
+      title={video.title}
+      data-video-id={video.video_id}
+      className="flex flex-col bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden transition-transform duration-200 hover:-translate-y-1 hover:shadow-[0_8px_24px_rgba(0,0,0,0.4)]"
+      onMouseEnter={() => onMouseEnter(video.video_id)}
+      onMouseLeave={onMouseLeave}
+      onClick={(e) => {
+        e.preventDefault()
+        onVideoClick(video, title, idx)
+      }}
+    >
+      {/* 썸네일 + 미리보기 오버레이 — 썸네일을 항상 뒤에 유지해 iframe 로딩 중 깜박임 방지 */}
+      <div className="relative w-full aspect-video bg-zinc-800">
+        {video.thumbnail_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={video.thumbnail_url}
+            alt={video.title}
+            className="absolute inset-0 w-full h-full object-cover"
+            loading={idx < 8 ? 'eager' : 'lazy'}
+          />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center text-zinc-600 text-xs">
+            {t('noThumbnail', lang)}
+          </div>
+        )}
+        {(isHovered || isPlaying) && (
+          <iframe
+            src={`https://www.youtube.com/embed/${video.video_id}?autoplay=1&mute=1&controls=${isPlaying ? 1 : 0}&loop=1&playlist=${video.video_id}&modestbranding=1&rel=0`}
+            className="absolute inset-0 w-full h-full"
+            allow="autoplay; encrypted-media"
+            referrerPolicy="strict-origin-when-cross-origin"
+            title={video.title}
+          />
+        )}
+      </div>
+      <div className="p-3 flex flex-col flex-1">
+        <p
+          className="text-sm font-medium leading-snug line-clamp-2 mb-1.5 flex-1"
+          data-ko={video.titles_i18n?.ko || video.title}
+          data-en={video.titles_i18n?.en || video.title}
+          data-ja={video.titles_i18n?.ja || video.title}
+        >
+          {title}
+        </p>
+        <div className="mt-auto pt-2">
+          <span className="text-xs text-zinc-500 truncate block max-w-full mb-1.5">
+            {video.channel}
+          </span>
+          <div className="flex items-center gap-1.5">
+            {isNew && (
+              <span className="text-[10px] bg-emerald-600 text-white px-1.5 py-0.5 rounded font-semibold">
+                NEW
+              </span>
+            )}
+            {dateLabel && (
+              <span
+                className={`text-[10px] ${video.published_at ? 'text-zinc-400' : 'text-zinc-600'}`}
+                title={video.published_at
+                  ? `${t('published', lang)}: ${video.published_at}`
+                  : `${t('collected', lang)}: ${video.collected_date}`}
+              >
+                {dateLabel}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    </a>
+  )
+})
+
 interface Props {
   feed: FeedPageResponse | null
   persona: Persona
@@ -411,6 +507,33 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     }
   }, [hasMore, nextOffset, currentPersona.id])
 
+  // 비디오 클릭 핸들러 — useCallback으로 메모이제이션해 VideoCard 불필요한 재렌더 방지
+  const handleVideoClick = useCallback((video: Video, title: string, idx: number) => {
+    gtag('video_click', {
+      video_id: video.video_id,
+      video_title: title,
+      persona_id: currentPersona.id,
+      position: idx + 1,
+      lang,
+    })
+    const ua = navigator.userAgent
+    const isIOS = /iPhone|iPad|iPod/i.test(ua)
+    const isAndroid = /Android/i.test(ua)
+    if (isIOS) {
+      const appUrl = `vnd.youtube://${video.video_id}`
+      const webUrl = `https://www.youtube.com/watch?v=${video.video_id}`
+      const start = Date.now()
+      window.location.href = appUrl
+      setTimeout(() => {
+        if (Date.now() - start < 1500) window.open(webUrl, '_blank')
+      }, 300)
+    } else if (isAndroid) {
+      window.location.href = `intent://www.youtube.com/watch?v=${video.video_id}#Intent;scheme=https;package=com.google.android.youtube;S.browser_fallback_url=https://www.youtube.com/watch?v=${video.video_id};end`
+    } else {
+      window.open(video.url, '_blank')
+    }
+  }, [currentPersona.id, lang])
+
   // IntersectionObserver — sentinel이 뷰포트에 들어오면 자동 로드
   useEffect(() => {
     const sentinel = sentinelRef.current
@@ -514,111 +637,21 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
             <p className="text-zinc-500 text-sm text-center py-16">{t('noResults', lang)}</p>
           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {videos.map((video, idx) => {
-              const isNew = video.collected_date === today
-              const title = getLangTitle(video, lang)
-              const dateLabel = video.published_at ?? video.collected_date
-              return (
-                <a
-                  key={video.video_id}
-                  href={video.url}
-                  title={video.title}
-                  data-video-id={video.video_id}
-                  className="flex flex-col bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden transition-transform duration-200 hover:-translate-y-1 hover:shadow-[0_8px_24px_rgba(0,0,0,0.4)]"
-                  onMouseEnter={() => handleMouseEnter(video.video_id)}
-                  onMouseLeave={handleMouseLeave}
-                  onClick={(e) => {
-                    e.preventDefault()
-                    gtag('video_click', {
-                      video_id: video.video_id,
-                      video_title: title,
-                      persona_id: currentPersona.id,
-                      position: idx + 1,
-                      lang,
-                    })
-                    const ua = navigator.userAgent
-                    const isIOS = /iPhone|iPad|iPod/i.test(ua)
-                    const isAndroid = /Android/i.test(ua)
-                    if (isIOS) {
-                      // iOS: YouTube 앱 딥링크 시도, 300ms 후 앱 없으면 웹으로 fallback
-                      const appUrl = `vnd.youtube://${video.video_id}`
-                      const webUrl = `https://www.youtube.com/watch?v=${video.video_id}`
-                      const start = Date.now()
-                      window.location.href = appUrl
-                      setTimeout(() => {
-                        if (Date.now() - start < 1500) window.open(webUrl, '_blank')
-                      }, 300)
-                    } else if (isAndroid) {
-                      // Android: intent 스킴으로 YouTube 앱 강제 오픈
-                      window.location.href = `intent://www.youtube.com/watch?v=${video.video_id}#Intent;scheme=https;package=com.google.android.youtube;S.browser_fallback_url=https://www.youtube.com/watch?v=${video.video_id};end`
-                    } else {
-                      // PC: 새 탭
-                      window.open(video.url, '_blank')
-                    }
-                  }}
-                >
-                  {/* 썸네일 + 미리보기 오버레이 컨테이너
-                      썸네일을 항상 뒤에 유지 → iframe 로딩 중 검은 화면 깜박임 방지 */}
-                  <div className="relative w-full aspect-video bg-zinc-800">
-                    {video.thumbnail_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={video.thumbnail_url}
-                        alt={video.title}
-                        className="absolute inset-0 w-full h-full object-cover"
-                        loading={idx < 8 ? 'eager' : 'lazy'}
-                      />
-                    ) : (
-                      <div className="absolute inset-0 flex items-center justify-center text-zinc-600 text-xs">
-                        {t('noThumbnail', lang)}
-                      </div>
-                    )}
-                    {(hoveredId === video.video_id || mobilePlayingId === video.video_id) && (
-                      // iframe을 썸네일 위에 오버레이 — 로드 전까지 썸네일이 보여 깜박임 없음
-                      <iframe
-                        src={`https://www.youtube.com/embed/${video.video_id}?autoplay=1&mute=1&controls=${mobilePlayingId === video.video_id ? 1 : 0}&loop=1&playlist=${video.video_id}&modestbranding=1&rel=0`}
-                        className="absolute inset-0 w-full h-full"
-                        allow="autoplay; encrypted-media"
-                        referrerPolicy="strict-origin-when-cross-origin"
-                        title={video.title}
-                      />
-                    )}
-                  </div>
-                  <div className="p-3 flex flex-col flex-1">
-                    <p
-                      className="text-sm font-medium leading-snug line-clamp-2 mb-1.5 flex-1"
-                      data-ko={video.titles_i18n?.ko || video.title}
-                      data-en={video.titles_i18n?.en || video.title}
-                      data-ja={video.titles_i18n?.ja || video.title}
-                    >
-                      {title}
-                    </p>
-                    <div className="mt-auto pt-2">
-                      <span className="text-xs text-zinc-500 truncate block max-w-full mb-1.5">
-                        {video.channel}
-                      </span>
-                      <div className="flex items-center gap-1.5">
-                        {isNew && (
-                          <span className="text-[10px] bg-emerald-600 text-white px-1.5 py-0.5 rounded font-semibold">
-                            NEW
-                          </span>
-                        )}
-                        {dateLabel && (
-                          <span
-                            className={`text-[10px] ${video.published_at ? 'text-zinc-400' : 'text-zinc-600'}`}
-                            title={video.published_at
-                              ? `${t('published', lang)}: ${video.published_at}`
-                              : `${t('collected', lang)}: ${video.collected_date}`}
-                          >
-                            {dateLabel}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </a>
-              )
-            })}
+            {videos.map((video, idx) => (
+              <VideoCard
+                key={video.video_id}
+                video={video}
+                idx={idx}
+                lang={lang}
+                today={today}
+                isPlaying={mobilePlayingId === video.video_id}
+                isHovered={hoveredId === video.video_id}
+                personaId={currentPersona.id}
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
+                onVideoClick={handleVideoClick}
+              />
+            ))}
           </div>
 
           {/* 무한 스크롤 sentinel + 로딩 인디케이터 */}
