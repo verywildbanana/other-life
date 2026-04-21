@@ -291,9 +291,11 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
           if (!videoId) return
 
           if (entry.isIntersecting && entry.intersectionRatio >= 0.8) {
-            // 카드 80% 이상 화면에 진입 → 중앙 스크롤 후 1초 타이머
-            entry.target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            // 카드 80% 이상 화면에 진입 → 1초 후 중앙 스크롤 + 재생
+            // scrollIntoView를 타이머 밖에서 호출하면 스크롤 애니메이션 중 Observer 재발화로 타이머 캔슬됨
+            const el = entry.target
             const timer = setTimeout(() => {
+              el.scrollIntoView({ behavior: 'smooth', block: 'center' })
               setMobilePlayingId(videoId)
             }, 1000)
             mobilePlayTimers.current.set(videoId, timer)
