@@ -235,10 +235,12 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
   const [total, setTotal] = useState(feed?.total_accumulated ?? 0)
   const [showFeedback, setShowFeedback] = useState(false)
   const [navigating, setNavigating] = useState(false)
-  // hover 미리보기 — 현재 hover 중인 video_id
+  // hover 미리보기 — 현재 hover 중인 video_id (데스크톱)
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  // 포인터가 없는 기기(터치, 모바일)에서는 hover 미리보기 비활성화
+  // 탭 미리보기 — 모바일 1번 탭 시 미리보기, 2번 탭 시 이동
+  const [tappedId, setTappedId] = useState<string | null>(null)
+  // 포인터 지원 여부 감지 (hover: hover = 데스크톱, hover: none = 터치 기기)
   const [supportsHover, setSupportsHover] = useState(false)
   const sentinelRef = useRef<HTMLDivElement>(null)
   // 현재 활성 페르소나 ID를 ref로도 보관 — loadMore가 비동기 완료 시점에 페르소나가 바뀌었는지 확인용
@@ -466,6 +468,17 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
                   onMouseLeave={handleMouseLeave}
                   onClick={(e) => {
                     e.preventDefault()
+
+                    // 모바일(터치): 1번 탭 → 미리보기, 2번 탭 → YouTube 이동
+                    if (!supportsHover) {
+                      if (tappedId !== video.video_id) {
+                        setTappedId(video.video_id)
+                        return  // 첫 탭은 미리보기만
+                      }
+                      // 두 번째 탭 → 이동 처리 계속
+                      setTappedId(null)
+                    }
+
                     gtag('video_click', {
                       video_id: video.video_id,
                       video_title: title,
@@ -494,10 +507,10 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
                     }
                   }}
                 >
-                  {hoveredId === video.video_id ? (
-                    // hover 미리보기 — YouTube embed 자동재생 (음소거)
+                  {hoveredId === video.video_id || tappedId === video.video_id ? (
+                    // 미리보기 — hover(데스크톱) or 탭(모바일) 시 YouTube embed 자동재생 (음소거)
                     <iframe
-                      src={`https://www.youtube.com/embed/${video.video_id}?autoplay=1&mute=1&controls=0&loop=1&playlist=${video.video_id}&modestbranding=1&rel=0`}
+                      src={`https://www.youtube.com/embed/${video.video_id}?autoplay=1&mute=1&controls=${tappedId === video.video_id ? 1 : 0}&loop=1&playlist=${video.video_id}&modestbranding=1&rel=0`}
                       className="w-full aspect-video bg-zinc-800"
                       allow="autoplay; encrypted-media"
                       referrerPolicy="strict-origin-when-cross-origin"
