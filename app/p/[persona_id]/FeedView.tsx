@@ -235,6 +235,11 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
   const [total, setTotal] = useState(feed?.total_accumulated ?? 0)
   const [showFeedback, setShowFeedback] = useState(false)
   const [navigating, setNavigating] = useState(false)
+  // hover 미리보기 — 현재 hover 중인 video_id
+  const [hoveredId, setHoveredId] = useState<string | null>(null)
+  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // 포인터가 없는 기기(터치, 모바일)에서는 hover 미리보기 비활성화
+  const [supportsHover, setSupportsHover] = useState(false)
   const sentinelRef = useRef<HTMLDivElement>(null)
   // 현재 활성 페르소나 ID를 ref로도 보관 — loadMore가 비동기 완료 시점에 페르소나가 바뀌었는지 확인용
   const activePersonaIdRef = useRef<string>(persona.id)
@@ -246,6 +251,21 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     const saved = localStorage.getItem('feed_lang') as Lang | null
     if (saved && ['ko', 'en', 'ja'].includes(saved)) setLang(saved)
   }, [])
+
+  // hover 지원 여부 감지 (터치 기기 제외)
+  useEffect(() => {
+    setSupportsHover(window.matchMedia('(hover: hover)').matches)
+  }, [])
+
+  function handleMouseEnter(videoId: string) {
+    if (!supportsHover) return
+    hoverTimerRef.current = setTimeout(() => setHoveredId(videoId), 600)
+  }
+
+  function handleMouseLeave() {
+    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current)
+    setHoveredId(null)
+  }
 
   // 서버에서 직접 접근 시 (URL 직접 입력, 새로고침) prop 동기화
   // window.history.pushState 사용으로 Next.js navigation이 트리거되지 않아 이 effect는
@@ -442,6 +462,8 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
                   href={video.url}
                   title={video.title}
                   className="flex flex-col bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden transition-transform duration-200 hover:-translate-y-1 hover:shadow-[0_8px_24px_rgba(0,0,0,0.4)]"
+                  onMouseEnter={() => handleMouseEnter(video.video_id)}
+                  onMouseLeave={handleMouseLeave}
                   onClick={(e) => {
                     e.preventDefault()
                     gtag('video_click', {
@@ -472,7 +494,16 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
                     }
                   }}
                 >
-                  {video.thumbnail_url ? (
+                  {hoveredId === video.video_id ? (
+                    // hover 미리보기 — YouTube embed 자동재생 (음소거)
+                    <iframe
+                      src={`https://www.youtube.com/embed/${video.video_id}?autoplay=1&mute=1&controls=0&loop=1&playlist=${video.video_id}&modestbranding=1&rel=0`}
+                      className="w-full aspect-video bg-zinc-800"
+                      allow="autoplay; encrypted-media"
+                      referrerPolicy="strict-origin-when-cross-origin"
+                      title={video.title}
+                    />
+                  ) : video.thumbnail_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={video.thumbnail_url}
