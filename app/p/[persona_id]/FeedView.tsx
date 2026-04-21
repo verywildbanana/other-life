@@ -238,10 +238,13 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
   // hover 미리보기 — 현재 hover 중인 video_id (데스크톱)
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  // 탭 미리보기 — 모바일 1번 탭 시 미리보기, 2번 탭 시 이동
-  const [tappedId, setTappedId] = useState<string | null>(null)
+  // 모바일 스크롤 자동재생 — 화면에 1초 이상 머문 카드
+  const [mobilePlayingId, setMobilePlayingId] = useState<string | null>(null)
   // 포인터 지원 여부 감지 (hover: hover = 데스크톱, hover: none = 터치 기기)
   const [supportsHover, setSupportsHover] = useState(false)
+  // 모바일 자동재생용 IntersectionObserver + 타이머
+  const mobileObserverRef = useRef<IntersectionObserver | null>(null)
+  const mobilePlayTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
   const sentinelRef = useRef<HTMLDivElement>(null)
   // 현재 활성 페르소나 ID를 ref로도 보관 — loadMore가 비동기 완료 시점에 페르소나가 바뀌었는지 확인용
   const activePersonaIdRef = useRef<string>(persona.id)
@@ -259,6 +262,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     setSupportsHover(window.matchMedia('(hover: hover)').matches)
   }, [])
 
+  // 데스크톱 hover 핸들러
   function handleMouseEnter(videoId: string) {
     if (!supportsHover) return
     hoverTimerRef.current = setTimeout(() => setHoveredId(videoId), 600)
@@ -268,6 +272,52 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current)
     setHoveredId(null)
   }
+
+  // 모바일 스크롤 자동재생 — videos 변경 시마다 Observer 재설정
+  useEffect(() => {
+    if (supportsHover) return  // 데스크톱은 hover 방식 사용
+
+    // 이전 Observer/타이머 정리
+    mobileObserverRef.current?.disconnect()
+    mobilePlayTimers.current.forEach(t => clearTimeout(t))
+    mobilePlayTimers.current.clear()
+
+    mobileObserverRef.current = new IntersectionObserver(
+      (entries) => {
+        entries.forEach(entry => {
+          const videoId = entry.target.getAttribute('data-video-id')
+          if (!videoId) return
+
+          if (entry.isIntersecting && entry.intersectionRatio >= 0.8) {
+            // 카드 80% 이상 화면에 진입 → 중앙 스크롤 후 1초 타이머
+            entry.target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            const timer = setTimeout(() => {
+              setMobilePlayingId(videoId)
+            }, 1000)
+            mobilePlayTimers.current.set(videoId, timer)
+          } else {
+            // 카드가 화면에서 벗어남 → 타이머 취소 + 재생 중단
+            const timer = mobilePlayTimers.current.get(videoId)
+            if (timer) clearTimeout(timer)
+            mobilePlayTimers.current.delete(videoId)
+            setMobilePlayingId(prev => prev === videoId ? null : prev)
+          }
+        })
+      },
+      { threshold: 0.8 },
+    )
+
+    // 모든 카드 observe
+    document.querySelectorAll('[data-video-id]').forEach(el => {
+      mobileObserverRef.current?.observe(el)
+    })
+
+    return () => {
+      mobileObserverRef.current?.disconnect()
+      mobilePlayTimers.current.forEach(t => clearTimeout(t))
+      mobilePlayTimers.current.clear()
+    }
+  }, [supportsHover, videos])
 
   // 서버에서 직접 접근 시 (URL 직접 입력, 새로고침) prop 동기화
   // window.history.pushState 사용으로 Next.js navigation이 트리거되지 않아 이 effect는
@@ -463,22 +513,12 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
                   key={video.video_id}
                   href={video.url}
                   title={video.title}
+                  data-video-id={video.video_id}
                   className="flex flex-col bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden transition-transform duration-200 hover:-translate-y-1 hover:shadow-[0_8px_24px_rgba(0,0,0,0.4)]"
                   onMouseEnter={() => handleMouseEnter(video.video_id)}
                   onMouseLeave={handleMouseLeave}
                   onClick={(e) => {
                     e.preventDefault()
-
-                    // 모바일(터치): 1번 탭 → 미리보기, 2번 탭 → YouTube 이동
-                    if (!supportsHover) {
-                      if (tappedId !== video.video_id) {
-                        setTappedId(video.video_id)
-                        return  // 첫 탭은 미리보기만
-                      }
-                      // 두 번째 탭 → 이동 처리 계속
-                      setTappedId(null)
-                    }
-
                     gtag('video_click', {
                       video_id: video.video_id,
                       video_title: title,
@@ -507,10 +547,10 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
                     }
                   }}
                 >
-                  {hoveredId === video.video_id || tappedId === video.video_id ? (
-                    // 미리보기 — hover(데스크톱) or 탭(모바일) 시 YouTube embed 자동재생 (음소거)
+                  {hoveredId === video.video_id || mobilePlayingId === video.video_id ? (
+                    // 미리보기 — hover(데스크톱) or 스크롤 1초(모바일) YouTube embed 자동재생 (음소거)
                     <iframe
-                      src={`https://www.youtube.com/embed/${video.video_id}?autoplay=1&mute=1&controls=${tappedId === video.video_id ? 1 : 0}&loop=1&playlist=${video.video_id}&modestbranding=1&rel=0`}
+                      src={`https://www.youtube.com/embed/${video.video_id}?autoplay=1&mute=1&controls=${mobilePlayingId === video.video_id ? 1 : 0}&loop=1&playlist=${video.video_id}&modestbranding=1&rel=0`}
                       className="w-full aspect-video bg-zinc-800"
                       allow="autoplay; encrypted-media"
                       referrerPolicy="strict-origin-when-cross-origin"
