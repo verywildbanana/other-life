@@ -389,15 +389,13 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
           if (entry.isIntersecting && entry.intersectionRatio >= 0.8) {
             // 카드 80% 이상 진입 → 아직 타이머 없을 때만 등록 (중복 방지)
             if (mobilePlayTimers.current.has(videoId)) return
-            const el = entry.target
             const timer = setTimeout(() => {
-              el.scrollIntoView({ behavior: 'smooth', block: 'center' })
               setMobilePlayingId(videoId)
             }, 1000)
             mobilePlayTimers.current.set(videoId, timer)
           } else if (!entry.isIntersecting) {
             // 완전히 화면 밖으로 나갔을 때만 타이머 취소 + 재생 중단
-            // (0.8 아래로 잠깐 내려가는 건 무시 — scrollIntoView 애니메이션 중 깜박임 방지)
+            // (0~0.8 구간은 무시 — 부분 노출 중 깜박임 방지)
             const timer = mobilePlayTimers.current.get(videoId)
             if (timer) clearTimeout(timer)
             mobilePlayTimers.current.delete(videoId)
