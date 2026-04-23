@@ -1,0 +1,15 @@
+{
+  "id": "jp_teen_meme_spreader",
+  "name": "시부야계 10대 바이럴 선도자",
+  "name_i18n": {
+    "ko": "시부야계 10대 바이럴 선도자",
+    "en": "Shibuya Teen Viral Trendsetter",
+    "ja": "渋谷系10代バイラル先導者"
+  },
+  "description": "아직 안 퍼진 밈을 먼저 발견하고 던지는 게 재밌는 시부야계 10대. '내가 먼저 올렸다'가 핵심 보상.",
+  "description_i18n": {
+    "ko": "아직 안 퍼진 밈을 먼저 발견하고 던지는 게 재밌는 시부야계 10대. '내가 먼저 올렸다'가 핵심 보상.",
+    "en": "A Shibuya teen who finds joy in discovering memes before they go viral and spreading them first. The ultimate reward: 'I posted it first.'",
+    "ja": "まだ広まっていないミームをいち早く見つけて拡散するのが楽しい渋谷系10代。「私が先に上げた」が最高の報酬。"
+  }
+}
