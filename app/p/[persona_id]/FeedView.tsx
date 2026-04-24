@@ -338,9 +338,8 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
   const [mobilePlayingId, setMobilePlayingId] = useState<string | null>(null)
   // 포인터 지원 여부 감지 (hover: hover = 데스크톱, hover: none = 터치 기기)
   const [supportsHover, setSupportsHover] = useState(false)
-  // 모바일 자동재생용 IntersectionObserver + 타이머
-  const mobileObserverRef = useRef<IntersectionObserver | null>(null)
-  const mobilePlayTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
+  // 모바일 스크롤 자동재생용 타이머 ref
+  const scrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
   // 현재 활성 페르소나 ID를 ref로도 보관 — loadMore가 비동기 완료 시점에 페르소나가 바뀌었는지 확인용
   const activePersonaIdRef = useRef<string>(persona.id)
@@ -373,57 +372,44 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     setHoveredId(null)
   }, [])
 
-  // 모바일 스크롤 자동재생 — videos 변경 시마다 Observer 재설정
+  // 모바일 스크롤 자동재생 — 스크롤 멈춤 감지 후 뷰포트 중앙 zone의 카드 재생
+  // zone: 뷰포트 세로 30~70% (사용자에게 비노출 — 순수 로직용)
   useEffect(() => {
     if (supportsHover) return  // 데스크톱은 hover 방식 사용
 
-    // 이전 Observer/타이머 정리
-    mobileObserverRef.current?.disconnect()
-    mobilePlayTimers.current.forEach(t => clearTimeout(t))
-    mobilePlayTimers.current.clear()
-
-    mobileObserverRef.current = new IntersectionObserver(
-      (entries) => {
-        entries.forEach(entry => {
-          const videoId = entry.target.getAttribute('data-video-id')
-          if (!videoId) return
-
-          if (entry.isIntersecting && entry.intersectionRatio >= 0.8) {
-            // 카드 80% 이상 진입 → 아직 타이머 없을 때만 등록 (중복 방지)
-            if (mobilePlayTimers.current.has(videoId)) return
-            const timer = setTimeout(() => {
-              setMobilePlayingId(videoId)
-            }, 1000)
-            mobilePlayTimers.current.set(videoId, timer)
-          } else if (!entry.isIntersecting) {
-            // 완전히 화면 밖으로 나갔을 때만 타이머 취소 + 재생 중단
-            // (0~0.8 구간은 무시 — 부분 노출 중 깜박임 방지)
-            const timer = mobilePlayTimers.current.get(videoId)
-            if (timer) clearTimeout(timer)
-            mobilePlayTimers.current.delete(videoId)
-            setMobilePlayingId(prev => prev === videoId ? null : prev)
-          }
-          // intersectionRatio 0~0.8 구간: 타이머만 취소, 재생 중인 건 유지
-          else {
-            const timer = mobilePlayTimers.current.get(videoId)
-            if (timer) { clearTimeout(timer); mobilePlayTimers.current.delete(videoId) }
-          }
-        })
-      },
-      { threshold: [0, 0.8] },  // 0: 완전 이탈 감지, 0.8: 진입 감지
-    )
-
-    // 모든 카드 observe
-    document.querySelectorAll('[data-video-id]').forEach(el => {
-      mobileObserverRef.current?.observe(el)
-    })
-
-    return () => {
-      mobileObserverRef.current?.disconnect()
-      mobilePlayTimers.current.forEach(t => clearTimeout(t))
-      mobilePlayTimers.current.clear()
+    function findCardInZone(): string | null {
+      const vh = window.innerHeight
+      const zoneTop = vh * 0.30
+      const zoneBottom = vh * 0.70
+      const cards = document.querySelectorAll<HTMLElement>('[data-video-id]')
+      for (const card of cards) {
+        const { top, bottom } = card.getBoundingClientRect()
+        const center = (top + bottom) / 2
+        if (center >= zoneTop && center <= zoneBottom) {
+          return card.getAttribute('data-video-id')
+        }
+      }
+      return null
     }
-  }, [supportsHover, videos])
+
+    function onScroll() {
+      // 스크롤 시작 즉시 재생 중단
+      setMobilePlayingId(null)
+      if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current)
+      // 300ms 멈추면 zone 안 카드 재생
+      scrollTimerRef.current = setTimeout(() => {
+        const videoId = findCardInZone()
+        if (videoId) setMobilePlayingId(videoId)
+      }, 300)
+    }
+
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current)
+      setMobilePlayingId(null)
+    }
+  }, [supportsHover])
 
   // 서버에서 직접 접근 시 (URL 직접 입력, 새로고침) prop 동기화
   // window.history.pushState 사용으로 Next.js navigation이 트리거되지 않아 이 effect는
