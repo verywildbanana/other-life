@@ -241,6 +241,17 @@ const VideoCard = memo(function VideoCard({
   const title = getLangTitle(video, lang)
   const dateLabel = video.published_at ?? video.collected_date
 
+  // iframe lazy mount + 영구 유지 패턴
+  // 첫 재생(isPlaying=true) 또는 hover 시 한 번만 DOM에 추가하고,
+  // 이후 isPlaying=false여도 절대 unmount하지 않음.
+  // Android Chrome의 compositor 레이어 teardown → 흰 깜박임 방지
+  const [iframeActive, setIframeActive] = useState(false)
+  useEffect(() => {
+    if (isPlaying || isHovered) setIframeActive(true)
+  }, [isPlaying, isHovered])
+
+  const showIframe = isPlaying || isHovered
+
   return (
     <a
       href={video.url}
@@ -254,8 +265,13 @@ const VideoCard = memo(function VideoCard({
         onVideoClick(video, title, idx)
       }}
     >
-      {/* 썸네일 + 미리보기 오버레이 — 썸네일을 항상 뒤에 유지해 iframe 로딩 중 깜박임 방지 */}
-      <div className="relative w-full aspect-video bg-zinc-800">
+      {/* 썸네일 + 미리보기 오버레이
+          contain:paint + translateZ(0): GPU 레이어 고정 → iframe 전환 시 부모 레이어 재합성 방지
+          isolation:isolate: stacking context 격리 → Android 레이어 재합성 범위 제한 */}
+      <div
+        className="relative w-full aspect-video bg-zinc-800"
+        style={{ contain: 'paint', isolation: 'isolate', transform: 'translateZ(0)' }}
+      >
         {video.thumbnail_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -269,10 +285,15 @@ const VideoCard = memo(function VideoCard({
             {t('noThumbnail', lang)}
           </div>
         )}
-        {(isHovered || isPlaying) && (
+        {/* iframeActive: 한 번 true가 되면 DOM에서 제거하지 않음 (unmount 자체가 플래시 원인)
+            showIframe: opacity + pointer-events로만 show/hide → 레이어 유지
+            transition-opacity: 마운트 직후 YouTube 흰 로딩 화면 fade-in으로 완화 */}
+        {iframeActive && (
           <iframe
             src={`https://www.youtube.com/embed/${video.video_id}?autoplay=1&mute=1&controls=${isPlaying ? 1 : 0}&loop=1&playlist=${video.video_id}&modestbranding=1&rel=0`}
-            className="absolute inset-0 w-full h-full"
+            className={`absolute inset-0 w-full h-full transition-opacity duration-200 ${
+              showIframe ? 'opacity-100' : 'opacity-0 pointer-events-none'
+            }`}
             allow="autoplay; encrypted-media"
             referrerPolicy="strict-origin-when-cross-origin"
             title={video.title}
