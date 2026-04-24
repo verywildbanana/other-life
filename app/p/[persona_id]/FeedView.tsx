@@ -589,7 +589,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
           <select
             value={currentPersona.id}
             onChange={e => switchPersona(e.target.value)}
-            className="flex-1 min-w-0 bg-zinc-800 border border-zinc-700 text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-zinc-500"
+            className="flex-1 min-w-0 bg-zinc-800 border border-zinc-700 text-sm text-zinc-100 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-zinc-500"
             aria-label={t('selectPersona', lang)}
           >
             {allPersonas.map(p => (

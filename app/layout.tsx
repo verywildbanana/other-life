@@ -48,7 +48,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="ko" className={`${geist.variable} h-full`}>
+    <html lang="ko" className={`${geist.variable} h-full dark`}>
       <head>
         {/* Google Analytics 4 */}
         <Script
