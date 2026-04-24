@@ -379,10 +379,12 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
   useEffect(() => {
     if (supportsHover) return  // 데스크톱은 hover 방식 사용
 
+    // viewport 상단 10~60% 영역 안에 중심이 있는 카드를 반환
+    // 초기 로드 시 첫 번째 카드가 상단에 위치하므로 zoneTop을 0.10으로 설정
     function findCardInZone(): string | null {
       const vh = window.innerHeight
-      const zoneTop = vh * 0.30
-      const zoneBottom = vh * 0.70
+      const zoneTop    = vh * 0.10
+      const zoneBottom = vh * 0.60
       const cards = document.querySelectorAll<HTMLElement>('[data-video-id]')
       for (const card of cards) {
         const { top, bottom } = card.getBoundingClientRect()
@@ -392,6 +394,11 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
         }
       }
       return null
+    }
+
+    function playCardInZone() {
+      const videoId = findCardInZone()
+      if (videoId) setMobilePlayingId(videoId)
     }
 
     function onScroll() {
@@ -404,14 +411,18 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
       // 300ms 멈추면 zone 안 카드 재생
       scrollTimerRef.current = setTimeout(() => {
         isScrollingRef.current = false
-        const videoId = findCardInZone()
-        if (videoId) setMobilePlayingId(videoId)
+        playCardInZone()
       }, 300)
     }
+
+    // 초기 로드 시 스크롤 이벤트 없이도 첫 카드를 자동재생
+    // 600ms: 피드 카드 DOM 마운트 완료 대기
+    const initialTimer = setTimeout(playCardInZone, 600)
 
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => {
       window.removeEventListener('scroll', onScroll)
+      clearTimeout(initialTimer)
       if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current)
       setMobilePlayingId(null)
     }
