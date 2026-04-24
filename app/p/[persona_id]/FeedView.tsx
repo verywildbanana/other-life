@@ -361,15 +361,17 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
   }, [])
 
   // 데스크톱 hover 핸들러
-  function handleMouseEnter(videoId: string) {
+  // useCallback 필수 — 미사용 시 mobilePlayingId/hoveredId 변경마다 새 함수 레퍼런스 생성 →
+  // VideoCard memo 무력화 → 전체 카드 리렌더 → 피드 깜박임 발생
+  const handleMouseEnter = useCallback((videoId: string) => {
     if (!supportsHover) return
     hoverTimerRef.current = setTimeout(() => setHoveredId(videoId), 600)
-  }
+  }, [supportsHover])
 
-  function handleMouseLeave() {
+  const handleMouseLeave = useCallback(() => {
     if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current)
     setHoveredId(null)
-  }
+  }, [])
 
   // 모바일 스크롤 자동재생 — videos 변경 시마다 Observer 재설정
   useEffect(() => {
