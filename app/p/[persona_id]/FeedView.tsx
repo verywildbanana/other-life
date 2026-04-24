@@ -340,6 +340,8 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
   const [supportsHover, setSupportsHover] = useState(false)
   // 모바일 스크롤 자동재생용 타이머 ref
   const scrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // 스크롤 중 여부 — setMobilePlayingId(null)을 첫 이벤트에서만 1회 호출하기 위한 가드
+  const isScrollingRef = useRef(false)
   const sentinelRef = useRef<HTMLDivElement>(null)
   // 현재 활성 페르소나 ID를 ref로도 보관 — loadMore가 비동기 완료 시점에 페르소나가 바뀌었는지 확인용
   const activePersonaIdRef = useRef<string>(persona.id)
@@ -393,11 +395,15 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     }
 
     function onScroll() {
-      // 스크롤 시작 즉시 재생 중단
-      setMobilePlayingId(null)
+      // 스크롤 첫 이벤트에서만 null 설정 — 매 이벤트마다 호출하면 초당 수십 번 리렌더 → 흰 깜박임
+      if (!isScrollingRef.current) {
+        isScrollingRef.current = true
+        setMobilePlayingId(null)
+      }
       if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current)
       // 300ms 멈추면 zone 안 카드 재생
       scrollTimerRef.current = setTimeout(() => {
+        isScrollingRef.current = false
         const videoId = findCardInZone()
         if (videoId) setMobilePlayingId(videoId)
       }, 300)
