@@ -348,6 +348,31 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
   // loadMore 동시 실행 방지 — state는 리렌더 전까지 반영 안 되므로 ref로 동기 가드
   const isLoadingRef = useRef(false)
 
+  // ── 피드 캐시 (TTL: 1시간) ─────────────────────────────────────────────────
+  const FEED_CACHE_TTL_MS = 60 * 60 * 1000
+  type FeedCacheEntry = { data: FeedPageResponse; cachedAt: number }
+  const feedCacheRef = useRef<Map<string, FeedCacheEntry>>(new Map())
+
+  function getCachedFeed(personaId: string): FeedPageResponse | null {
+    const entry = feedCacheRef.current.get(personaId)
+    if (!entry) return null
+    if (Date.now() - entry.cachedAt > FEED_CACHE_TTL_MS) {
+      feedCacheRef.current.delete(personaId)
+      return null
+    }
+    return entry.data
+  }
+
+  function setCachedFeed(personaId: string, data: FeedPageResponse) {
+    feedCacheRef.current.set(personaId, { data, cachedAt: Date.now() })
+  }
+
+  // ── Pull to Refresh ────────────────────────────────────────────────────────
+  const [pullDistance, setPullDistance] = useState(0)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const pullStartYRef = useRef<number | null>(null)
+  const PULL_THRESHOLD = 72  // px — 이 이상 당기면 새로고침 트리거
+
   // 언어 설정 복원 (localStorage)
   useEffect(() => {
     const saved = localStorage.getItem('feed_lang') as Lang | null
@@ -429,6 +454,57 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
   // videos[0]?.video_id: 페르소나 전환으로 피드가 교체될 때 effect 재실행 → initialTimer 재발동
   }, [supportsHover, videos[0]?.video_id])
 
+  // ── Pull to Refresh — 터치 이벤트 ─────────────────────────────────────────
+  useEffect(() => {
+    if (supportsHover) return  // 데스크톱에서는 불필요
+
+    async function doRefresh() {
+      setIsRefreshing(true)
+      feedCacheRef.current.delete(currentPersona.id)  // 캐시 무효화
+      try {
+        const res = await fetch(`/api/feed/${currentPersona.id}?offset=0&limit=20`)
+        if (!res.ok) throw new Error('fetch failed')
+        const data: FeedPageResponse = await res.json()
+        setCachedFeed(currentPersona.id, data)
+        setVideos(data.videos)
+        setHasMore(data.has_more)
+        setNextOffset(data.next_offset)
+        setTotal(data.total_accumulated)
+        window.scrollTo({ top: 0, behavior: 'instant' })
+      } catch { /* 실패 시 현재 피드 유지 */ }
+      finally { setIsRefreshing(false) }
+    }
+
+    function onTouchStart(e: TouchEvent) {
+      // 스크롤이 최상단일 때만 pull 시작
+      if (window.scrollY > 0) return
+      pullStartYRef.current = e.touches[0].clientY
+    }
+
+    function onTouchMove(e: TouchEvent) {
+      if (pullStartYRef.current === null) return
+      const dist = e.touches[0].clientY - pullStartYRef.current
+      if (dist < 0) { pullStartYRef.current = null; return }
+      // 최대 100px까지만 당김 (rubber band 효과)
+      setPullDistance(Math.min(dist * 0.5, 100))
+    }
+
+    function onTouchEnd() {
+      if (pullDistance >= PULL_THRESHOLD) doRefresh()
+      setPullDistance(0)
+      pullStartYRef.current = null
+    }
+
+    window.addEventListener('touchstart', onTouchStart, { passive: true })
+    window.addEventListener('touchmove', onTouchMove, { passive: true })
+    window.addEventListener('touchend', onTouchEnd)
+    return () => {
+      window.removeEventListener('touchstart', onTouchStart)
+      window.removeEventListener('touchmove', onTouchMove)
+      window.removeEventListener('touchend', onTouchEnd)
+    }
+  }, [supportsHover, pullDistance, currentPersona.id])
+
   // 서버에서 직접 접근 시 (URL 직접 입력, 새로고침) prop 동기화
   // window.history.pushState 사용으로 Next.js navigation이 트리거되지 않아 이 effect는
   // 초기 마운트 시에만 발동됨 (브라우저 직접 접근 / 새로고침)
@@ -450,8 +526,21 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     // ref 즉시 갱신 — inflight loadMore가 응답 도착 시 stale 체크로 결과를 버리게 함
     activePersonaIdRef.current = nextPersonaId
 
-    // 이전 페르소나 상태 즉시 초기화 — 이전 컨텐츠(다음 페이지 포함)가 화면에 남지 않도록
-    setCurrentPersona(nextPersona)  // 페르소나 이름 즉시 반영
+    setCurrentPersona(nextPersona)
+    window.history.pushState(null, '', `/p/${nextPersonaId}`)
+
+    // 캐시 히트 — 즉시 표시 (API 생략)
+    const cached = getCachedFeed(nextPersonaId)
+    if (cached) {
+      setVideos(cached.videos)
+      setHasMore(cached.has_more)
+      setNextOffset(cached.next_offset)
+      setTotal(cached.total_accumulated)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      return
+    }
+
+    // 캐시 미스 — API 호출
     setVideos([])
     setHasMore(false)
     setNextOffset(0)
@@ -462,17 +551,13 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
       if (!res.ok) throw new Error('fetch failed')
       const data: FeedPageResponse = await res.json()
 
-      // window.history.pushState: URL만 업데이트, Next.js navigation 트리거 안 함
-      // → 서버 컴포넌트 재실행 없음 → ISR props 덮어쓰기 없음
-      window.history.pushState(null, '', `/p/${nextPersonaId}`)
-
+      setCachedFeed(nextPersonaId, data)
       setVideos(data.videos)
       setHasMore(data.has_more)
       setNextOffset(data.next_offset)
       setTotal(data.total_accumulated)
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch {
-      // fetch 실패 시 기존 방식으로 폴백
       window.location.href = `/p/${nextPersonaId}`
     } finally {
       setNavigating(false)
@@ -565,6 +650,30 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     <>
       {/* 페이지 전환 Progress Bar */}
       <NavigationProgress active={navigating} />
+
+      {/* Pull to Refresh 인디케이터 */}
+      {(pullDistance > 0 || isRefreshing) && (
+        <div
+          className="fixed top-0 left-0 right-0 z-50 flex justify-center items-end pointer-events-none"
+          style={{ height: isRefreshing ? 48 : pullDistance }}
+        >
+          <div className={`mb-2 flex items-center gap-2 text-xs text-zinc-400 transition-opacity ${
+            pullDistance >= PULL_THRESHOLD || isRefreshing ? 'opacity-100' : 'opacity-60'
+          }`}>
+            {isRefreshing ? (
+              <>
+                <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                </svg>
+                {t('loading', lang)}
+              </>
+            ) : (
+              <span>{pullDistance >= PULL_THRESHOLD ? '↑ 놓으면 새로고침' : '↓ 당겨서 새로고침'}</span>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* 헤더 */}
       <header className="border-b border-zinc-800 px-4 py-3 sticky top-0 bg-zinc-950 z-10">
