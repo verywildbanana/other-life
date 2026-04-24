@@ -1,15 +1,15 @@
 {
   "id": "jp_teen_meme_spreader",
-  "name": "시부야계 10대 바이럴 선도자",
+  "name": "산겐자야 10대 스포츠 남학생",
   "name_i18n": {
-    "ko": "시부야계 10대 바이럴 선도자",
-    "en": "Shibuya Teen Viral Trendsetter",
-    "ja": "渋谷系10代バイラル先導者"
+    "ko": "산겐자야 10대 스포츠 남학생",
+    "en": "Sangenjaya Teen Sporty Boy",
+    "ja": "三軒茶屋10代スポーツ男子"
   },
-  "description": "아직 안 퍼진 밈을 먼저 발견하고 던지는 게 재밌는 시부야계 10대. '내가 먼저 올렸다'가 핵심 보상.",
+  "description": "농구부·게임·YouTube로 하루가 돌아가는 도쿄 16세 남학생. 무리에서 제일 먼저 웃긴 영상 공유하는 역할.",
   "description_i18n": {
-    "ko": "아직 안 퍼진 밈을 먼저 발견하고 던지는 게 재밌는 시부야계 10대. '내가 먼저 올렸다'가 핵심 보상.",
-    "en": "A Shibuya teen who finds joy in discovering memes before they go viral and spreading them first. The ultimate reward: 'I posted it first.'",
-    "ja": "まだ広まっていないミームをいち早く見つけて拡散するのが楽しい渋谷系10代。「私が先に上げた」が最高の報酬。"
+    "ko": "농구부·게임·YouTube로 하루가 돌아가는 도쿄 16세 남학생. 무리에서 제일 먼저 웃긴 영상 공유하는 역할.",
+    "en": "A 16-year-old Tokyo boy whose day revolves around basketball club, gaming, and YouTube. Always the first to share a funny video in the group chat.",
+    "ja": "バスケ部・ゲーム・YouTubeで一日が回る東京16歳男子。グループLINEで面白い動画を一番最初に送る役割。"
   }
 }
