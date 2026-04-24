@@ -426,7 +426,8 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
       if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current)
       setMobilePlayingId(null)
     }
-  }, [supportsHover])
+  // videos[0]?.video_id: 페르소나 전환으로 피드가 교체될 때 effect 재실행 → initialTimer 재발동
+  }, [supportsHover, videos[0]?.video_id])
 
   // 서버에서 직접 접근 시 (URL 직접 입력, 새로고침) prop 동기화
   // window.history.pushState 사용으로 Next.js navigation이 트리거되지 않아 이 effect는
