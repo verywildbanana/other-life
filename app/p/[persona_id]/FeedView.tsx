@@ -336,6 +336,78 @@ const VideoCard = memo(function VideoCard({
   )
 })
 
+// ── ShortCard — 9:16 세로형 카드, 클릭 시 YouTube Shorts URL로 이동 ─────────────
+const ShortCard = memo(function ShortCard({ video, lang }: { video: Video; lang: Lang }) {
+  const title = getLangTitle(video, lang)
+  return (
+    <a
+      href={video.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex-shrink-0 w-36 snap-start group"
+    >
+      <div
+        className="relative w-full aspect-[9/16] bg-zinc-800 rounded-xl overflow-hidden"
+        style={{ contain: 'paint' }}
+      >
+        {video.thumbnail_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={video.thumbnail_url}
+            alt={title}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+            loading="lazy"
+          />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center text-zinc-600 text-xs">
+            Shorts
+          </div>
+        )}
+        {/* Shorts 배지 */}
+        <div className="absolute top-2 left-2 bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none">
+          Shorts
+        </div>
+      </div>
+      <div className="mt-1.5 px-0.5">
+        <p className="text-xs text-zinc-200 line-clamp-2 leading-tight">{title}</p>
+        <p className="text-[11px] text-zinc-500 mt-0.5 truncate">{video.channel}</p>
+      </div>
+    </a>
+  )
+})
+
+// ── ShortsCarousel — 수평 스크롤 선반, 최신 콘텐츠가 왼쪽 ─────────────────────
+const ShortsCarousel = memo(function ShortsCarousel({
+  shorts,
+  lang,
+}: {
+  shorts: Video[]
+  lang: Lang
+}) {
+  if (shorts.length === 0) return null
+  return (
+    <section className="mb-6">
+      <div className="flex items-center gap-2 mb-3 px-0.5">
+        {/* Shorts 아이콘 */}
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-red-500 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M17.77 10.32l-1.2-.5L18 9.06a3.74 3.74 0 00-4.64-5.88L6 7.18H4a2 2 0 00-2 2v9a2 2 0 002 2h16a2 2 0 002-2V13a2.69 2.69 0 00-4.23-2.68zM10 17.18v-6l5 3z"/>
+        </svg>
+        <h2 className="text-sm font-semibold text-zinc-300">Shorts</h2>
+        <span className="text-xs text-zinc-600">{shorts.length}</span>
+      </div>
+      {/* overflow-x-auto + scrollbar 숨김 + snap */}
+      <div
+        className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory"
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+      >
+        {shorts.map(video => (
+          <ShortCard key={video.video_id} video={video} lang={lang} />
+        ))}
+      </div>
+    </section>
+  )
+})
+
 interface Props {
   feed: FeedPageResponse | null
   persona: Persona
@@ -368,6 +440,22 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
   const activePersonaIdRef = useRef<string>(persona.id)
   // loadMore 동시 실행 방지 — state는 리렌더 전까지 반영 안 되므로 ref로 동기 가드
   const isLoadingRef = useRef(false)
+
+  // ── Shorts 캐로셀 상태 ────────────────────────────────────────────────────
+  const [shorts, setShorts] = useState<Video[]>([])
+
+  // 페르소나 변경 시 Shorts 새로 로드 (독립 fetch — 메인 피드와 분리)
+  useEffect(() => {
+    let cancelled = false
+    setShorts([])
+    fetch(`/api/feed/shorts/${currentPersona.id}?limit=20`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (!cancelled && d?.videos) setShorts(d.videos)
+      })
+      .catch(() => {/* 에러 무시 — Shorts 없어도 메인 피드는 정상 동작 */})
+    return () => { cancelled = true }
+  }, [currentPersona.id])
 
   // ── 피드 캐시 (TTL: 1시간) ─────────────────────────────────────────────────
   const FEED_CACHE_TTL_MS = 60 * 60 * 1000
@@ -767,6 +855,9 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
       {/* 피드 그리드 */}
       {(feed || videos.length > 0) && (
         <main className="px-6 py-6 max-w-7xl mx-auto">
+          {/* Shorts 캐로셀 — 수평 스크롤, 최신 콘텐츠가 왼쪽 */}
+          <ShortsCarousel shorts={shorts} lang={lang} />
+
           {videos.length === 0 && !navigating && (
             <p className="text-zinc-500 text-sm text-center py-16">{t('noResults', lang)}</p>
           )}
