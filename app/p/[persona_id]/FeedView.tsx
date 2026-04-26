@@ -336,32 +336,50 @@ const VideoCard = memo(function VideoCard({
   )
 })
 
-// ── ShortCard — 9:16 세로형 카드, 클릭 시 YouTube Shorts URL로 이동 ─────────────
+// ── ShortCard — 9:16 세로형 카드, hover 시 자동재생 ──────────────────────────
 const ShortCard = memo(function ShortCard({ video, lang }: { video: Video; lang: Lang }) {
   const title = getLangTitle(video, lang)
+  const [hovered, setHovered] = useState(false)
+  // VideoCard와 동일한 lazy-mount 패턴 — 한 번 mount 후 절대 unmount 안 함
+  const [iframeActive, setIframeActive] = useState(false)
+  useEffect(() => {
+    if (hovered) setIframeActive(true)
+  }, [hovered])
+
   return (
     <a
       href={video.url}
       target="_blank"
       rel="noopener noreferrer"
       className="flex-shrink-0 w-36 snap-start group"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
     >
       <div
         className="relative w-full aspect-[9/16] bg-zinc-800 rounded-xl overflow-hidden"
-        style={{ contain: 'paint' }}
+        style={{ contain: 'paint', isolation: 'isolate', transform: 'translateZ(0)' }}
       >
-        {video.thumbnail_url ? (
+        {/* 썸네일 */}
+        {video.thumbnail_url && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={video.thumbnail_url}
             alt={title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+            className="absolute inset-0 w-full h-full object-cover"
             loading="lazy"
           />
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center text-zinc-600 text-xs">
-            Shorts
-          </div>
+        )}
+        {/* hover 자동재생 iframe — lazy mount, 음소거 */}
+        {iframeActive && (
+          <iframe
+            src={`https://www.youtube.com/embed/${video.video_id}?autoplay=1&mute=1&controls=0&loop=1&playlist=${video.video_id}&modestbranding=1&rel=0`}
+            className={`absolute inset-0 w-full h-full transition-opacity duration-200 ${
+              hovered ? 'opacity-100' : 'opacity-0 pointer-events-none'
+            }`}
+            allow="autoplay; encrypted-media"
+            referrerPolicy="strict-origin-when-cross-origin"
+            title={video.title}
+          />
         )}
         {/* Shorts 배지 */}
         <div className="absolute top-2 left-2 bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none">
