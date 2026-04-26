@@ -55,4 +55,5 @@ export interface IngestItem {
   view_count: number
   titles_i18n: Record<string, string>
   published_at?: string | null  // YouTube 실제 업로드 날짜 (YYYY-MM-DD), 옵셔널
+  keyword?: string               // 수집 키워드 (shorts 파이프라인에서 사용)
 }
