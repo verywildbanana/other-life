@@ -772,7 +772,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
       setRegularPlayId(null)
       setShortPlayId(null)
     }
-  // handleShortsPlay: useCallback([]) 으로 안정적, shorts는 DOM 쿼리로 처리해 의존성 불필요
+  // shorts: 제거 — 숏츠 페이지네이션 시 playCardInZone이 재실행되어 현재 재생을 방해하는 것 방지
   }, [supportsHover, videos[0]?.video_id, handleShortsPlay])
 
   // ── Pull to Refresh — 터치 이벤트 ─────────────────────────────────────────
