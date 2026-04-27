@@ -336,24 +336,38 @@ const VideoCard = memo(function VideoCard({
   )
 })
 
-// ── ShortCard — 9:16 세로형 카드, hover 시 자동재생 ──────────────────────────
-const ShortCard = memo(function ShortCard({ video, lang }: { video: Video; lang: Lang }) {
+// ── ShortCard — 9:16 세로형 카드 ─────────────────────────────────────────
+// isPlaying: 모바일 자동재생 (캐로셀 좌측 카드)
+// isHovered: 데스크톱 hover 재생
+interface ShortCardProps {
+  video: Video
+  lang: Lang
+  isPlaying: boolean
+  isHovered: boolean
+  onMouseEnter: () => void
+  onMouseLeave: () => void
+}
+
+const ShortCard = memo(function ShortCard({
+  video, lang, isPlaying, isHovered, onMouseEnter, onMouseLeave,
+}: ShortCardProps) {
   const title = getLangTitle(video, lang)
-  const [hovered, setHovered] = useState(false)
   // VideoCard와 동일한 lazy-mount 패턴 — 한 번 mount 후 절대 unmount 안 함
   const [iframeActive, setIframeActive] = useState(false)
+  const showIframe = isPlaying || isHovered
   useEffect(() => {
-    if (hovered) setIframeActive(true)
-  }, [hovered])
+    if (showIframe) setIframeActive(true)
+  }, [showIframe])
 
   return (
     <a
       href={video.url}
       target="_blank"
       rel="noopener noreferrer"
+      data-short-id={video.video_id}
       className="flex-shrink-0 w-36 snap-start group"
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
     >
       <div
         className="relative w-full aspect-[9/16] bg-zinc-800 rounded-xl overflow-hidden"
@@ -369,12 +383,12 @@ const ShortCard = memo(function ShortCard({ video, lang }: { video: Video; lang:
             loading="lazy"
           />
         )}
-        {/* hover 자동재생 iframe — lazy mount, 음소거 */}
+        {/* 자동재생 iframe — lazy mount, 음소거 */}
         {iframeActive && (
           <iframe
             src={`https://www.youtube.com/embed/${video.video_id}?autoplay=1&mute=1&controls=0&loop=1&playlist=${video.video_id}&modestbranding=1&rel=0`}
             className={`absolute inset-0 w-full h-full transition-opacity duration-200 ${
-              hovered ? 'opacity-100' : 'opacity-0 pointer-events-none'
+              showIframe ? 'opacity-100' : 'opacity-0 pointer-events-none'
             }`}
             allow="autoplay; encrypted-media"
             referrerPolicy="strict-origin-when-cross-origin"
@@ -402,11 +416,67 @@ const ShortsCarousel = memo(function ShortsCarousel({
   shorts: Video[]
   lang: Lang
 }) {
+  const [hoveredId, setHoveredId]     = useState<string | null>(null)
+  const [mobilePlayId, setMobilePlayId] = useState<string | null>(null)
+  const scrollRef    = useRef<HTMLDivElement>(null)
+  const scrollTimer  = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const isScrolling  = useRef(false)
+
+  // 가로 스크롤 멈춤 감지 → 가장 많이 보이는 카드 자동재생 (모바일)
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+
+    // 초기 로드 시 첫 번째 카드 자동재생 (600ms 후 — 렌더 완료 대기)
+    const initTimer = setTimeout(() => {
+      if (shorts.length > 0) setMobilePlayId(shorts[0].video_id)
+    }, 600)
+
+    function findCenterCard(): string | null {
+      if (!el) return null
+      const containerLeft  = el.getBoundingClientRect().left
+      const containerWidth = el.offsetWidth
+      const center = containerLeft + containerWidth / 2
+      const cards  = el.querySelectorAll<HTMLElement>('[data-short-id]')
+      let best: string | null = null
+      let bestDist = Infinity
+      for (const card of cards) {
+        const rect = card.getBoundingClientRect()
+        const cardCenter = rect.left + rect.width / 2
+        const dist = Math.abs(cardCenter - center)
+        if (dist < bestDist) { bestDist = dist; best = card.dataset.shortId ?? null }
+      }
+      return best
+    }
+
+    function onScroll() {
+      // 스크롤 시작 → 재생 중단
+      if (!isScrolling.current) {
+        isScrolling.current = true
+        setMobilePlayId(null)
+      }
+      // 스크롤 멈춤 감지 (600ms debounce)
+      if (scrollTimer.current) clearTimeout(scrollTimer.current)
+      scrollTimer.current = setTimeout(() => {
+        isScrolling.current = false
+        const id = findCenterCard()
+        if (id) setMobilePlayId(id)
+      }, 600)
+    }
+
+    el.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      clearTimeout(initTimer)
+      if (scrollTimer.current) clearTimeout(scrollTimer.current)
+      el.removeEventListener('scroll', onScroll)
+    }
+  }, [shorts])
+
   if (shorts.length === 0) return null
+
   return (
     <section className="mb-6">
       <div className="flex items-center gap-2 mb-3 px-0.5">
-        {/* Shorts 아이콘 */}
         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-red-500 shrink-0" viewBox="0 0 24 24" fill="currentColor">
           <path d="M17.77 10.32l-1.2-.5L18 9.06a3.74 3.74 0 00-4.64-5.88L6 7.18H4a2 2 0 00-2 2v9a2 2 0 002 2h16a2 2 0 002-2V13a2.69 2.69 0 00-4.23-2.68zM10 17.18v-6l5 3z"/>
         </svg>
@@ -415,11 +485,20 @@ const ShortsCarousel = memo(function ShortsCarousel({
       </div>
       {/* overflow-x-auto + scrollbar 숨김 + snap */}
       <div
+        ref={scrollRef}
         className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         {shorts.map(video => (
-          <ShortCard key={video.video_id} video={video} lang={lang} />
+          <ShortCard
+            key={video.video_id}
+            video={video}
+            lang={lang}
+            isPlaying={mobilePlayId === video.video_id}
+            isHovered={hoveredId === video.video_id}
+            onMouseEnter={() => setHoveredId(video.video_id)}
+            onMouseLeave={() => setHoveredId(null)}
+          />
         ))}
       </div>
     </section>
