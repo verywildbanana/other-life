@@ -772,8 +772,8 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
       setRegularPlayId(null)
       setShortPlayId(null)
     }
-  // shorts: 숏츠 섹션 재생 재개를 위해 의존성 추가
-  }, [supportsHover, videos[0]?.video_id, shorts, handleShortsPlay])
+  // handleShortsPlay: useCallback([]) 으로 안정적, shorts는 DOM 쿼리로 처리해 의존성 불필요
+  }, [supportsHover, videos[0]?.video_id, handleShortsPlay])
 
   // ── Pull to Refresh — 터치 이벤트 ─────────────────────────────────────────
   useEffect(() => {
