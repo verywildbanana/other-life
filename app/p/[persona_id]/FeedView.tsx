@@ -348,10 +348,11 @@ interface ShortCardProps {
   isHovered: boolean
   onMouseEnter: () => void
   onMouseLeave: () => void
+  onCardClick: () => void
 }
 
 const ShortCard = memo(function ShortCard({
-  video, lang, isPlaying, isHovered, onMouseEnter, onMouseLeave,
+  video, lang, isPlaying, isHovered, onMouseEnter, onMouseLeave, onCardClick,
 }: ShortCardProps) {
   const title = getLangTitle(video, lang)
   // VideoCard와 동일한 lazy-mount 패턴 — 한 번 mount 후 절대 unmount 안 함
@@ -370,6 +371,7 @@ const ShortCard = memo(function ShortCard({
       className="flex-shrink-0 w-36 snap-start group"
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
+      onClick={onCardClick}
     >
       <div
         className="relative w-full aspect-[9/16] bg-zinc-800 rounded-xl overflow-hidden"
@@ -419,6 +421,7 @@ const ShortsCarousel = memo(function ShortsCarousel({
   isMobile,
   hasMore,
   onLoadMore,
+  onStopAll,
 }: {
   shorts: Video[]
   lang: Lang
@@ -427,6 +430,7 @@ const ShortsCarousel = memo(function ShortsCarousel({
   isMobile: boolean
   hasMore: boolean
   onLoadMore: () => void
+  onStopAll: () => void
 }) {
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const scrollRef   = useRef<HTMLDivElement>(null)
@@ -524,6 +528,7 @@ const ShortsCarousel = memo(function ShortsCarousel({
             isHovered={hoveredId === video.video_id}
             onMouseEnter={() => setHoveredId(video.video_id)}
             onMouseLeave={() => setHoveredId(null)}
+            onCardClick={onStopAll}
           />
         ))}
         {/* 가로 스크롤 끝 sentinel — has_more일 때만 존재 */}
@@ -918,7 +923,14 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
   }, [hasMore, nextOffset, currentPersona.id])
 
   // 비디오 클릭 핸들러 — useCallback으로 메모이제이션해 VideoCard 불필요한 재렌더 방지
+  const stopAllPlayback = useCallback(() => {
+    shortPlayIdRef.current = null
+    setShortPlayId(null)
+    setRegularPlayId(null)
+  }, [])
+
   const handleVideoClick = useCallback((video: Video, title: string, idx: number) => {
+    stopAllPlayback()  // 클릭 시 현재 재생 즉시 중단
     gtag('video_click', {
       video_id: video.video_id,
       video_title: title,
@@ -942,7 +954,20 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     } else {
       window.open(video.url, '_blank')
     }
-  }, [currentPersona.id, lang])
+  }, [currentPersona.id, lang, stopAllPlayback])
+
+  // 탭 숨김/복귀 감지 — 숨김 시 재생 중단, 복귀 시 재생 안 함 (중복 재생 방지)
+  useEffect(() => {
+    if (supportsHover) return  // 데스크톱은 hover 방식이므로 불필요
+    function onVisibility() {
+      if (document.hidden) {
+        stopAllPlayback()
+      }
+      // 복귀 시에는 자동 재생 안 함 — 사용자가 다시 스크롤할 때 playCardInZone이 처리
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => document.removeEventListener('visibilitychange', onVisibility)
+  }, [supportsHover, stopAllPlayback])
 
   // IntersectionObserver — sentinel이 뷰포트에 들어오면 자동 로드
   useEffect(() => {
@@ -1076,6 +1101,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
             isMobile={!supportsHover}
             hasMore={shortsHasMore}
             onLoadMore={loadMoreShorts}
+            onStopAll={stopAllPlayback}
           />
 
           {videos.length === 0 && !navigating && (
