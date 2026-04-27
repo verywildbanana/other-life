@@ -456,21 +456,17 @@ const ShortsCarousel = memo(function ShortsCarousel({
       if (isMobile && shorts.length > 0) onPlay(shorts[0].video_id)
     }, 600)
 
-    function findCenterCard(): string | null {
+    // 컨테이너 안에서 오른쪽 끝이 containerLeft 보다 오른쪽에 있는 카드 중 가장 왼쪽 카드 반환
+    function findLeftmostVisibleCard(): string | null {
       if (!el) return null
-      const containerLeft  = el.getBoundingClientRect().left
-      const containerWidth = el.offsetWidth
-      const center = containerLeft + containerWidth / 2
-      const cards  = el.querySelectorAll<HTMLElement>('[data-short-id]')
-      let best: string | null = null
-      let bestDist = Infinity
+      const containerLeft = el.getBoundingClientRect().left
+      const cards = el.querySelectorAll<HTMLElement>('[data-short-id]')
       for (const card of cards) {
         const rect = card.getBoundingClientRect()
-        const cardCenter = rect.left + rect.width / 2
-        const dist = Math.abs(cardCenter - center)
-        if (dist < bestDist) { bestDist = dist; best = card.dataset.shortId ?? null }
+        // 카드 오른쪽이 컨테이너 왼쪽 경계를 넘었으면 화면에 보임
+        if (rect.right > containerLeft) return card.dataset.shortId ?? null
       }
-      return best
+      return null
     }
 
     function onScroll() {
@@ -484,7 +480,7 @@ const ShortsCarousel = memo(function ShortsCarousel({
       if (scrollTimer.current) clearTimeout(scrollTimer.current)
       scrollTimer.current = setTimeout(() => {
         isScrolling.current = false
-        const id = findCenterCard()
+        const id = findLeftmostVisibleCard()
         if (id) onPlay(id)
       }, 600)
     }
