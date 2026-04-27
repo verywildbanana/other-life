@@ -734,7 +734,6 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     }
 
     function playCardInZone() {
-      if (shortPlayIdRef.current) return  // Shorts가 재생 중이면 일반 피드 자동재생 스킵
       const videoId = findCardInZone()
       if (videoId) { setShortPlayId(null); setRegularPlayId(videoId) }
     }
