@@ -412,15 +412,18 @@ const ShortCard = memo(function ShortCard({
 const ShortsCarousel = memo(function ShortsCarousel({
   shorts,
   lang,
+  playingId,
+  onPlay,
 }: {
   shorts: Video[]
   lang: Lang
+  playingId: string | null
+  onPlay: (id: string | null) => void
 }) {
-  const [hoveredId, setHoveredId]     = useState<string | null>(null)
-  const [mobilePlayId, setMobilePlayId] = useState<string | null>(null)
-  const scrollRef    = useRef<HTMLDivElement>(null)
-  const scrollTimer  = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const isScrolling  = useRef(false)
+  const [hoveredId, setHoveredId] = useState<string | null>(null)
+  const scrollRef   = useRef<HTMLDivElement>(null)
+  const scrollTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const isScrolling = useRef(false)
 
   // 가로 스크롤 멈춤 감지 → 가장 많이 보이는 카드 자동재생 (모바일)
   useEffect(() => {
@@ -429,7 +432,7 @@ const ShortsCarousel = memo(function ShortsCarousel({
 
     // 초기 로드 시 첫 번째 카드 자동재생 (600ms 후 — 렌더 완료 대기)
     const initTimer = setTimeout(() => {
-      if (shorts.length > 0) setMobilePlayId(shorts[0].video_id)
+      if (shorts.length > 0) onPlay(shorts[0].video_id)
     }, 600)
 
     function findCenterCard(): string | null {
@@ -453,14 +456,14 @@ const ShortsCarousel = memo(function ShortsCarousel({
       // 스크롤 시작 → 재생 중단
       if (!isScrolling.current) {
         isScrolling.current = true
-        setMobilePlayId(null)
+        onPlay(null)
       }
       // 스크롤 멈춤 감지 (600ms debounce)
       if (scrollTimer.current) clearTimeout(scrollTimer.current)
       scrollTimer.current = setTimeout(() => {
         isScrolling.current = false
         const id = findCenterCard()
-        if (id) setMobilePlayId(id)
+        if (id) onPlay(id)
       }, 600)
     }
 
@@ -470,7 +473,7 @@ const ShortsCarousel = memo(function ShortsCarousel({
       if (scrollTimer.current) clearTimeout(scrollTimer.current)
       el.removeEventListener('scroll', onScroll)
     }
-  }, [shorts])
+  }, [shorts, onPlay])
 
   if (shorts.length === 0) return null
 
@@ -494,7 +497,7 @@ const ShortsCarousel = memo(function ShortsCarousel({
             key={video.video_id}
             video={video}
             lang={lang}
-            isPlaying={mobilePlayId === video.video_id}
+            isPlaying={playingId === video.video_id}
             isHovered={hoveredId === video.video_id}
             onMouseEnter={() => setHoveredId(video.video_id)}
             onMouseLeave={() => setHoveredId(null)}
@@ -524,8 +527,12 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
   // hover 미리보기 — 현재 hover 중인 video_id (데스크톱)
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  // 모바일 스크롤 자동재생 — 화면에 1초 이상 머문 카드
-  const [mobilePlayingId, setMobilePlayingId] = useState<string | null>(null)
+  // 모바일 자동재생 — 두 상태를 분리하되 동시 재생 방지 (하나 set 시 다른 것 null)
+  const [shortPlayId, setShortPlayId]     = useState<string | null>(null)
+  const [regularPlayId, setRegularPlayId] = useState<string | null>(null)
+  // 동기적으로 shortPlayId를 읽기 위한 ref (useEffect 클로저에서 최신값 참조용)
+  const shortPlayIdRef = useRef<string | null>(null)
+  shortPlayIdRef.current = shortPlayId
   // 포인터 지원 여부 감지 (hover: hover = 데스크톱, hover: none = 터치 기기)
   const [supportsHover, setSupportsHover] = useState(false)
   // 모바일 스크롤 자동재생용 타이머 ref
@@ -541,10 +548,17 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
   // ── Shorts 캐로셀 상태 ────────────────────────────────────────────────────
   const [shorts, setShorts] = useState<Video[]>([])
 
+  // Shorts 재생 콜백 — shortPlayId 갱신 + 일반 피드 재생 중단
+  const handleShortsPlay = useCallback((id: string | null) => {
+    setShortPlayId(id)
+    if (id !== null) setRegularPlayId(null)
+  }, [])
+
   // 페르소나 변경 시 Shorts 새로 로드 (독립 fetch — 메인 피드와 분리)
   useEffect(() => {
     let cancelled = false
     setShorts([])
+    setShortPlayId(null)
     fetch(`/api/feed/shorts/${currentPersona.id}?limit=20`)
       .then(r => r.ok ? r.json() : null)
       .then(d => {
@@ -629,14 +643,14 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
 
     function playCardInZone() {
       const videoId = findCardInZone()
-      if (videoId) setMobilePlayingId(videoId)
+      if (videoId) { setShortPlayId(null); setRegularPlayId(videoId) }
     }
 
     function onScroll() {
       // 스크롤 첫 이벤트에서만 null 설정 — 매 이벤트마다 호출하면 초당 수십 번 리렌더 → 흰 깜박임
       if (!isScrollingRef.current) {
         isScrollingRef.current = true
-        setMobilePlayingId(null)
+        setRegularPlayId(null)
       }
       if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current)
       // 300ms 멈추면 zone 안 카드 재생
@@ -648,14 +662,18 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
 
     // 초기 로드 시 스크롤 이벤트 없이도 첫 카드를 자동재생
     // 600ms: 피드 카드 DOM 마운트 완료 대기
-    const initialTimer = setTimeout(playCardInZone, 600)
+    // Shorts가 먼저 재생 중이면 일반 피드 자동재생 생략 (두 개 동시 재생 방지)
+    const initialTimer = setTimeout(() => {
+      if (shortPlayIdRef.current) return  // Shorts가 이미 재생 중 — 일반 피드는 대기
+      playCardInZone()
+    }, 600)
 
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => {
       window.removeEventListener('scroll', onScroll)
       clearTimeout(initialTimer)
       if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current)
-      setMobilePlayingId(null)
+      setRegularPlayId(null)
     }
   // videos[0]?.video_id: 페르소나 전환으로 피드가 교체될 때 effect 재실행 → initialTimer 재발동
   }, [supportsHover, videos[0]?.video_id])
@@ -953,7 +971,12 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
       {(feed || videos.length > 0) && (
         <main className="px-6 py-6 max-w-7xl mx-auto">
           {/* Shorts 캐로셀 — 수평 스크롤, 최신 콘텐츠가 왼쪽 */}
-          <ShortsCarousel shorts={shorts} lang={lang} />
+          <ShortsCarousel
+            shorts={shorts}
+            lang={lang}
+            playingId={shortPlayId}
+            onPlay={handleShortsPlay}
+          />
 
           {videos.length === 0 && !navigating && (
             <p className="text-zinc-500 text-sm text-center py-16">{t('noResults', lang)}</p>
@@ -966,7 +989,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
                 idx={idx}
                 lang={lang}
                 today={today}
-                isPlaying={mobilePlayingId === video.video_id}
+                isPlaying={regularPlayId === video.video_id}
                 isHovered={hoveredId === video.video_id}
                 personaId={currentPersona.id}
                 onMouseEnter={handleMouseEnter}
