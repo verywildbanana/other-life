@@ -712,7 +712,8 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
       const shortsSection = document.querySelector<HTMLElement>('[data-shorts-section]')
       if (shortsSection) {
         const { top, bottom } = shortsSection.getBoundingClientRect()
-        if (bottom > zoneTop && top < zoneBottom) {
+        const center = (top + bottom) / 2
+        if (center >= zoneTop && center <= zoneBottom) {
           // Shorts 섹션이 존 안에 있음 — 현재 가장 왼쪽에 보이는 카드 재생
           const cards = shortsSection.querySelectorAll<HTMLElement>('[data-short-id]')
           const containerEl = shortsSection.querySelector<HTMLElement>('[data-shorts-scroll]')
@@ -725,9 +726,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
             }
           }
           if (leftmostId) {
-            shortPlayIdRef.current = leftmostId
-            setShortPlayId(leftmostId)
-            setRegularPlayId(null)
+            handleShortsPlay(leftmostId)
             return
           }
         }
@@ -735,7 +734,10 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
 
       // 2. 일반 영상 존 체크
       const videoId = findCardInZone()
-      if (videoId) { setShortPlayId(null); setRegularPlayId(videoId) }
+      if (videoId) {
+        setShortPlayId(null)
+        setRegularPlayId(videoId)
+      }
     }
 
     function onScroll() {
@@ -768,9 +770,10 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
       clearTimeout(initialTimer)
       if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current)
       setRegularPlayId(null)
+      setShortPlayId(null)
     }
-  // videos[0]?.video_id: 페르소나 전환으로 피드가 교체될 때 effect 재실행 → initialTimer 재발동
-  }, [supportsHover, videos[0]?.video_id])
+  // shorts: 숏츠 섹션 재생 재개를 위해 의존성 추가
+  }, [supportsHover, videos[0]?.video_id, shorts, handleShortsPlay])
 
   // ── Pull to Refresh — 터치 이벤트 ─────────────────────────────────────────
   useEffect(() => {
