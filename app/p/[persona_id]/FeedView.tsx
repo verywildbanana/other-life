@@ -429,7 +429,6 @@ const ShortsCarousel = memo(function ShortsCarousel({
   onLoadMore: () => void
 }) {
   const [hoveredId, setHoveredId] = useState<string | null>(null)
-  const sectionRef  = useRef<HTMLElement>(null)
   const scrollRef   = useRef<HTMLDivElement>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
   const scrollTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -449,40 +448,8 @@ const ShortsCarousel = memo(function ShortsCarousel({
     return () => observer.disconnect()
   }, [hasMore, onLoadMore])
 
-  // 캐로셀 section이 뷰포트에 들어올 때 왼쪽 첫 카드 자동재생 (모바일 전용)
-  useEffect(() => {
-    if (!isMobile) return
-    const section = sectionRef.current
-    const el = scrollRef.current
-    if (!section || !el) return
-
-    function findLeftmostVisibleCard(): string | null {
-      if (!el) return null
-      const containerLeft = el.getBoundingClientRect().left
-      const cards = el.querySelectorAll<HTMLElement>('[data-short-id]')
-      for (const card of cards) {
-        const rect = card.getBoundingClientRect()
-        if (rect.right > containerLeft) return card.dataset.shortId ?? null
-      }
-      return null
-    }
-
-    const visibilityObserver = new IntersectionObserver(
-      entries => {
-        if (entries[0].isIntersecting) {
-          // 캐로셀이 화면에 다시 들어왔을 때 왼쪽 첫 카드 재생
-          const id = findLeftmostVisibleCard()
-          if (id) onPlay(id)
-        } else {
-          // 캐로셀이 화면 밖으로 나가면 재생 중단
-          onPlay(null)
-        }
-      },
-      { threshold: 0.1 },  // 10% 이상 보이면 진입으로 판단
-    )
-    visibilityObserver.observe(section)
-    return () => visibilityObserver.disconnect()
-  }, [isMobile, onPlay, shorts])
+  // 세로 스크롤 재진입 감지는 FeedView의 playCardInZone에서 통합 처리
+  // (data-shorts-section 마킹 → playCardInZone이 Shorts 존 체크 후 onPlay 호출)
 
   // 가로 스크롤 멈춤 감지 → 가장 왼쪽에 보이는 카드 자동재생 (모바일 전용)
   useEffect(() => {
@@ -533,7 +500,7 @@ const ShortsCarousel = memo(function ShortsCarousel({
   if (shorts.length === 0) return null
 
   return (
-    <section ref={sectionRef} className="mb-6">
+    <section data-shorts-section className="mb-6">
       <div className="flex items-center gap-2 mb-3 px-0.5">
         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-red-500 shrink-0" viewBox="0 0 24 24" fill="currentColor">
           <path d="M17.77 10.32l-1.2-.5L18 9.06a3.74 3.74 0 00-4.64-5.88L6 7.18H4a2 2 0 00-2 2v9a2 2 0 002 2h16a2 2 0 002-2V13a2.69 2.69 0 00-4.23-2.68zM10 17.18v-6l5 3z"/>
@@ -544,6 +511,7 @@ const ShortsCarousel = memo(function ShortsCarousel({
       {/* overflow-x-auto + scrollbar 숨김 + snap */}
       <div
         ref={scrollRef}
+        data-shorts-scroll
         className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
@@ -736,6 +704,36 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     }
 
     function playCardInZone() {
+      const vh = window.innerHeight
+      const zoneTop    = vh * 0.10
+      const zoneBottom = vh * 0.60
+
+      // 1. Shorts 섹션이 활성 존에 있는지 먼저 확인
+      const shortsSection = document.querySelector<HTMLElement>('[data-shorts-section]')
+      if (shortsSection) {
+        const { top, bottom } = shortsSection.getBoundingClientRect()
+        if (bottom > zoneTop && top < zoneBottom) {
+          // Shorts 섹션이 존 안에 있음 — 현재 가장 왼쪽에 보이는 카드 재생
+          const cards = shortsSection.querySelectorAll<HTMLElement>('[data-short-id]')
+          const containerEl = shortsSection.querySelector<HTMLElement>('[data-shorts-scroll]')
+          const containerLeft = containerEl?.getBoundingClientRect().left ?? 0
+          let leftmostId: string | null = null
+          for (const card of cards) {
+            if (card.getBoundingClientRect().right > containerLeft) {
+              leftmostId = card.dataset.shortId ?? null
+              break
+            }
+          }
+          if (leftmostId) {
+            shortPlayIdRef.current = leftmostId
+            setShortPlayId(leftmostId)
+            setRegularPlayId(null)
+            return
+          }
+        }
+      }
+
+      // 2. 일반 영상 존 체크
       const videoId = findCardInZone()
       if (videoId) { setShortPlayId(null); setRegularPlayId(videoId) }
     }
@@ -744,6 +742,8 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
       // 스크롤 첫 이벤트에서만 null 설정 — 매 이벤트마다 호출하면 초당 수십 번 리렌더 → 흰 깜박임
       if (!isScrollingRef.current) {
         isScrollingRef.current = true
+        shortPlayIdRef.current = null
+        setShortPlayId(null)
         setRegularPlayId(null)
       }
       if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current)
