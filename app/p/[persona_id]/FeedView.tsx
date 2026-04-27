@@ -415,17 +415,36 @@ const ShortsCarousel = memo(function ShortsCarousel({
   playingId,
   onPlay,
   isMobile,
+  hasMore,
+  onLoadMore,
 }: {
   shorts: Video[]
   lang: Lang
   playingId: string | null
   onPlay: (id: string | null) => void
   isMobile: boolean
+  hasMore: boolean
+  onLoadMore: () => void
 }) {
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const scrollRef   = useRef<HTMLDivElement>(null)
+  const sentinelRef = useRef<HTMLDivElement>(null)
   const scrollTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isScrolling = useRef(false)
+
+  // 가로 스크롤 끝 감지 — IntersectionObserver (root = 캐로셀 컨테이너)
+  useEffect(() => {
+    const sentinel = sentinelRef.current
+    const container = scrollRef.current
+    if (!sentinel || !container || !hasMore) return
+
+    const observer = new IntersectionObserver(
+      entries => { if (entries[0].isIntersecting) onLoadMore() },
+      { root: container, rootMargin: '0px 300px 0px 0px', threshold: 0 },
+    )
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [hasMore, onLoadMore])
 
   // 가로 스크롤 멈춤 감지 → 가장 많이 보이는 카드 자동재생 (모바일 전용)
   useEffect(() => {
@@ -506,6 +525,15 @@ const ShortsCarousel = memo(function ShortsCarousel({
             onMouseLeave={() => setHoveredId(null)}
           />
         ))}
+        {/* 가로 스크롤 끝 sentinel — has_more일 때만 존재 */}
+        {hasMore && (
+          <div
+            ref={sentinelRef}
+            className="flex-shrink-0 flex items-center justify-center w-12 self-stretch"
+          >
+            <div className="w-4 h-4 border-2 border-zinc-600 border-t-zinc-300 rounded-full animate-spin" />
+          </div>
+        )}
       </div>
     </section>
   )
@@ -548,8 +576,11 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
   // loadMore 동시 실행 방지 — state는 리렌더 전까지 반영 안 되므로 ref로 동기 가드
   const isLoadingRef = useRef(false)
 
-  // ── Shorts 캐로셀 상태 ────────────────────────────────────────────────────
-  const [shorts, setShorts] = useState<Video[]>([])
+  // ── Shorts 캐로셀 상태 (페이지네이션) ────────────────────────────────────────
+  const [shorts, setShorts]                     = useState<Video[]>([])
+  const [shortsHasMore, setShortsHasMore]       = useState(false)
+  const [shortsNextOffset, setShortsNextOffset] = useState(0)
+  const shortsLoadingRef                        = useRef(false)
 
   // Shorts 재생 콜백 — shortPlayId 갱신 + 일반 피드 재생 중단
   const handleShortsPlay = useCallback((id: string | null) => {
@@ -557,19 +588,45 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     if (id !== null) setRegularPlayId(null)
   }, [])
 
-  // 페르소나 변경 시 Shorts 새로 로드 (독립 fetch — 메인 피드와 분리)
+  // 페르소나 변경 시 Shorts 첫 페이지 로드 (offset=0, limit=10)
   useEffect(() => {
     let cancelled = false
     setShorts([])
     setShortPlayId(null)
-    fetch(`/api/feed/shorts/${currentPersona.id}?limit=20`)
+    setShortsHasMore(false)
+    setShortsNextOffset(0)
+    shortsLoadingRef.current = false
+    fetch(`/api/feed/shorts/${currentPersona.id}?offset=0&limit=10`)
       .then(r => r.ok ? r.json() : null)
       .then(d => {
-        if (!cancelled && d?.videos) setShorts(d.videos)
+        if (!cancelled && d?.videos) {
+          setShorts(d.videos)
+          setShortsHasMore(d.has_more ?? false)
+          setShortsNextOffset(d.next_offset ?? d.videos.length)
+        }
       })
       .catch(() => {/* 에러 무시 — Shorts 없어도 메인 피드는 정상 동작 */})
     return () => { cancelled = true }
   }, [currentPersona.id])
+
+  // 가로 스크롤 끝 도달 시 다음 페이지 로드
+  const loadMoreShorts = useCallback(async () => {
+    if (shortsLoadingRef.current || !shortsHasMore) return
+    shortsLoadingRef.current = true
+    try {
+      const res = await fetch(`/api/feed/shorts/${currentPersona.id}?offset=${shortsNextOffset}&limit=10`)
+      if (!res.ok) return
+      const data = await res.json()
+      setShorts(prev => {
+        const ids = new Set(prev.map(v => v.video_id))
+        const fresh = (data.videos ?? []).filter((v: Video) => !ids.has(v.video_id))
+        return [...prev, ...fresh]
+      })
+      setShortsHasMore(data.has_more ?? false)
+      setShortsNextOffset(data.next_offset ?? 0)
+    } catch { /* 무시 */ }
+    finally { shortsLoadingRef.current = false }
+  }, [shortsHasMore, shortsNextOffset, currentPersona.id])
 
   // ── 피드 캐시 (TTL: 1시간) ─────────────────────────────────────────────────
   const FEED_CACHE_TTL_MS = 60 * 60 * 1000
@@ -980,6 +1037,8 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
             playingId={shortPlayId}
             onPlay={handleShortsPlay}
             isMobile={!supportsHover}
+            hasMore={shortsHasMore}
+            onLoadMore={loadMoreShorts}
           />
 
           {videos.length === 0 && !navigating && (

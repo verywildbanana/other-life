@@ -30,7 +30,8 @@ export async function GET(
   }
 
   const { searchParams } = req.nextUrl
-  const limit = Math.min(50, Math.max(1, parseInt(searchParams.get('limit') ?? '20', 10)))
+  const offset = Math.max(0, parseInt(searchParams.get('offset') ?? '0', 10))
+  const limit  = Math.min(20, Math.max(1, parseInt(searchParams.get('limit') ?? '10', 10)))
 
   const supabase = createServiceClient()
 
@@ -41,13 +42,17 @@ export async function GET(
     .eq('persona_id', persona_id)
     .order('collected_date', { ascending: false })
     .order('score', { ascending: false })
-    .limit(limit)
+    .range(offset, offset + limit - 1)
+
+  const hasMore = (rows?.length ?? 0) === limit
 
   return NextResponse.json(
     {
       persona_id,
       persona_name: persona.name,
       videos: (rows ?? []) as unknown as Video[],
+      has_more: hasMore,
+      next_offset: offset + (rows?.length ?? 0),
     },
     {
       headers: {
