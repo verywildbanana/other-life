@@ -615,6 +615,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
 
   // Shorts 재생 콜백 — shortPlayId 갱신 + 일반 피드 재생 중단
   const handleShortsPlay = useCallback((id: string | null) => {
+    shortPlayIdRef.current = id  // debounce 클로저에서 동기 참조 가능하도록 즉시 갱신
     setShortPlayId(id)
     if (id !== null) setRegularPlayId(null)
   }, [])
@@ -733,6 +734,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     }
 
     function playCardInZone() {
+      if (shortPlayIdRef.current) return  // Shorts가 재생 중이면 일반 피드 자동재생 스킵
       const videoId = findCardInZone()
       if (videoId) { setShortPlayId(null); setRegularPlayId(videoId) }
     }
