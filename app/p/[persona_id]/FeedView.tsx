@@ -414,25 +414,27 @@ const ShortsCarousel = memo(function ShortsCarousel({
   lang,
   playingId,
   onPlay,
+  isMobile,
 }: {
   shorts: Video[]
   lang: Lang
   playingId: string | null
   onPlay: (id: string | null) => void
+  isMobile: boolean
 }) {
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const scrollRef   = useRef<HTMLDivElement>(null)
   const scrollTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isScrolling = useRef(false)
 
-  // 가로 스크롤 멈춤 감지 → 가장 많이 보이는 카드 자동재생 (모바일)
+  // 가로 스크롤 멈춤 감지 → 가장 많이 보이는 카드 자동재생 (모바일 전용)
   useEffect(() => {
     const el = scrollRef.current
     if (!el) return
 
-    // 초기 로드 시 첫 번째 카드 자동재생 (600ms 후 — 렌더 완료 대기)
+    // 초기 로드 시 첫 번째 카드 자동재생 — 모바일에서만 (600ms 후 — 렌더 완료 대기)
     const initTimer = setTimeout(() => {
-      if (shorts.length > 0) onPlay(shorts[0].video_id)
+      if (isMobile && shorts.length > 0) onPlay(shorts[0].video_id)
     }, 600)
 
     function findCenterCard(): string | null {
@@ -453,6 +455,7 @@ const ShortsCarousel = memo(function ShortsCarousel({
     }
 
     function onScroll() {
+      if (!isMobile) return  // 데스크톱은 scroll 자동재생 없음
       // 스크롤 시작 → 재생 중단
       if (!isScrolling.current) {
         isScrolling.current = true
@@ -473,7 +476,7 @@ const ShortsCarousel = memo(function ShortsCarousel({
       if (scrollTimer.current) clearTimeout(scrollTimer.current)
       el.removeEventListener('scroll', onScroll)
     }
-  }, [shorts, onPlay])
+  }, [shorts, onPlay, isMobile])
 
   if (shorts.length === 0) return null
 
@@ -976,6 +979,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
             lang={lang}
             playingId={shortPlayId}
             onPlay={handleShortsPlay}
+            isMobile={!supportsHover}
           />
 
           {videos.length === 0 && !navigating && (
