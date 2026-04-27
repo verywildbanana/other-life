@@ -26,6 +26,15 @@ type VideoRow = {
   feed_source: string
 }
 
+type ShortRow = {
+  video_id: string
+  title: string
+  channel: string
+  url: string
+  score: number
+  collected_date: string
+}
+
 type FeedbackRow = {
   id: string
   persona_id: string | null
@@ -50,6 +59,12 @@ export default function AdminPage() {
   const [feedMsg, setFeedMsg] = useState('')
   const [feedbacks, setFeedbacks] = useState<FeedbackRow[]>([])
   const [triggerStatus, setTriggerStatus] = useState<Record<string, string>>({})
+  // Shorts 관리 상태
+  const [shortsPersona, setShortsPersona] = useState('')
+  const [shorts, setShorts] = useState<ShortRow[]>([])
+  const [shortsLoading, setShortsLoading] = useState(false)
+  const [shortsMsg, setShortsMsg] = useState('')
+  const [shortsChecked, setShortsChecked] = useState<Set<string>>(new Set())
 
   // 진입 시 인증 확인 — stats, personas, feedbacks 병렬 로드
   useEffect(() => {
@@ -139,6 +154,71 @@ export default function AdminPage() {
     setVideos(data.videos ?? [])
     setFeedMsg(`${data.videos?.length ?? 0}개`)
     setFeedLoading(false)
+  }
+
+  async function loadShorts(personaId: string) {
+    if (!personaId) return
+    setShortsLoading(true)
+    setShortsMsg('불러오는 중...')
+    setShorts([])
+    setShortsChecked(new Set())
+
+    const res = await fetch(`/api/admin/shorts/${personaId}`, { credentials: 'include' })
+    if (!res.ok) {
+      setShortsMsg('로드 실패')
+      setShortsLoading(false)
+      return
+    }
+    const data = await res.json()
+    setShorts(data.shorts ?? [])
+    setShortsMsg(`${data.shorts?.length ?? 0}개`)
+    setShortsLoading(false)
+  }
+
+  async function deleteShort(personaId: string, videoId: string) {
+    if (!confirm('이 Shorts를 삭제할까요?')) return
+    const res = await fetch(`/api/admin/shorts/${personaId}/${videoId}`, {
+      method: 'DELETE',
+      credentials: 'include',
+    })
+    if (res.ok) {
+      setShorts(prev => prev.filter(s => s.video_id !== videoId))
+      setShortsChecked(prev => { const n = new Set(prev); n.delete(videoId); return n })
+      setShortsMsg(prev => { const n = parseInt(prev) - 1; return isNaN(n) ? prev : `${n}개` })
+    } else {
+      alert('삭제 실패')
+    }
+  }
+
+  async function deleteCheckedShorts() {
+    if (shortsChecked.size === 0) return
+    if (!confirm(`선택한 ${shortsChecked.size}개의 Shorts를 삭제할까요?`)) return
+    const ids = [...shortsChecked]
+    await Promise.all(ids.map(id =>
+      fetch(`/api/admin/shorts/${shortsPersona}/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      })
+    ))
+    setShorts(prev => prev.filter(s => !shortsChecked.has(s.video_id)))
+    setShortsMsg(prev => { const n = parseInt(prev) - ids.length; return isNaN(n) ? prev : `${n}개` })
+    setShortsChecked(new Set())
+  }
+
+  function toggleShortsCheck(videoId: string) {
+    setShortsChecked(prev => {
+      const n = new Set(prev)
+      n.has(videoId) ? n.delete(videoId) : n.add(videoId)
+      return n
+    })
+  }
+
+  function toggleAllShorts() {
+    if (shortsChecked.size === shorts.length) {
+      setShortsChecked(new Set())
+    } else {
+      setShortsChecked(new Set(shorts.map(s => s.video_id)))
+    }
   }
 
   async function deleteVideo(personaId: string, videoId: string) {
@@ -417,6 +497,104 @@ export default function AdminPage() {
                     <td className="py-2">
                       <button
                         onClick={() => deleteVideo(selectedPersona, v.video_id)}
+                        className="text-xs text-red-400 hover:text-red-300 border border-red-900 px-2 py-0.5 rounded"
+                      >
+                        삭제
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {/* ── Shorts 관리 ── */}
+        <div>
+          <div className="flex items-center gap-4 mb-4">
+            <h2 className="text-sm font-semibold text-zinc-400">Shorts 관리</h2>
+            <select
+              value={shortsPersona}
+              onChange={e => {
+                setShortsPersona(e.target.value)
+                loadShorts(e.target.value)
+              }}
+              className="bg-zinc-800 border border-zinc-700 text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-zinc-500"
+            >
+              <option value="">페르소나 선택...</option>
+              {personas.map(p => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+            {shortsChecked.size > 0 && (
+              <button
+                onClick={deleteCheckedShorts}
+                className="text-xs text-red-400 hover:text-red-300 border border-red-900 px-3 py-1.5 rounded-lg"
+              >
+                선택 삭제 ({shortsChecked.size})
+              </button>
+            )}
+          </div>
+
+          {shortsMsg && <p className="text-sm text-zinc-500 mb-4">{shortsMsg}</p>}
+
+          {shortsLoading && (
+            <div className="flex items-center gap-2 text-zinc-500 text-sm py-8">
+              <div className="w-4 h-4 border-2 border-zinc-600 border-t-zinc-300 rounded-full animate-spin" />
+              불러오는 중...
+            </div>
+          )}
+
+          {!shortsLoading && shorts.length > 0 && (
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr className="border-b border-zinc-800 text-zinc-400 text-left">
+                  <th className="py-2 pr-3 w-8">
+                    <input
+                      type="checkbox"
+                      checked={shortsChecked.size === shorts.length}
+                      onChange={toggleAllShorts}
+                      className="accent-zinc-400"
+                    />
+                  </th>
+                  <th className="py-2 pr-4 font-medium">제목</th>
+                  <th className="py-2 pr-4 font-medium w-32">채널</th>
+                  <th className="py-2 pr-4 font-medium w-16 text-right">점수</th>
+                  <th className="py-2 pr-4 font-medium w-24">날짜</th>
+                  <th className="py-2 font-medium w-16"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {shorts.map(s => (
+                  <tr key={s.video_id} className="border-b border-zinc-800/50 hover:bg-zinc-900/50">
+                    <td className="py-2 pr-3">
+                      <input
+                        type="checkbox"
+                        checked={shortsChecked.has(s.video_id)}
+                        onChange={() => toggleShortsCheck(s.video_id)}
+                        className="accent-zinc-400"
+                      />
+                    </td>
+                    <td className="py-2 pr-4">
+                      <a
+                        href={s.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:text-zinc-300 line-clamp-1"
+                      >
+                        {s.title}
+                      </a>
+                    </td>
+                    <td className="py-2 pr-4 text-zinc-500 text-xs truncate max-w-[8rem]">
+                      {s.channel}
+                    </td>
+                    <td className="py-2 pr-4 text-right text-xs">{s.score}</td>
+                    <td className="py-2 pr-4 text-zinc-500 text-xs">{s.collected_date}</td>
+                    <td className="py-2">
+                      <button
+                        onClick={() => deleteShort(shortsPersona, s.video_id)}
                         className="text-xs text-red-400 hover:text-red-300 border border-red-900 px-2 py-0.5 rounded"
                       >
                         삭제
