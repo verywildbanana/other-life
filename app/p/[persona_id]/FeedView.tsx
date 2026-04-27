@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef, memo } from 'react'
+import Image from 'next/image'
 import { FeedPageResponse, Video, Persona } from '@/types'
 
 // ── 페이지 전환 Progress Bar ───────────────────────────────────────────────────
@@ -273,12 +274,13 @@ const VideoCard = memo(function VideoCard({
         style={{ contain: 'paint', isolation: 'isolate', transform: 'translateZ(0)' }}
       >
         {video.thumbnail_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <Image
             src={video.thumbnail_url}
-            alt={video.title}
-            className="absolute inset-0 w-full h-full object-cover"
-            loading={idx < 8 ? 'eager' : 'lazy'}
+            alt={video.title ?? ''}
+            fill
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
+            className="object-cover"
+            priority={idx < 4}
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center text-zinc-600 text-xs">
@@ -375,12 +377,12 @@ const ShortCard = memo(function ShortCard({
       >
         {/* 썸네일 */}
         {video.thumbnail_url && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <Image
             src={video.thumbnail_url}
-            alt={title}
-            className="absolute inset-0 w-full h-full object-cover"
-            loading="lazy"
+            alt={title ?? ''}
+            fill
+            sizes="144px"
+            className="object-cover"
           />
         )}
         {/* 자동재생 iframe — lazy mount, 음소거 */}

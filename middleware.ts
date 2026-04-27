@@ -17,6 +17,18 @@ export async function middleware(req: NextRequest) {
     logAdminAccess(req)
   }
 
+  // /admin 페이지: 토큰 없으면 /admin/login으로 redirect (미들웨어 레벨 접근 제어)
+  // /admin/login 자체는 체크 제외 (redirect 루프 방지)
+  if (pathname === '/admin') {
+    const adminToken = req.cookies.get('admin_token')?.value
+    const expected   = process.env.ADMIN_SECRET_TOKEN
+    if (!expected || adminToken !== expected) {
+      const loginUrl = req.nextUrl.clone()
+      loginUrl.pathname = '/admin/login'
+      return NextResponse.redirect(loginUrl)
+    }
+  }
+
   // /p/* 페이지 진입 시만 토큰 발급
   if (!pathname.startsWith('/p/')) return NextResponse.next()
 
@@ -41,5 +53,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/p/:path*', '/admin', '/api/admin/:path*'],
+  matcher: ['/p/:path*', '/admin', '/admin/login', '/api/admin/:path*'],
 }
