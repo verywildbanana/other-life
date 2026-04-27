@@ -427,6 +427,7 @@ const ShortsCarousel = memo(function ShortsCarousel({
   onLoadMore: () => void
 }) {
   const [hoveredId, setHoveredId] = useState<string | null>(null)
+  const sectionRef  = useRef<HTMLElement>(null)
   const scrollRef   = useRef<HTMLDivElement>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
   const scrollTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -446,7 +447,42 @@ const ShortsCarousel = memo(function ShortsCarousel({
     return () => observer.disconnect()
   }, [hasMore, onLoadMore])
 
-  // 가로 스크롤 멈춤 감지 → 가장 많이 보이는 카드 자동재생 (모바일 전용)
+  // 캐로셀 section이 뷰포트에 들어올 때 왼쪽 첫 카드 자동재생 (모바일 전용)
+  useEffect(() => {
+    if (!isMobile) return
+    const section = sectionRef.current
+    const el = scrollRef.current
+    if (!section || !el) return
+
+    function findLeftmostVisibleCard(): string | null {
+      if (!el) return null
+      const containerLeft = el.getBoundingClientRect().left
+      const cards = el.querySelectorAll<HTMLElement>('[data-short-id]')
+      for (const card of cards) {
+        const rect = card.getBoundingClientRect()
+        if (rect.right > containerLeft) return card.dataset.shortId ?? null
+      }
+      return null
+    }
+
+    const visibilityObserver = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting) {
+          // 캐로셀이 화면에 다시 들어왔을 때 왼쪽 첫 카드 재생
+          const id = findLeftmostVisibleCard()
+          if (id) onPlay(id)
+        } else {
+          // 캐로셀이 화면 밖으로 나가면 재생 중단
+          onPlay(null)
+        }
+      },
+      { threshold: 0.1 },  // 10% 이상 보이면 진입으로 판단
+    )
+    visibilityObserver.observe(section)
+    return () => visibilityObserver.disconnect()
+  }, [isMobile, onPlay, shorts])
+
+  // 가로 스크롤 멈춤 감지 → 가장 왼쪽에 보이는 카드 자동재생 (모바일 전용)
   useEffect(() => {
     const el = scrollRef.current
     if (!el) return
@@ -463,7 +499,6 @@ const ShortsCarousel = memo(function ShortsCarousel({
       const cards = el.querySelectorAll<HTMLElement>('[data-short-id]')
       for (const card of cards) {
         const rect = card.getBoundingClientRect()
-        // 카드 오른쪽이 컨테이너 왼쪽 경계를 넘었으면 화면에 보임
         if (rect.right > containerLeft) return card.dataset.shortId ?? null
       }
       return null
@@ -496,7 +531,7 @@ const ShortsCarousel = memo(function ShortsCarousel({
   if (shorts.length === 0) return null
 
   return (
-    <section className="mb-6">
+    <section ref={sectionRef} className="mb-6">
       <div className="flex items-center gap-2 mb-3 px-0.5">
         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-red-500 shrink-0" viewBox="0 0 24 24" fill="currentColor">
           <path d="M17.77 10.32l-1.2-.5L18 9.06a3.74 3.74 0 00-4.64-5.88L6 7.18H4a2 2 0 00-2 2v9a2 2 0 002 2h16a2 2 0 002-2V13a2.69 2.69 0 00-4.23-2.68zM10 17.18v-6l5 3z"/>
