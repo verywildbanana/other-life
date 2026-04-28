@@ -545,6 +545,29 @@ const ShortsCarousel = memo(function ShortsCarousel({
   )
 })
 
+// ── 랜덤 순서 유틸 ────────────────────────────────────────────────────────────
+const FEED_PAGE = 20
+// NEXT_PUBLIC_FRESH_HOURS: 이 시간 이내 수집된 콘텐츠를 신규로 간주 (기본 3시간)
+const FRESH_HOURS = Number(process.env.NEXT_PUBLIC_FRESH_HOURS ?? 3)
+const FRESH_CUTOFF_DATE = new Date(Date.now() - FRESH_HOURS * 3_600_000).toISOString().slice(0, 10)
+
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr]
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[a[i], a[j]] = [a[j], a[i]]
+  }
+  return a
+}
+
+// 최근 FRESH_HOURS 이내 수집 항목 상단 고정 + 나머지 랜덤
+function weightedShuffle(videos: Video[]): Video[] {
+  const cutoff = new Date(Date.now() - FRESH_HOURS * 3_600_000).toISOString().slice(0, 10)
+  const fresh = videos.filter(v => (v.collected_date ?? '') >= cutoff)
+  const rest  = videos.filter(v => (v.collected_date ?? '') < cutoff)
+  return [...shuffle(fresh), ...shuffle(rest)]
+}
+
 interface Props {
   feed: FeedPageResponse | null
   persona: Persona
@@ -582,7 +605,10 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
   // loadMore 동시 실행 방지 — state는 리렌더 전까지 반영 안 되므로 ref로 동기 가드
   const isLoadingRef = useRef(false)
 
-  // ── Shorts 캐로셀 상태 (페이지네이션) ────────────────────────────────────────
+  // ── 피드 전체 풀 (셔플 후 가상 페이지네이션용) ────────────────────────────────
+  const allVideosRef = useRef<Video[]>([])
+
+  // ── Shorts 캐로셀 상태 ────────────────────────────────────────────────────────
   const [shorts, setShorts]                     = useState<Video[]>([])
   const [shortsHasMore, setShortsHasMore]       = useState(false)
   const [shortsNextOffset, setShortsNextOffset] = useState(0)
@@ -595,7 +621,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     if (id !== null) setRegularPlayId(null)
   }, [])
 
-  // 페르소나 변경 시 Shorts 첫 페이지 로드 (offset=0, limit=10)
+  // 페르소나 변경 시 Shorts 전체 로드 (limit=100) + 랜덤 셔플
   useEffect(() => {
     let cancelled = false
     setShorts([])
@@ -603,13 +629,13 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     setShortsHasMore(false)
     setShortsNextOffset(0)
     shortsLoadingRef.current = false
-    fetch(`/api/feed/shorts/${currentPersona.id}?offset=0&limit=10`)
+    fetch(`/api/feed/shorts/${currentPersona.id}?offset=0&limit=100`)
       .then(r => r.ok ? r.json() : null)
       .then(d => {
         if (!cancelled && d?.videos) {
-          setShorts(d.videos)
-          setShortsHasMore(d.has_more ?? false)
-          setShortsNextOffset(d.next_offset ?? d.videos.length)
+          setShorts(weightedShuffle(d.videos))   // 전체 셔플 — 매 방문마다 다른 순서
+          setShortsHasMore(false)                // 전체 로드 완료 → 추가 fetch 불필요
+          setShortsNextOffset(d.videos.length)
         }
       })
       .catch(() => {/* 에러 무시 — Shorts 없어도 메인 피드는 정상 동작 */})
@@ -788,14 +814,16 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
       setIsRefreshing(true)
       feedCacheRef.current.delete(currentPersona.id)  // 캐시 무효화
       try {
-        const res = await fetch(`/api/feed/${currentPersona.id}?offset=0&limit=20`)
+        const res = await fetch(`/api/feed/${currentPersona.id}?offset=0&limit=200`)
         if (!res.ok) throw new Error('fetch failed')
         const data: FeedPageResponse = await res.json()
         setCachedFeed(currentPersona.id, data)
-        setVideos(data.videos)
-        setHasMore(data.has_more)
-        setNextOffset(data.next_offset)
-        setTotal(data.total_accumulated)
+        const shuffled = weightedShuffle(data.videos)
+        allVideosRef.current = shuffled
+        setVideos(shuffled.slice(0, FEED_PAGE))
+        setHasMore(shuffled.length > FEED_PAGE)
+        setNextOffset(FEED_PAGE)
+        setTotal(data.total_accumulated ?? shuffled.length)
         window.scrollTo({ top: 0, behavior: 'instant' })
       } catch { /* 실패 시 현재 피드 유지 */ }
       finally { setIsRefreshing(false) }
@@ -831,16 +859,26 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     }
   }, [supportsHover, pullDistance, currentPersona.id])
 
-  // 서버에서 직접 접근 시 (URL 직접 입력, 새로고침) prop 동기화
+  // 서버에서 직접 접근 시 (URL 직접 입력, 새로고침) 전체 풀 로드 + 셔플
   // window.history.pushState 사용으로 Next.js navigation이 트리거되지 않아 이 effect는
   // 초기 마운트 시에만 발동됨 (브라우저 직접 접근 / 새로고침)
   useEffect(() => {
     setCurrentPersona(persona)
-    setVideos(feed?.videos ?? [])
-    setHasMore(feed?.has_more ?? false)
-    setNextOffset(feed?.next_offset ?? 0)
-    setTotal(feed?.total_accumulated ?? 0)
-  }, [feed, persona.id])
+    let cancelled = false
+    fetch(`/api/feed/${persona.id}?offset=0&limit=200`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (cancelled || !data?.videos) return
+        const shuffled = weightedShuffle(data.videos)
+        allVideosRef.current = shuffled
+        setVideos(shuffled.slice(0, FEED_PAGE))
+        setHasMore(shuffled.length > FEED_PAGE)
+        setNextOffset(FEED_PAGE)
+        setTotal(data.total_accumulated ?? shuffled.length)
+      })
+      .catch(() => {/* 에러 시 SSR 초기 데이터 그대로 유지 */})
+    return () => { cancelled = true }
+  }, [persona.id])
 
   // 클라이언트사이드 페르소나 전환 (새로고침 없음)
   const switchPersona = useCallback(async (nextPersonaId: string) => {
@@ -855,33 +893,37 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     setCurrentPersona(nextPersona)
     window.history.pushState(null, '', `/p/${nextPersonaId}`)
 
-    // 캐시 히트 — 즉시 표시 (API 생략)
+    // 캐시 히트 — 캐시 데이터를 재셔플해 표시 (매 전환마다 다른 순서)
     const cached = getCachedFeed(nextPersonaId)
     if (cached) {
-      setVideos(cached.videos)
-      setHasMore(cached.has_more)
-      setNextOffset(cached.next_offset)
+      const shuffled = weightedShuffle(cached.videos)
+      allVideosRef.current = shuffled
+      setVideos(shuffled.slice(0, FEED_PAGE))
+      setHasMore(shuffled.length > FEED_PAGE)
+      setNextOffset(FEED_PAGE)
       setTotal(cached.total_accumulated)
       window.scrollTo({ top: 0, behavior: 'smooth' })
       return
     }
 
-    // 캐시 미스 — API 호출
+    // 캐시 미스 — API 호출 (전체 풀 로드)
     setVideos([])
     setHasMore(false)
     setNextOffset(0)
     setNavigating(true)
 
     try {
-      const res = await fetch(`/api/feed/${nextPersonaId}?offset=0&limit=20`)
+      const res = await fetch(`/api/feed/${nextPersonaId}?offset=0&limit=200`)
       if (!res.ok) throw new Error('fetch failed')
       const data: FeedPageResponse = await res.json()
 
       setCachedFeed(nextPersonaId, data)
-      setVideos(data.videos)
-      setHasMore(data.has_more)
-      setNextOffset(data.next_offset)
-      setTotal(data.total_accumulated)
+      const shuffled = weightedShuffle(data.videos)
+      allVideosRef.current = shuffled
+      setVideos(shuffled.slice(0, FEED_PAGE))
+      setHasMore(shuffled.length > FEED_PAGE)
+      setNextOffset(FEED_PAGE)
+      setTotal(data.total_accumulated ?? shuffled.length)
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch {
       window.location.href = `/p/${nextPersonaId}`
@@ -890,36 +932,29 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     }
   }, [currentPersona.id, allPersonas, lang])
 
-  const loadMore = useCallback(async () => {
-    // isLoadingRef: state가 리렌더 전까지 반영 안 되는 문제 → ref로 동기 가드
-    // IntersectionObserver가 리렌더 전에 재발화해도 중복 실행 차단
+  const loadMore = useCallback(() => {
+    // isLoadingRef: 동기 가드 — IntersectionObserver 중복 발화 방지
     if (isLoadingRef.current || !hasMore) return
     isLoadingRef.current = true
     setIsLoading(true)
-    // fetch 시작 시점의 페르소나 ID를 캡처 — 응답 도착 전에 페르소나가 바뀌면 결과 버림
-    const personaAtStart = currentPersona.id
-    try {
-      const res = await fetch(`/api/feed/${personaAtStart}?offset=${nextOffset}&limit=20`)
-      if (!res.ok) return
-      const data: FeedPageResponse = await res.json()
-      // 응답 도착 시점에 페르소나가 바뀌었으면 stale 결과이므로 무시
-      if (personaAtStart !== activePersonaIdRef.current) return
-      // video_id 기준 중복 제거 — 혹시라도 API가 겹치는 데이터를 반환하는 경우 방어
+
+    // allVideosRef에서 다음 배치 slice (서버 요청 없음)
+    const next = allVideosRef.current.slice(nextOffset, nextOffset + FEED_PAGE)
+    if (next.length > 0) {
       setVideos(prev => {
-        const existingIds = new Set(prev.map(v => v.video_id))
-        const newVideos = data.videos.filter(v => !existingIds.has(v.video_id))
-        return [...prev, ...newVideos]
+        const ids = new Set(prev.map(v => v.video_id))
+        return [...prev, ...next.filter(v => !ids.has(v.video_id))]
       })
-      setHasMore(data.has_more)
-      setNextOffset(data.next_offset)
-      setTotal(data.total_accumulated)
-      gtag('infinite_scroll_load', { persona_id: currentPersona.id, offset: nextOffset, loaded: data.videos.length })
-    } catch {
-      // 에러 무시 (네트워크 오류 등)
-    } finally {
-      isLoadingRef.current = false
-      setIsLoading(false)
+      const newOffset = nextOffset + next.length
+      setNextOffset(newOffset)
+      setHasMore(newOffset < allVideosRef.current.length)
+      gtag('infinite_scroll_load', { persona_id: currentPersona.id, offset: nextOffset, loaded: next.length })
+    } else {
+      setHasMore(false)
     }
+
+    isLoadingRef.current = false
+    setIsLoading(false)
   }, [hasMore, nextOffset, currentPersona.id])
 
   // 비디오 클릭 핸들러 — useCallback으로 메모이제이션해 VideoCard 불필요한 재렌더 방지

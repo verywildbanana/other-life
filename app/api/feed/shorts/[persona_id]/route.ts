@@ -31,7 +31,7 @@ export async function GET(
 
   const { searchParams } = req.nextUrl
   const offset = Math.max(0, parseInt(searchParams.get('offset') ?? '0', 10))
-  const limit  = Math.min(20, Math.max(1, parseInt(searchParams.get('limit') ?? '10', 10)))
+  const limit  = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') ?? '100', 10)))
 
   const supabase = createServiceClient()
 

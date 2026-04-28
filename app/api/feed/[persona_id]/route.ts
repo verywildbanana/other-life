@@ -31,7 +31,7 @@ export async function GET(
   const { searchParams } = req.nextUrl
 
   const offset = Math.max(0, parseInt(searchParams.get('offset') ?? '0', 10))
-  const limit = Math.min(50, Math.max(1, parseInt(searchParams.get('limit') ?? '20', 10)))
+  const limit = Math.min(200, Math.max(1, parseInt(searchParams.get('limit') ?? '200', 10)))
 
   // Rate Limit: 분당 60회 초과 시 429 (access_logs 기반, Supabase DB 활용)
   // 첫 페이지 요청만 카운트 (페이지네이션 로딩은 허용)
