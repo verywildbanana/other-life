@@ -588,15 +588,18 @@ interface Props {
 export default function FeedView({ feed, persona, allPersonas }: Props) {
   const [lang, setLang] = useState<Lang>('ko')
   const [currentPersona, setCurrentPersona] = useState<Persona>(persona)
-  const [videos, setVideos] = useState<Video[]>(feed?.videos ?? [])
-  const [hasMore, setHasMore] = useState(feed?.has_more ?? false)
-  const [nextOffset, setNextOffset] = useState(feed?.next_offset ?? 0)
+  const [videos, setVideos] = useState<Video[]>([])
+  const [hasMore, setHasMore] = useState(false)
+  const [nextOffset, setNextOffset] = useState(0)
   const [isLoading, setIsLoading] = useState(false)
-  const [total, setTotal] = useState(feed?.total_accumulated ?? 0)
+  const [total, setTotal] = useState(0)
+  // 초기 클라이언트 fetch 완료 전 로딩 상태
+  const [isInitialLoading, setIsInitialLoading] = useState(true)
   const [showFeedback, setShowFeedback] = useState(false)
   const [navigating, setNavigating] = useState(false)
   // PTR 완료 후 fade-in 제어 — false: 콘텐츠 숨김(no-transition), true: fade-in(300ms)
-  const [contentReady, setContentReady] = useState(true)
+  // 초기 진입 시에도 false → 클라이언트 fetch 완료 후 fade-in (SSR flash 방지)
+  const [contentReady, setContentReady] = useState(false)
   // hover 미리보기 — 현재 hover 중인 video_id (데스크톱)
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -917,9 +920,11 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
         setHasMore(shuffled.length > FEED_PAGE)
         setNextOffset(FEED_PAGE)
         setTotal(data.total_accumulated ?? shuffled.length)
-        setCachedFeed(persona.id, data, shuffled)  // 캐시 저장 — 페르소나 전환 시 재사용
+        setCachedFeed(persona.id, data, shuffled)
+        setIsInitialLoading(false)
+        setContentReady(true)   // 초기 로드 완료 → fade-in
       })
-      .catch(() => {/* 에러 시 SSR 초기 데이터 그대로 유지 */})
+      .catch(() => { setIsInitialLoading(false); setContentReady(true) })
     return () => { cancelled = true }
   }, [persona.id])
 
@@ -1175,7 +1180,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
       </header>
 
       {/* 상태 바 */}
-      {(feed || videos.length > 0) && (
+      {videos.length > 0 && (
         <div className="px-4 py-2 text-xs text-zinc-400 border-b border-zinc-800">
           <div className="flex items-center justify-between flex-wrap gap-1">
             <span>
@@ -1188,15 +1193,26 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
         </div>
       )}
 
-      {/* 피드 없음 */}
-      {!feed && videos.length === 0 && (
+      {/* 초기 로딩 스피너 */}
+      {isInitialLoading && (
+        <div className="flex items-center justify-center py-32 gap-2 text-zinc-500 text-sm">
+          <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+          </svg>
+          {t('loading', lang)}
+        </div>
+      )}
+
+      {/* 피드 없음 (로드 완료 후에도 영상 없는 경우) */}
+      {!isInitialLoading && videos.length === 0 && (
         <div className="flex items-center justify-center py-32 text-zinc-500 text-sm">
           {t('noFeed', lang)}
         </div>
       )}
 
       {/* 피드 그리드 */}
-      {(feed || videos.length > 0) && (
+      {!isInitialLoading && videos.length > 0 && (
         <main
           className="px-6 py-6 max-w-7xl mx-auto"
           style={{

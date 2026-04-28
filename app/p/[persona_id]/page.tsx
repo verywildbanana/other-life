@@ -1,6 +1,5 @@
 import { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { getPaginatedFeed } from '@/lib/feed'
 import { loadPersona, listPersonas } from '@/lib/personas'
 import FeedView from './FeedView'
 
@@ -53,18 +52,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
-// SSR: 서버에서 피드 데이터 fetch → 초기 HTML에 영상 목록 포함 → 크롤러가 읽을 수 있음
-export const revalidate = 3600 // 1시간마다 ISR 재생성
+// 피드 데이터는 클라이언트에서 fetch + shuffle → SSR 없음
+// (토큰 인증 기반, noindex 설정 → 크롤러 대상 아님. 메타태그는 generateMetadata에서 처리)
 
 export default async function PersonaPage({ params }: Props) {
   const { persona_id } = await params
   const persona = loadPersona(persona_id)
   if (!persona) notFound()
 
-  const [feed, allPersonas] = await Promise.all([
-    getPaginatedFeed(persona_id, 0, 10), // 초기 HTML 노출 10개로 제한 (스크래핑 비용 증가)
-    Promise.resolve(listPersonas()),
-  ])
+  const allPersonas = listPersonas()
 
-  return <FeedView feed={feed} persona={persona} allPersonas={allPersonas} />
+  return <FeedView feed={null} persona={persona} allPersonas={allPersonas} />
 }
