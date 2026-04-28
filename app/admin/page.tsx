@@ -59,6 +59,7 @@ export default function AdminPage() {
   const [feedMsg, setFeedMsg] = useState('')
   const [feedbacks, setFeedbacks] = useState<FeedbackRow[]>([])
   const [triggerStatus, setTriggerStatus] = useState<Record<string, string>>({})
+  const [feedChecked, setFeedChecked] = useState<Set<string>>(new Set())
   // Shorts 관리 상태
   const [shortsPersona, setShortsPersona] = useState('')
   const [shorts, setShorts] = useState<ShortRow[]>([])
@@ -153,6 +154,7 @@ export default function AdminPage() {
     const data = await res.json()
     setVideos(data.videos ?? [])
     setFeedMsg(`${data.videos?.length ?? 0}개`)
+    setFeedChecked(new Set())
     setFeedLoading(false)
   }
 
@@ -229,12 +231,41 @@ export default function AdminPage() {
     })
     if (res.ok) {
       setVideos(prev => prev.filter(v => v.video_id !== videoId))
-      setFeedMsg(prev => {
-        const n = parseInt(prev) - 1
-        return isNaN(n) ? prev : `${n}개`
-      })
+      setFeedChecked(prev => { const n = new Set(prev); n.delete(videoId); return n })
+      setFeedMsg(prev => { const n = parseInt(prev) - 1; return isNaN(n) ? prev : `${n}개` })
     } else {
       alert('삭제 실패')
+    }
+  }
+
+  async function deleteCheckedVideos() {
+    if (feedChecked.size === 0) return
+    if (!confirm(`선택한 ${feedChecked.size}개의 영상을 삭제할까요?`)) return
+    const ids = [...feedChecked]
+    await Promise.all(ids.map(id =>
+      fetch(`/api/admin/feed/${selectedPersona}/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      })
+    ))
+    setVideos(prev => prev.filter(v => !feedChecked.has(v.video_id)))
+    setFeedMsg(prev => { const n = parseInt(prev) - ids.length; return isNaN(n) ? prev : `${n}개` })
+    setFeedChecked(new Set())
+  }
+
+  function toggleFeedCheck(videoId: string) {
+    setFeedChecked(prev => {
+      const n = new Set(prev)
+      n.has(videoId) ? n.delete(videoId) : n.add(videoId)
+      return n
+    })
+  }
+
+  function toggleAllFeed() {
+    if (feedChecked.size === videos.length) {
+      setFeedChecked(new Set())
+    } else {
+      setFeedChecked(new Set(videos.map(v => v.video_id)))
     }
   }
 
@@ -454,6 +485,14 @@ export default function AdminPage() {
                 </option>
               ))}
             </select>
+            {feedChecked.size > 0 && (
+              <button
+                onClick={deleteCheckedVideos}
+                className="text-xs text-red-400 hover:text-red-300 border border-red-900 px-3 py-1.5 rounded-lg"
+              >
+                선택 삭제 ({feedChecked.size})
+              </button>
+            )}
           </div>
 
           {feedMsg && <p className="text-sm text-zinc-500 mb-4">{feedMsg}</p>}
@@ -469,6 +508,14 @@ export default function AdminPage() {
             <table className="w-full text-sm border-collapse">
               <thead>
                 <tr className="border-b border-zinc-800 text-zinc-400 text-left">
+                  <th className="py-2 pr-3 w-8">
+                    <input
+                      type="checkbox"
+                      checked={feedChecked.size === videos.length}
+                      onChange={toggleAllFeed}
+                      className="accent-zinc-400"
+                    />
+                  </th>
                   <th className="py-2 pr-4 font-medium">제목</th>
                   <th className="py-2 pr-4 font-medium w-32">채널</th>
                   <th className="py-2 pr-4 font-medium w-16 text-right">점수</th>
@@ -479,6 +526,14 @@ export default function AdminPage() {
               <tbody>
                 {videos.map(v => (
                   <tr key={v.video_id} className="border-b border-zinc-800/50 hover:bg-zinc-900/50">
+                    <td className="py-2 pr-3">
+                      <input
+                        type="checkbox"
+                        checked={feedChecked.has(v.video_id)}
+                        onChange={() => toggleFeedCheck(v.video_id)}
+                        className="accent-zinc-400"
+                      />
+                    </td>
                     <td className="py-2 pr-4">
                       <a
                         href={v.url}
