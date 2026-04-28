@@ -348,7 +348,7 @@ interface ShortCardProps {
   isHovered: boolean
   onMouseEnter: () => void
   onMouseLeave: () => void
-  onCardClick: () => void
+  onCardClick: (video: Video) => void
 }
 
 const ShortCard = memo(function ShortCard({
@@ -371,7 +371,7 @@ const ShortCard = memo(function ShortCard({
       className="flex-shrink-0 w-36 snap-start group"
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
-      onClick={onCardClick}
+      onClick={(e) => { e.preventDefault(); onCardClick(video) }}
     >
       <div
         className="relative w-full aspect-[9/16] bg-zinc-800 rounded-xl overflow-hidden"
@@ -422,6 +422,7 @@ const ShortsCarousel = memo(function ShortsCarousel({
   hasMore,
   onLoadMore,
   onStopAll,
+  onCardClick,
 }: {
   shorts: Video[]
   lang: Lang
@@ -431,6 +432,7 @@ const ShortsCarousel = memo(function ShortsCarousel({
   hasMore: boolean
   onLoadMore: () => void
   onStopAll: () => void
+  onCardClick: (video: Video) => void
 }) {
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const scrollRef   = useRef<HTMLDivElement>(null)
@@ -528,7 +530,7 @@ const ShortsCarousel = memo(function ShortsCarousel({
             isHovered={hoveredId === video.video_id}
             onMouseEnter={() => setHoveredId(video.video_id)}
             onMouseLeave={() => setHoveredId(null)}
-            onCardClick={onStopAll}
+            onCardClick={onCardClick}
           />
         ))}
         {/* 가로 스크롤 끝 sentinel — has_more일 때만 존재 */}
@@ -814,9 +816,14 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
       setIsRefreshing(true)
       feedCacheRef.current.delete(currentPersona.id)  // 캐시 무효화
       try {
-        const res = await fetch(`/api/feed/${currentPersona.id}?offset=0&limit=200`)
-        if (!res.ok) throw new Error('fetch failed')
-        const data: FeedPageResponse = await res.json()
+        // 피드 + Shorts 병렬 재fetch
+        const [feedRes, shortsRes] = await Promise.all([
+          fetch(`/api/feed/${currentPersona.id}?offset=0&limit=200`),
+          fetch(`/api/feed/shorts/${currentPersona.id}?offset=0&limit=100`),
+        ])
+        if (!feedRes.ok) throw new Error('fetch failed')
+
+        const data: FeedPageResponse = await feedRes.json()
         setCachedFeed(currentPersona.id, data)
         const shuffled = weightedShuffle(data.videos)
         allVideosRef.current = shuffled
@@ -824,6 +831,18 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
         setHasMore(shuffled.length > FEED_PAGE)
         setNextOffset(FEED_PAGE)
         setTotal(data.total_accumulated ?? shuffled.length)
+
+        // Shorts 재셔플 — 피드와 함께 Pull-to-Refresh 시 순서 갱신
+        if (shortsRes.ok) {
+          const shortsData = await shortsRes.json()
+          if (shortsData?.videos) {
+            stopAllPlayback()
+            setShorts(weightedShuffle(shortsData.videos))
+            setShortsHasMore(false)
+            setShortsNextOffset(shortsData.videos.length)
+          }
+        }
+
         window.scrollTo({ top: 0, behavior: 'instant' })
       } catch { /* 실패 시 현재 피드 유지 */ }
       finally { setIsRefreshing(false) }
@@ -963,6 +982,28 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     setShortPlayId(null)
     setRegularPlayId(null)
   }, [])
+
+  // Shorts 클릭 — 모바일에서 YouTube 앱으로 열기 (일반 피드 handleVideoClick과 동일 딥링크 로직)
+  const handleShortsClick = useCallback((video: Video) => {
+    stopAllPlayback()
+    gtag('shorts_click', { video_id: video.video_id, persona_id: currentPersona.id, lang })
+    const ua = navigator.userAgent
+    const isIOS = /iPhone|iPad|iPod/i.test(ua)
+    const isAndroid = /Android/i.test(ua)
+    if (isIOS) {
+      const appUrl = `vnd.youtube://${video.video_id}`
+      const webUrl = `https://www.youtube.com/shorts/${video.video_id}`
+      const start = Date.now()
+      window.location.href = appUrl
+      setTimeout(() => {
+        if (Date.now() - start < 1500) window.open(webUrl, '_blank')
+      }, 300)
+    } else if (isAndroid) {
+      window.location.href = `intent://www.youtube.com/shorts/${video.video_id}#Intent;scheme=https;package=com.google.android.youtube;S.browser_fallback_url=https://www.youtube.com/shorts/${video.video_id};end`
+    } else {
+      window.open(`https://www.youtube.com/shorts/${video.video_id}`, '_blank')
+    }
+  }, [currentPersona.id, lang, stopAllPlayback])
 
   const handleVideoClick = useCallback((video: Video, title: string, idx: number) => {
     stopAllPlayback()  // 클릭 시 현재 재생 즉시 중단
@@ -1137,6 +1178,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
             hasMore={shortsHasMore}
             onLoadMore={loadMoreShorts}
             onStopAll={stopAllPlayback}
+            onCardClick={handleShortsClick}
           />
 
           {videos.length === 0 && !navigating && (
