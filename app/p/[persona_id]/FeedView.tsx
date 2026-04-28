@@ -595,8 +595,6 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
   const [total, setTotal] = useState(0)
   // 초기 클라이언트 fetch 완료 전 로딩 상태
   const [isInitialLoading, setIsInitialLoading] = useState(true)
-  // fetch 완료 후 실제로 영상이 0개인 경우 — "피드 없음" 표시용
-  const [isEmpty, setIsEmpty] = useState(false)
   const [showFeedback, setShowFeedback] = useState(false)
   const [navigating, setNavigating] = useState(false)
   // PTR 완료 후 fade-in 제어 — false: 콘텐츠 숨김(no-transition), true: fade-in(300ms)
@@ -921,9 +919,8 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
         setNextOffset(FEED_PAGE)
         setTotal(data.total_accumulated ?? shuffled.length)
         setCachedFeed(persona.id, data, shuffled)
-        setIsEmpty(shuffled.length === 0)
         setIsInitialLoading(false)
-        setContentReady(true)
+        setContentReady(true)   // 초기 로드 완료 → fade-in
       })
       .catch(() => { setIsInitialLoading(false); setContentReady(true) })
     return () => { cancelled = true }
@@ -961,7 +958,10 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
       return
     }
 
-    // 캐시 미스 — 기존 콘텐츠 유지하며 백그라운드 fetch (progress bar만 표시)
+    // 캐시 미스 — API 호출 (전체 풀 로드)
+    setVideos([])
+    setHasMore(false)
+    setNextOffset(0)
     setNavigating(true)
 
     try {
@@ -976,7 +976,6 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
       setHasMore(shuffled.length > FEED_PAGE)
       setNextOffset(FEED_PAGE)
       setTotal(data.total_accumulated ?? shuffled.length)
-      setIsEmpty(shuffled.length === 0)
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch {
       window.location.href = `/p/${nextPersonaId}`
@@ -1192,7 +1191,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
         </div>
       )}
 
-      {/* 초기 로딩 스피너 — 첫 진입 시 fetch 완료 전 */}
+      {/* 초기 로딩 스피너 */}
       {isInitialLoading && (
         <div className="flex items-center justify-center py-32 gap-2 text-zinc-500 text-sm">
           <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -1203,14 +1202,14 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
         </div>
       )}
 
-      {/* 피드 없음 — fetch 완료 후 실제로 영상이 0개인 경우만 */}
-      {isEmpty && (
+      {/* 피드 없음 (로드 완료 후에도 영상 없는 경우) */}
+      {!isInitialLoading && videos.length === 0 && (
         <div className="flex items-center justify-center py-32 text-zinc-500 text-sm">
           {t('noFeed', lang)}
         </div>
       )}
 
-      {/* 피드 그리드 — 초기 로딩 완료 + 영상 있을 때 */}
+      {/* 피드 그리드 */}
       {!isInitialLoading && videos.length > 0 && (
         <main
           className="px-6 py-6 max-w-7xl mx-auto"
