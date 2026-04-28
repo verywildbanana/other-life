@@ -595,6 +595,8 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
   const [total, setTotal] = useState(0)
   // 초기 클라이언트 fetch 완료 전 로딩 상태
   const [isInitialLoading, setIsInitialLoading] = useState(true)
+  // fetch 완료 후 실제 영상이 0개인 경우 — "피드 없음" 표시용 (로딩 중에는 false 유지)
+  const [isEmpty, setIsEmpty] = useState(false)
   const [showFeedback, setShowFeedback] = useState(false)
   const [navigating, setNavigating] = useState(false)
   // PTR 완료 후 fade-in 제어 — false: 콘텐츠 숨김(no-transition), true: fade-in(300ms)
@@ -919,8 +921,9 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
         setNextOffset(FEED_PAGE)
         setTotal(data.total_accumulated ?? shuffled.length)
         setCachedFeed(persona.id, data, shuffled)
+        setIsEmpty(shuffled.length === 0)
         setIsInitialLoading(false)
-        setContentReady(true)   // 초기 로드 완료 → fade-in
+        setContentReady(true)
       })
       .catch(() => { setIsInitialLoading(false); setContentReady(true) })
     return () => { cancelled = true }
@@ -976,6 +979,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
       setHasMore(shuffled.length > FEED_PAGE)
       setNextOffset(FEED_PAGE)
       setTotal(data.total_accumulated ?? shuffled.length)
+      setIsEmpty(shuffled.length === 0)
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch {
       window.location.href = `/p/${nextPersonaId}`
@@ -1202,8 +1206,8 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
         </div>
       )}
 
-      {/* 피드 없음 (로드 완료 후에도 영상 없는 경우) */}
-      {!isInitialLoading && videos.length === 0 && (
+      {/* 피드 없음 — fetch 완료 후 실제로 영상 0개일 때만 */}
+      {isEmpty && (
         <div className="flex items-center justify-center py-32 text-zinc-500 text-sm">
           {t('noFeed', lang)}
         </div>
