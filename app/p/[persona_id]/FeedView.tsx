@@ -595,6 +595,8 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
   const [total, setTotal] = useState(feed?.total_accumulated ?? 0)
   const [showFeedback, setShowFeedback] = useState(false)
   const [navigating, setNavigating] = useState(false)
+  // PTR 완료 후 fade-in 제어 — false: 콘텐츠 숨김(no-transition), true: fade-in(300ms)
+  const [contentReady, setContentReady] = useState(true)
   // hover 미리보기 — 현재 hover 중인 video_id (데스크톱)
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -644,8 +646,10 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
       .then(r => r.ok ? r.json() : null)
       .then(d => {
         if (!cancelled && d?.videos) {
-          setShorts(weightedShuffle(d.videos))   // 전체 셔플 — 매 방문마다 다른 순서
-          setShortsHasMore(false)                // 전체 로드 완료 → 추가 fetch 불필요
+          const shuffledShorts = weightedShuffle(d.videos)
+          shortsOrderCacheRef.current.set(currentPersona.id, shuffledShorts)  // 순서 캐시 저장
+          setShorts(shuffledShorts)
+          setShortsHasMore(false)
           setShortsNextOffset(d.videos.length)
         }
       })
@@ -674,21 +678,27 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
 
   // ── 피드 캐시 (TTL: 1시간) ─────────────────────────────────────────────────
   const FEED_CACHE_TTL_MS = 60 * 60 * 1000
-  type FeedCacheEntry = { data: FeedPageResponse; cachedAt: number }
+  type FeedCacheEntry = {
+    data: FeedPageResponse
+    shuffled: Video[]   // 최초 셔플된 순서 — 페르소나 전환 시 그대로 재사용 (재셔플 없음)
+    cachedAt: number
+  }
   const feedCacheRef = useRef<Map<string, FeedCacheEntry>>(new Map())
+  // Shorts 셔플 순서 캐시 — 페르소나 전환 시 재사용 (feedCacheRef와 별도 관리)
+  const shortsOrderCacheRef = useRef<Map<string, Video[]>>(new Map())
 
-  function getCachedFeed(personaId: string): FeedPageResponse | null {
+  function getCachedFeed(personaId: string): FeedCacheEntry | null {
     const entry = feedCacheRef.current.get(personaId)
     if (!entry) return null
     if (Date.now() - entry.cachedAt > FEED_CACHE_TTL_MS) {
       feedCacheRef.current.delete(personaId)
       return null
     }
-    return entry.data
+    return entry
   }
 
-  function setCachedFeed(personaId: string, data: FeedPageResponse) {
-    feedCacheRef.current.set(personaId, { data, cachedAt: Date.now() })
+  function setCachedFeed(personaId: string, data: FeedPageResponse, shuffled: Video[]) {
+    feedCacheRef.current.set(personaId, { data, shuffled, cachedAt: Date.now() })
   }
 
   // ── Pull to Refresh ────────────────────────────────────────────────────────
@@ -823,6 +833,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
 
     async function doRefresh() {
       setIsRefreshing(true)
+      setContentReady(false)                          // 콘텐츠 즉시 숨김 (no-transition)
       feedCacheRef.current.delete(currentPersona.id)  // 캐시 무효화
       try {
         // 피드 + Shorts 병렬 재fetch
@@ -833,7 +844,6 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
         if (!feedRes.ok) throw new Error('fetch failed')
 
         const data: FeedPageResponse = await feedRes.json()
-        setCachedFeed(currentPersona.id, data)
         const shuffled = weightedShuffle(data.videos)
         allVideosRef.current = shuffled
         setVideos(shuffled.slice(0, FEED_PAGE))
@@ -841,19 +851,26 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
         setNextOffset(FEED_PAGE)
         setTotal(data.total_accumulated ?? shuffled.length)
 
-        // Shorts 재셔플 — 피드와 함께 Pull-to-Refresh 시 순서 갱신
+        // Shorts 재셔플
         if (shortsRes.ok) {
           const shortsData = await shortsRes.json()
           if (shortsData?.videos) {
+            const newShorts = weightedShuffle(shortsData.videos)
             stopAllPlayback()
-            setShorts(weightedShuffle(shortsData.videos))
+            shortsOrderCacheRef.current.set(currentPersona.id, newShorts)
+            setShorts(newShorts)
             setShortsHasMore(false)
-            setShortsNextOffset(shortsData.videos.length)
+            setShortsNextOffset(newShorts.length)
           }
         }
 
+        setCachedFeed(currentPersona.id, data, shuffled)  // 셔플 순서 캐시 저장
+
         window.scrollTo({ top: 0, behavior: 'instant' })
-      } catch { /* 실패 시 현재 피드 유지 */ }
+        // React DOM 커밋 완료 대기 → 새 콘텐츠가 DOM에 반영된 후 fade-in 시작
+        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
+        setContentReady(true)                           // 300ms fade-in
+      } catch { setContentReady(true) /* 에러 시 콘텐츠 복원 */ }
       finally { setIsRefreshing(false) }
     }
 
@@ -903,6 +920,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
         setHasMore(shuffled.length > FEED_PAGE)
         setNextOffset(FEED_PAGE)
         setTotal(data.total_accumulated ?? shuffled.length)
+        setCachedFeed(persona.id, data, shuffled)  // 캐시 저장 — 페르소나 전환 시 재사용
       })
       .catch(() => {/* 에러 시 SSR 초기 데이터 그대로 유지 */})
     return () => { cancelled = true }
@@ -921,15 +939,21 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     setCurrentPersona(nextPersona)
     window.history.pushState(null, '', `/p/${nextPersonaId}`)
 
-    // 캐시 히트 — 캐시 데이터를 재셔플해 표시 (매 전환마다 다른 순서)
+    // 캐시 히트 — 저장된 셔플 순서 그대로 표시 (재셔플 없음 → 전환 시 순서 안정)
     const cached = getCachedFeed(nextPersonaId)
     if (cached) {
-      const shuffled = weightedShuffle(cached.videos)
-      allVideosRef.current = shuffled
-      setVideos(shuffled.slice(0, FEED_PAGE))
-      setHasMore(shuffled.length > FEED_PAGE)
+      allVideosRef.current = cached.shuffled
+      setVideos(cached.shuffled.slice(0, FEED_PAGE))
+      setHasMore(cached.shuffled.length > FEED_PAGE)
       setNextOffset(FEED_PAGE)
-      setTotal(cached.total_accumulated)
+      setTotal(cached.data.total_accumulated)
+      // Shorts 캐시 히트 시 재사용 (없으면 useEffect가 별도 fetch)
+      const cachedShorts = shortsOrderCacheRef.current.get(nextPersonaId)
+      if (cachedShorts && cachedShorts.length > 0) {
+        setShorts(cachedShorts)
+        setShortsHasMore(false)
+        setShortsNextOffset(cachedShorts.length)
+      }
       window.scrollTo({ top: 0, behavior: 'smooth' })
       return
     }
@@ -945,8 +969,8 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
       if (!res.ok) throw new Error('fetch failed')
       const data: FeedPageResponse = await res.json()
 
-      setCachedFeed(nextPersonaId, data)
       const shuffled = weightedShuffle(data.videos)
+      setCachedFeed(nextPersonaId, data, shuffled)
       allVideosRef.current = shuffled
       setVideos(shuffled.slice(0, FEED_PAGE))
       setHasMore(shuffled.length > FEED_PAGE)
@@ -1176,7 +1200,13 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
 
       {/* 피드 그리드 */}
       {(feed || videos.length > 0) && (
-        <main className="px-6 py-6 max-w-7xl mx-auto">
+        <main
+          className="px-6 py-6 max-w-7xl mx-auto"
+          style={{
+            opacity: contentReady ? 1 : 0,
+            transition: contentReady ? 'opacity 300ms ease' : 'none',
+          }}
+        >
           {/* Shorts 캐로셀 — 수평 스크롤, 최신 콘텐츠가 왼쪽 */}
           <ShortsCarousel
             shorts={shorts}
