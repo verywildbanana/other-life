@@ -362,6 +362,15 @@ const ShortCard = memo(function ShortCard({
     if (showIframe) setIframeActive(true)
   }, [showIframe])
 
+  // 앱 복귀 시 iframe 제거 → 썸네일 복원 (YouTube 앱에서 돌아올 때 검은 화면 방지)
+  useEffect(() => {
+    function onVisibility() {
+      if (!document.hidden) setIframeActive(false)
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => document.removeEventListener('visibilitychange', onVisibility)
+  }, [])
+
   return (
     <a
       href={video.url}
