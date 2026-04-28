@@ -865,11 +865,8 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
         }
 
         setCachedFeed(currentPersona.id, data, shuffled)  // 셔플 순서 캐시 저장
-
+        setContentReady(true)   // setVideos와 같은 동기 블록 → React 18이 한 번에 배치 렌더
         window.scrollTo({ top: 0, behavior: 'instant' })
-        // React DOM 커밋 완료 대기 → 새 콘텐츠가 DOM에 반영된 후 fade-in 시작
-        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
-        setContentReady(true)                           // 300ms fade-in
       } catch { setContentReady(true) /* 에러 시 콘텐츠 복원 */ }
       finally { setIsRefreshing(false) }
     }
