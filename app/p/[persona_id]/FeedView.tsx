@@ -836,7 +836,6 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
 
     async function doRefresh() {
       setIsRefreshing(true)
-      setContentReady(false)                          // 콘텐츠 즉시 숨김 (no-transition)
       feedCacheRef.current.delete(currentPersona.id)  // 캐시 무효화
       try {
         // 피드 + Shorts 병렬 재fetch
@@ -867,10 +866,9 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
           }
         }
 
-        setCachedFeed(currentPersona.id, data, shuffled)  // 셔플 순서 캐시 저장
-        setContentReady(true)   // setVideos와 같은 동기 블록 → React 18이 한 번에 배치 렌더
+        setCachedFeed(currentPersona.id, data, shuffled)
         window.scrollTo({ top: 0, behavior: 'instant' })
-      } catch { setContentReady(true) /* 에러 시 콘텐츠 복원 */ }
+      } catch { /* 실패 시 현재 피드 유지 */ }
       finally { setIsRefreshing(false) }
     }
 
