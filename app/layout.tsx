@@ -13,6 +13,12 @@ const geist = Geist({
 const BASE_URL = 'https://other-life.vercel.app'
 
 export const metadata: Metadata = {
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'Persona Feed',
+  },
   title: 'Persona Feed — YouTube 알고리즘 시뮬레이터',
   description:
     '페르소나 기반 YouTube 피드 시뮬레이터. 다양한 관심사를 가진 페르소나가 실제로 어떤 영상을 추천받는지 확인하세요.',
@@ -50,6 +56,10 @@ export default function RootLayout({
   return (
     <html lang="ko" className={`${geist.variable} h-full dark`}>
       <head>
+        {/* PWA */}
+        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="theme-color" content="#09090b" />
         {/* Google Analytics 4 */}
         <Script
           src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
