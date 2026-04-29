@@ -122,7 +122,7 @@ export async function getPaginatedFeed(
   // 최신순 + 점수순 정렬, offset 기반 페이지네이션
   const { data: rows } = await supabase
     .from('videos')
-    .select('video_id, persona_id, title, channel, url, thumbnail_url, view_count, keyword, feed_source, collected_date, published_at, titles_i18n, summary')
+    .select('video_id, persona_id, title, channel, url, thumbnail_url, view_count, keyword, feed_source, collected_date, published_at, titles_i18n, summary_i18n')
     .eq('persona_id', personaId)
     .order('collected_date', { ascending: false })
     .order('score', { ascending: false })

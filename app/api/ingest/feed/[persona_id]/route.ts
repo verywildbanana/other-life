@@ -76,7 +76,7 @@ export async function POST(
       collected_date: today,
       published_at: item.published_at ?? null,
       titles_i18n: item.titles_i18n ?? {},
-      summary: item.summary ?? null,
+      summary_i18n: item.summary_i18n ?? null,
     })
   }
 

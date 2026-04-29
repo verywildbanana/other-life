@@ -315,9 +315,9 @@ const VideoCard = memo(function VideoCard({
           <span className="text-xs text-zinc-500 truncate block max-w-full mb-1.5">
             {video.channel}
           </span>
-          {video.summary && (
-            <p className="text-xs text-zinc-400 leading-relaxed line-clamp-2 mb-1.5">
-              {video.summary}
+          {video.summary_i18n && (video.summary_i18n[lang] || video.summary_i18n['en']) && (
+            <p className="text-xs text-zinc-400 leading-relaxed mb-1.5">
+              {video.summary_i18n[lang] || video.summary_i18n['en']}
             </p>
           )}
           <div className="flex items-center gap-1.5">
