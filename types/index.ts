@@ -13,6 +13,7 @@ export interface Video {
   collected_date: string | null
   published_at: string | null  // YouTube 실제 업로드 날짜 (YYYY-MM-DD)
   titles_i18n: Record<string, string>
+  summary?: string | null      // Gemini 요약 (대본 없으면 null)
 }
 
 export interface DateGroup {
@@ -56,4 +57,5 @@ export interface IngestItem {
   titles_i18n: Record<string, string>
   published_at?: string | null  // YouTube 실제 업로드 날짜 (YYYY-MM-DD), 옵셔널
   keyword?: string               // 수집 키워드 (shorts 파이프라인에서 사용)
+  summary?: string | null        // Gemini 요약 텍스트
 }
