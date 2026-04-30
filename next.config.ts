@@ -17,13 +17,8 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'i.ytimg.com',
-        pathname: '/vi/**',
-      },
-    ],
+    // Vercel 이미지 최적화 무료 한도 초과(402) 우회 — i.ytimg.com 직접 로드
+    unoptimized: true,
   },
   async headers() {
     return [
