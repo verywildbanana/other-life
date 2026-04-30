@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef, memo } from 'react'
-import Image from 'next/image'
 import { FeedPageResponse, Video, Persona } from '@/types'
 
 // ── 페이지 전환 Progress Bar ───────────────────────────────────────────────────
@@ -247,11 +246,12 @@ const VideoCard = memo(function VideoCard({
   const title = getLangTitle(video, lang)
   const dateLabel = video.published_at ?? video.collected_date
   const [summaryOpen, setSummaryOpen] = useState(false)
-  // DB thumbnail_url이 hqdefault인 경우 mqdefault로 정규화 (hqdefault는 없는 영상 있음)
+  // mqdefault → 0.jpg(첫 프레임) → default.jpg 순서로 fallback
+  // hqdefault는 없는 영상 많으므로 mqdefault로 정규화
   const [thumbSrc, setThumbSrc] = useState(() => {
     const url = video.thumbnail_url
     if (!url) return `https://i.ytimg.com/vi/${video.video_id}/mqdefault.jpg`
-    if (url.includes('hqdefault')) return url.replace('hqdefault', 'mqdefault')
+    if (url.includes('hqdefault')) return `https://i.ytimg.com/vi/${video.video_id}/mqdefault.jpg`
     return url
   })
 
@@ -294,28 +294,21 @@ const VideoCard = memo(function VideoCard({
         className="relative w-full aspect-video bg-zinc-800"
         style={{ contain: 'paint', isolation: 'isolate', transform: 'translateZ(0)' }}
       >
-        {thumbSrc ? (
-          <Image
-            src={thumbSrc}
-            alt=""
-            fill
-            unoptimized
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
-            className="object-cover"
-            priority={idx < 4}
-            onError={() => {
-              // mqdefault 실패 → default.jpg (120x90, 항상 존재) → 빈 상태
-              if (!thumbSrc.includes('default.jpg') || thumbSrc.includes('mqdefault') || thumbSrc.includes('hqdefault')) {
-                setThumbSrc(`https://i.ytimg.com/vi/${video.video_id}/default.jpg`)
-              } else {
-                setThumbSrc('')
-              }
-            }}
-          />
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center bg-zinc-800" />
-          </div>
-        )}
+        {/* next/image 대신 <img> 직접 사용 — Android에서 fill+unoptimized 렌더링 문제 우회 */}
+        <img
+          src={thumbSrc}
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover"
+          onError={() => {
+            // mqdefault 실패 → 0.jpg(첫 프레임) → default.jpg 순으로 fallback
+            if (thumbSrc.includes('mqdefault')) {
+              setThumbSrc(`https://i.ytimg.com/vi/${video.video_id}/0.jpg`)
+            } else if (thumbSrc.includes('0.jpg') && !thumbSrc.includes('mqdefault')) {
+              setThumbSrc(`https://i.ytimg.com/vi/${video.video_id}/default.jpg`)
+            }
+            // default.jpg 실패 시 bg-zinc-800 배경만 보임
+          }}
+        />
         {/* iframeActive: 한 번 true가 되면 DOM에서 제거하지 않음 (unmount 자체가 플래시 원인)
             showIframe: opacity + pointer-events로만 show/hide → 레이어 유지
             transition-opacity: 마운트 직후 YouTube 흰 로딩 화면 fade-in으로 완화 */}
@@ -412,7 +405,7 @@ const ShortCard = memo(function ShortCard({
   const [thumbSrc, setThumbSrc] = useState(() => {
     const url = video.thumbnail_url
     if (!url) return `https://i.ytimg.com/vi/${video.video_id}/mqdefault.jpg`
-    if (url.includes('hqdefault')) return url.replace('hqdefault', 'mqdefault')
+    if (url.includes('hqdefault')) return `https://i.ytimg.com/vi/${video.video_id}/mqdefault.jpg`
     return url
   })
   // VideoCard와 동일한 lazy-mount 패턴 — 한 번 mount 후 절대 unmount 안 함
@@ -446,24 +439,19 @@ const ShortCard = memo(function ShortCard({
         className="relative w-full aspect-[9/16] bg-zinc-800 rounded-xl overflow-hidden"
         style={{ contain: 'paint', isolation: 'isolate', transform: 'translateZ(0)' }}
       >
-        {/* 썸네일 */}
-        {thumbSrc && (
-          <Image
-            src={thumbSrc}
-            alt=""
-            fill
-            unoptimized
-            sizes="144px"
-            className="object-cover"
-            onError={() => {
-              if (!thumbSrc.includes('default.jpg') || thumbSrc.includes('mqdefault') || thumbSrc.includes('hqdefault')) {
-                setThumbSrc(`https://i.ytimg.com/vi/${video.video_id}/default.jpg`)
-              } else {
-                setThumbSrc('')
-              }
-            }}
-          />
-        )}
+        {/* 썸네일 — <img> 직접 사용 (Android fill+unoptimized 렌더링 이슈 우회) */}
+        <img
+          src={thumbSrc}
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover"
+          onError={() => {
+            if (thumbSrc.includes('mqdefault')) {
+              setThumbSrc(`https://i.ytimg.com/vi/${video.video_id}/0.jpg`)
+            } else if (thumbSrc.includes('0.jpg') && !thumbSrc.includes('mqdefault')) {
+              setThumbSrc(`https://i.ytimg.com/vi/${video.video_id}/default.jpg`)
+            }
+          }}
+        />
         {/* 자동재생 iframe — lazy mount, 음소거 */}
         {iframeActive && (
           <iframe
