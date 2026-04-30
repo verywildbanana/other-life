@@ -248,7 +248,7 @@ const VideoCard = memo(function VideoCard({
   const dateLabel = video.published_at ?? video.collected_date
   const [summaryOpen, setSummaryOpen] = useState(false)
   const [thumbSrc, setThumbSrc] = useState(
-    video.thumbnail_url || `https://i.ytimg.com/vi/${video.video_id}/hqdefault.jpg`
+    video.thumbnail_url || `https://i.ytimg.com/vi/${video.video_id}/mqdefault.jpg`
   )
 
   // 툴팁 외부 클릭 시 닫기
@@ -293,17 +293,15 @@ const VideoCard = memo(function VideoCard({
         {thumbSrc ? (
           <Image
             src={thumbSrc}
-            alt={video.title ?? ''}
+            alt=""
             fill
             unoptimized
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
             className="object-cover"
             priority={idx < 4}
             onError={() => {
-              // hqdefault 실패 → mqdefault → default 순으로 fallback
-              if (thumbSrc.includes('hqdefault')) {
-                setThumbSrc(`https://i.ytimg.com/vi/${video.video_id}/mqdefault.jpg`)
-              } else if (thumbSrc.includes('mqdefault')) {
+              // mqdefault 실패 → default 순으로 fallback
+              if (thumbSrc.includes('mqdefault')) {
                 setThumbSrc(`https://i.ytimg.com/vi/${video.video_id}/default.jpg`)
               } else {
                 setThumbSrc('')
@@ -409,7 +407,7 @@ const ShortCard = memo(function ShortCard({
 }: ShortCardProps) {
   const title = getLangTitle(video, lang)
   const [thumbSrc, setThumbSrc] = useState(
-    video.thumbnail_url || `https://i.ytimg.com/vi/${video.video_id}/hqdefault.jpg`
+    video.thumbnail_url || `https://i.ytimg.com/vi/${video.video_id}/mqdefault.jpg`
   )
   // VideoCard와 동일한 lazy-mount 패턴 — 한 번 mount 후 절대 unmount 안 함
   const [iframeActive, setIframeActive] = useState(false)
@@ -446,15 +444,13 @@ const ShortCard = memo(function ShortCard({
         {thumbSrc && (
           <Image
             src={thumbSrc}
-            alt={title ?? ''}
+            alt=""
             fill
             unoptimized
             sizes="144px"
             className="object-cover"
             onError={() => {
-              if (thumbSrc.includes('hqdefault')) {
-                setThumbSrc(`https://i.ytimg.com/vi/${video.video_id}/mqdefault.jpg`)
-              } else if (thumbSrc.includes('mqdefault')) {
+              if (thumbSrc.includes('mqdefault')) {
                 setThumbSrc(`https://i.ytimg.com/vi/${video.video_id}/default.jpg`)
               } else {
                 setThumbSrc('')
