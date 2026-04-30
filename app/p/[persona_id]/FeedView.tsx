@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef, memo } from 'react'
+import Image from 'next/image'
 import { FeedPageResponse, Video, Persona } from '@/types'
 
 // ── 페이지 전환 Progress Bar ───────────────────────────────────────────────────
@@ -294,19 +295,20 @@ const VideoCard = memo(function VideoCard({
         className="relative w-full aspect-video bg-zinc-800"
         style={{ contain: 'paint', isolation: 'isolate', transform: 'translateZ(0)' }}
       >
-        {/* next/image 대신 <img> 직접 사용 — Android에서 fill+unoptimized 렌더링 문제 우회 */}
-        <img
+        {/* /_next/image 프록시 경유 → 서버에서 i.ytimg.com fetch → Android same-origin 수신 */}
+        <Image
           src={thumbSrc}
           alt=""
-          className="absolute inset-0 w-full h-full object-cover"
+          fill
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
+          className="object-cover"
+          priority={idx < 4}
           onError={() => {
-            // mqdefault 실패 → 0.jpg(첫 프레임) → default.jpg 순으로 fallback
             if (thumbSrc.includes('mqdefault')) {
               setThumbSrc(`https://i.ytimg.com/vi/${video.video_id}/0.jpg`)
-            } else if (thumbSrc.includes('0.jpg') && !thumbSrc.includes('mqdefault')) {
+            } else if (thumbSrc.includes('0.jpg')) {
               setThumbSrc(`https://i.ytimg.com/vi/${video.video_id}/default.jpg`)
             }
-            // default.jpg 실패 시 bg-zinc-800 배경만 보임
           }}
         />
         {/* iframeActive: 한 번 true가 되면 DOM에서 제거하지 않음 (unmount 자체가 플래시 원인)
@@ -439,15 +441,17 @@ const ShortCard = memo(function ShortCard({
         className="relative w-full aspect-[9/16] bg-zinc-800 rounded-xl overflow-hidden"
         style={{ contain: 'paint', isolation: 'isolate', transform: 'translateZ(0)' }}
       >
-        {/* 썸네일 — <img> 직접 사용 (Android fill+unoptimized 렌더링 이슈 우회) */}
-        <img
+        {/* 썸네일 — /_next/image 프록시 경유 */}
+        <Image
           src={thumbSrc}
           alt=""
-          className="absolute inset-0 w-full h-full object-cover"
+          fill
+          sizes="144px"
+          className="object-cover"
           onError={() => {
             if (thumbSrc.includes('mqdefault')) {
               setThumbSrc(`https://i.ytimg.com/vi/${video.video_id}/0.jpg`)
-            } else if (thumbSrc.includes('0.jpg') && !thumbSrc.includes('mqdefault')) {
+            } else if (thumbSrc.includes('0.jpg')) {
               setThumbSrc(`https://i.ytimg.com/vi/${video.video_id}/default.jpg`)
             }
           }}
