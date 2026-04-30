@@ -247,6 +247,9 @@ const VideoCard = memo(function VideoCard({
   const title = getLangTitle(video, lang)
   const dateLabel = video.published_at ?? video.collected_date
   const [summaryOpen, setSummaryOpen] = useState(false)
+  const [thumbSrc, setThumbSrc] = useState(
+    video.thumbnail_url || `https://i.ytimg.com/vi/${video.video_id}/hqdefault.jpg`
+  )
 
   // 툴팁 외부 클릭 시 닫기
   useEffect(() => {
@@ -287,14 +290,24 @@ const VideoCard = memo(function VideoCard({
         className="relative w-full aspect-video bg-zinc-800"
         style={{ contain: 'paint', isolation: 'isolate', transform: 'translateZ(0)' }}
       >
-        {video.thumbnail_url ? (
+        {thumbSrc ? (
           <Image
-            src={video.thumbnail_url}
+            src={thumbSrc}
             alt={video.title ?? ''}
             fill
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
             className="object-cover"
             priority={idx < 4}
+            onError={() => {
+              // hqdefault 실패 → mqdefault → default 순으로 fallback
+              if (thumbSrc.includes('hqdefault')) {
+                setThumbSrc(`https://i.ytimg.com/vi/${video.video_id}/mqdefault.jpg`)
+              } else if (thumbSrc.includes('mqdefault')) {
+                setThumbSrc(`https://i.ytimg.com/vi/${video.video_id}/default.jpg`)
+              } else {
+                setThumbSrc('')
+              }
+            }}
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center text-zinc-600 text-xs">
@@ -394,6 +407,9 @@ const ShortCard = memo(function ShortCard({
   video, lang, isPlaying, isHovered, onMouseEnter, onMouseLeave, onCardClick,
 }: ShortCardProps) {
   const title = getLangTitle(video, lang)
+  const [thumbSrc, setThumbSrc] = useState(
+    video.thumbnail_url || `https://i.ytimg.com/vi/${video.video_id}/hqdefault.jpg`
+  )
   // VideoCard와 동일한 lazy-mount 패턴 — 한 번 mount 후 절대 unmount 안 함
   const [iframeActive, setIframeActive] = useState(false)
   const showIframe = isPlaying || isHovered
@@ -426,13 +442,22 @@ const ShortCard = memo(function ShortCard({
         style={{ contain: 'paint', isolation: 'isolate', transform: 'translateZ(0)' }}
       >
         {/* 썸네일 */}
-        {video.thumbnail_url && (
+        {thumbSrc && (
           <Image
-            src={video.thumbnail_url}
+            src={thumbSrc}
             alt={title ?? ''}
             fill
             sizes="144px"
             className="object-cover"
+            onError={() => {
+              if (thumbSrc.includes('hqdefault')) {
+                setThumbSrc(`https://i.ytimg.com/vi/${video.video_id}/mqdefault.jpg`)
+              } else if (thumbSrc.includes('mqdefault')) {
+                setThumbSrc(`https://i.ytimg.com/vi/${video.video_id}/default.jpg`)
+              } else {
+                setThumbSrc('')
+              }
+            }}
           />
         )}
         {/* 자동재생 iframe — lazy mount, 음소거 */}
