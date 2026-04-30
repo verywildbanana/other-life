@@ -295,6 +295,7 @@ const VideoCard = memo(function VideoCard({
             src={thumbSrc}
             alt={video.title ?? ''}
             fill
+            unoptimized
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
             className="object-cover"
             priority={idx < 4}
@@ -447,6 +448,7 @@ const ShortCard = memo(function ShortCard({
             src={thumbSrc}
             alt={title ?? ''}
             fill
+            unoptimized
             sizes="144px"
             className="object-cover"
             onError={() => {
@@ -650,8 +652,17 @@ interface Props {
 }
 
 export default function FeedView({ feed, persona, allPersonas }: Props) {
-  const [lang, setLang] = useState<Lang>('ko')
-  const [currentPersona, setCurrentPersona] = useState<Persona>(persona)
+  const [lang, setLang] = useState<Lang>(() => {
+    if (typeof window === 'undefined') return 'ko'
+    const saved = localStorage.getItem('feed_lang') as Lang | null
+    return (saved && ['ko', 'en', 'ja'].includes(saved)) ? saved : 'ko'
+  })
+  const [currentPersona, setCurrentPersona] = useState<Persona>(() => {
+    if (typeof window === 'undefined') return persona
+    const savedId = localStorage.getItem('feed_last_persona')
+    if (!savedId) return persona
+    return allPersonas.find(p => p.id === savedId) ?? persona
+  })
   const [videos, setVideos] = useState<Video[]>([])
   const [hasMore, setHasMore] = useState(false)
   const [nextOffset, setNextOffset] = useState(0)
@@ -775,21 +786,6 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
   const [isRefreshing, setIsRefreshing] = useState(false)
   const pullStartYRef = useRef<number | null>(null)
   const PULL_THRESHOLD = 72  // px — 이 이상 당기면 새로고침 트리거
-
-  // 언어 설정 복원 (localStorage)
-  useEffect(() => {
-    const saved = localStorage.getItem('feed_lang') as Lang | null
-    if (saved && ['ko', 'en', 'ja'].includes(saved)) setLang(saved)
-  }, [])
-
-  // 마지막 페르소나 복원 (localStorage)
-  useEffect(() => {
-    const savedId = localStorage.getItem('feed_last_persona')
-    if (!savedId || savedId === currentPersona.id) return
-    const savedPersona = allPersonas.find(p => p.id === savedId)
-    if (savedPersona) switchPersona(savedId)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
 
   // 터치 기기 감지 — maxTouchPoints 사용 (hover 미디어쿼리는 Chrome DevTools 에뮬레이션에서도 true라 부정확)
   // maxTouchPoints > 0 이면 터치 기기(실제 모바일 + DevTools 에뮬레이션 모두 정확)
