@@ -247,14 +247,6 @@ const VideoCard = memo(function VideoCard({
   const title = getLangTitle(video, lang)
   const dateLabel = video.published_at ?? video.collected_date
   const [summaryOpen, setSummaryOpen] = useState(false)
-  // mqdefault → 0.jpg(첫 프레임) → default.jpg 순서로 fallback
-  // hqdefault는 없는 영상 많으므로 mqdefault로 정규화
-  const [thumbSrc, setThumbSrc] = useState(() => {
-    const url = video.thumbnail_url
-    if (!url) return `https://i.ytimg.com/vi/${video.video_id}/mqdefault.jpg`
-    if (url.includes('hqdefault')) return `https://i.ytimg.com/vi/${video.video_id}/mqdefault.jpg`
-    return url
-  })
 
   // 툴팁 외부 클릭 시 닫기
   useEffect(() => {
@@ -295,22 +287,16 @@ const VideoCard = memo(function VideoCard({
         className="relative w-full aspect-video bg-zinc-800"
         style={{ contain: 'paint', isolation: 'isolate', transform: 'translateZ(0)' }}
       >
-        {/* /_next/image 프록시 경유 → 서버에서 i.ytimg.com fetch → Android same-origin 수신 */}
-        <Image
-          src={thumbSrc}
-          alt=""
-          fill
-          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
-          className="object-cover"
-          priority={idx < 4}
-          onError={() => {
-            if (thumbSrc.includes('mqdefault')) {
-              setThumbSrc(`https://i.ytimg.com/vi/${video.video_id}/0.jpg`)
-            } else if (thumbSrc.includes('0.jpg')) {
-              setThumbSrc(`https://i.ytimg.com/vi/${video.video_id}/default.jpg`)
-            }
-          }}
-        />
+        {video.thumbnail_url ? (
+          <Image
+            src={video.thumbnail_url}
+            alt=""
+            fill
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
+            className="object-cover"
+            priority={idx < 4}
+          />
+        ) : null}
         {/* iframeActive: 한 번 true가 되면 DOM에서 제거하지 않음 (unmount 자체가 플래시 원인)
             showIframe: opacity + pointer-events로만 show/hide → 레이어 유지
             transition-opacity: 마운트 직후 YouTube 흰 로딩 화면 fade-in으로 완화 */}
@@ -404,12 +390,6 @@ const ShortCard = memo(function ShortCard({
   video, lang, isPlaying, isHovered, onMouseEnter, onMouseLeave, onCardClick,
 }: ShortCardProps) {
   const title = getLangTitle(video, lang)
-  const [thumbSrc, setThumbSrc] = useState(() => {
-    const url = video.thumbnail_url
-    if (!url) return `https://i.ytimg.com/vi/${video.video_id}/mqdefault.jpg`
-    if (url.includes('hqdefault')) return `https://i.ytimg.com/vi/${video.video_id}/mqdefault.jpg`
-    return url
-  })
   // VideoCard와 동일한 lazy-mount 패턴 — 한 번 mount 후 절대 unmount 안 함
   const [iframeActive, setIframeActive] = useState(false)
   const showIframe = isPlaying || isHovered
@@ -441,21 +421,16 @@ const ShortCard = memo(function ShortCard({
         className="relative w-full aspect-[9/16] bg-zinc-800 rounded-xl overflow-hidden"
         style={{ contain: 'paint', isolation: 'isolate', transform: 'translateZ(0)' }}
       >
-        {/* 썸네일 — /_next/image 프록시 경유 */}
-        <Image
-          src={thumbSrc}
-          alt=""
-          fill
-          sizes="144px"
-          className="object-cover"
-          onError={() => {
-            if (thumbSrc.includes('mqdefault')) {
-              setThumbSrc(`https://i.ytimg.com/vi/${video.video_id}/0.jpg`)
-            } else if (thumbSrc.includes('0.jpg')) {
-              setThumbSrc(`https://i.ytimg.com/vi/${video.video_id}/default.jpg`)
-            }
-          }}
-        />
+        {/* 썸네일 */}
+        {video.thumbnail_url && (
+          <Image
+            src={video.thumbnail_url}
+            alt=""
+            fill
+            sizes="144px"
+            className="object-cover"
+          />
+        )}
         {/* 자동재생 iframe — lazy mount, 음소거 */}
         {iframeActive && (
           <iframe
