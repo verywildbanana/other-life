@@ -193,6 +193,11 @@ const LABELS = {
     en: 'Feedback',
     ja: 'フィードバック',
   },
+  aiSummary: {
+    ko: 'AI 요약',
+    en: 'AI Summary',
+    ja: 'AI 要約',
+  },
 } as const
 
 function t(key: keyof typeof LABELS, lang: Lang): string {
@@ -351,7 +356,7 @@ const VideoCard = memo(function VideoCard({
                   }}
                   className="text-[10px] text-zinc-500 hover:text-zinc-300 border border-zinc-700 hover:border-zinc-500 px-1.5 py-0.5 rounded transition-colors"
                 >
-                  AI 요약
+                  {t('aiSummary', lang)}
                 </button>
                 {summaryOpen && (
                   <div
