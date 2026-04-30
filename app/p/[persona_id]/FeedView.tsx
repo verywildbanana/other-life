@@ -757,6 +757,15 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     if (saved && ['ko', 'en', 'ja'].includes(saved)) setLang(saved)
   }, [])
 
+  // 마지막 페르소나 복원 (localStorage)
+  useEffect(() => {
+    const savedId = localStorage.getItem('feed_last_persona')
+    if (!savedId || savedId === currentPersona.id) return
+    const savedPersona = allPersonas.find(p => p.id === savedId)
+    if (savedPersona) switchPersona(savedId)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // 터치 기기 감지 — maxTouchPoints 사용 (hover 미디어쿼리는 Chrome DevTools 에뮬레이션에서도 true라 부정확)
   // maxTouchPoints > 0 이면 터치 기기(실제 모바일 + DevTools 에뮬레이션 모두 정확)
   useEffect(() => {
@@ -974,6 +983,9 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     if (!nextPersona || nextPersonaId === currentPersona.id) return
 
     gtag('persona_switch', { from: currentPersona.id, to: nextPersonaId, lang })
+
+    // 마지막 선택 페르소나 저장
+    localStorage.setItem('feed_last_persona', nextPersonaId)
 
     // ref 즉시 갱신 — inflight loadMore가 응답 도착 시 stale 체크로 결과를 버리게 함
     activePersonaIdRef.current = nextPersonaId
