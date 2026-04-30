@@ -247,9 +247,13 @@ const VideoCard = memo(function VideoCard({
   const title = getLangTitle(video, lang)
   const dateLabel = video.published_at ?? video.collected_date
   const [summaryOpen, setSummaryOpen] = useState(false)
-  const [thumbSrc, setThumbSrc] = useState(
-    video.thumbnail_url || `https://i.ytimg.com/vi/${video.video_id}/mqdefault.jpg`
-  )
+  // DB thumbnail_url이 hqdefault인 경우 mqdefault로 정규화 (hqdefault는 없는 영상 있음)
+  const [thumbSrc, setThumbSrc] = useState(() => {
+    const url = video.thumbnail_url
+    if (!url) return `https://i.ytimg.com/vi/${video.video_id}/mqdefault.jpg`
+    if (url.includes('hqdefault')) return url.replace('hqdefault', 'mqdefault')
+    return url
+  })
 
   // 툴팁 외부 클릭 시 닫기
   useEffect(() => {
@@ -300,8 +304,8 @@ const VideoCard = memo(function VideoCard({
             className="object-cover"
             priority={idx < 4}
             onError={() => {
-              // mqdefault 실패 → default 순으로 fallback
-              if (thumbSrc.includes('mqdefault')) {
+              // mqdefault 실패 → default.jpg (120x90, 항상 존재) → 빈 상태
+              if (!thumbSrc.includes('default.jpg') || thumbSrc.includes('mqdefault') || thumbSrc.includes('hqdefault')) {
                 setThumbSrc(`https://i.ytimg.com/vi/${video.video_id}/default.jpg`)
               } else {
                 setThumbSrc('')
@@ -309,8 +313,7 @@ const VideoCard = memo(function VideoCard({
             }}
           />
         ) : (
-          <div className="absolute inset-0 flex items-center justify-center text-zinc-600 text-xs">
-            {t('noThumbnail', lang)}
+          <div className="absolute inset-0 flex items-center justify-center bg-zinc-800" />
           </div>
         )}
         {/* iframeActive: 한 번 true가 되면 DOM에서 제거하지 않음 (unmount 자체가 플래시 원인)
@@ -406,9 +409,12 @@ const ShortCard = memo(function ShortCard({
   video, lang, isPlaying, isHovered, onMouseEnter, onMouseLeave, onCardClick,
 }: ShortCardProps) {
   const title = getLangTitle(video, lang)
-  const [thumbSrc, setThumbSrc] = useState(
-    video.thumbnail_url || `https://i.ytimg.com/vi/${video.video_id}/mqdefault.jpg`
-  )
+  const [thumbSrc, setThumbSrc] = useState(() => {
+    const url = video.thumbnail_url
+    if (!url) return `https://i.ytimg.com/vi/${video.video_id}/mqdefault.jpg`
+    if (url.includes('hqdefault')) return url.replace('hqdefault', 'mqdefault')
+    return url
+  })
   // VideoCard와 동일한 lazy-mount 패턴 — 한 번 mount 후 절대 unmount 안 함
   const [iframeActive, setIframeActive] = useState(false)
   const showIframe = isPlaying || isHovered
@@ -450,7 +456,7 @@ const ShortCard = memo(function ShortCard({
             sizes="144px"
             className="object-cover"
             onError={() => {
-              if (thumbSrc.includes('mqdefault')) {
+              if (!thumbSrc.includes('default.jpg') || thumbSrc.includes('mqdefault') || thumbSrc.includes('hqdefault')) {
                 setThumbSrc(`https://i.ytimg.com/vi/${video.video_id}/default.jpg`)
               } else {
                 setThumbSrc('')
