@@ -110,7 +110,7 @@ export async function POST(
     if (needsTitleUpdate || needsSummaryUpdate) {
       const patch: { video_id: string; titles_i18n?: Record<string, string>; summary_i18n?: Record<string, string> } = { video_id: item.id }
       if (needsTitleUpdate) patch.titles_i18n = item.titles_i18n
-      if (needsSummaryUpdate) patch.summary_i18n = item.summary_i18n
+      if (needsSummaryUpdate) patch.summary_i18n = item.summary_i18n ?? undefined
       toUpdate.push(patch)
     } else {
       skipped++
