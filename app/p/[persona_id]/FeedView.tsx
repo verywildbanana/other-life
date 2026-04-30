@@ -241,6 +241,15 @@ const VideoCard = memo(function VideoCard({
   const isNew = video.collected_date === today
   const title = getLangTitle(video, lang)
   const dateLabel = video.published_at ?? video.collected_date
+  const [summaryOpen, setSummaryOpen] = useState(false)
+
+  // 툴팁 외부 클릭 시 닫기
+  useEffect(() => {
+    if (!summaryOpen) return
+    const close = () => setSummaryOpen(false)
+    document.addEventListener('click', close, { once: true })
+    return () => document.removeEventListener('click', close)
+  }, [summaryOpen])
 
   // iframe lazy mount + 영구 유지 패턴
   // 첫 재생(isPlaying=true) 또는 hover 시 한 번만 DOM에 추가하고,
@@ -315,12 +324,7 @@ const VideoCard = memo(function VideoCard({
           <span className="text-xs text-zinc-500 truncate block max-w-full mb-1.5">
             {video.channel}
           </span>
-          {video.summary_i18n && (video.summary_i18n[lang] || video.summary_i18n['en']) && (
-            <p className="text-xs text-zinc-400 leading-relaxed mb-1.5">
-              {video.summary_i18n[lang] || video.summary_i18n['en']}
-            </p>
-          )}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 flex-wrap">
             {isNew && (
               <span className="text-[10px] bg-emerald-600 text-white px-1.5 py-0.5 rounded font-semibold">
                 NEW
@@ -335,6 +339,31 @@ const VideoCard = memo(function VideoCard({
               >
                 {dateLabel}
               </span>
+            )}
+            {video.summary_i18n && (video.summary_i18n[lang] || video.summary_i18n['en']) && (
+              <div className="relative ml-auto">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    setSummaryOpen(v => !v)
+                  }}
+                  className="text-[10px] text-zinc-500 hover:text-zinc-300 border border-zinc-700 hover:border-zinc-500 px-1.5 py-0.5 rounded transition-colors"
+                >
+                  AI 요약
+                </button>
+                {summaryOpen && (
+                  <div
+                    className="absolute bottom-full right-0 mb-1.5 w-64 bg-zinc-800 border border-zinc-700 rounded-lg p-3 shadow-xl z-50"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <p className="text-xs text-zinc-300 leading-relaxed">
+                      {video.summary_i18n[lang] || video.summary_i18n['en']}
+                    </p>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </div>
