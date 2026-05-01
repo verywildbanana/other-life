@@ -243,7 +243,10 @@ const VideoCard = memo(function VideoCard({
   video, idx, lang, today, isPlaying, isHovered, personaId,
   onMouseEnter, onMouseLeave, onVideoClick,
 }: VideoCardProps) {
-  const isNew = video.collected_date === today
+  // collected_at(타임스탬프) 기준 FRESH_HOURS 이내면 NEW — 날짜만 비교하면 하루종일 NEW 뱃지가 붙음
+  const isNew = video.collected_at
+    ? (Date.now() - new Date(video.collected_at).getTime()) < FRESH_HOURS * 3_600_000
+    : video.collected_date === today
   const title = getLangTitle(video, lang)
   const dateLabel = video.published_at ?? video.collected_date
   const [summaryOpen, setSummaryOpen] = useState(false)
@@ -607,10 +610,19 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 // 최근 FRESH_HOURS 이내 수집 항목 상단 고정 + 나머지 랜덤
+// collected_at(타임스탬프) 기준 — collected_date(날짜)만 쓰면 하루종일 fresh 버킷에 남음
 function weightedShuffle(videos: Video[]): Video[] {
-  const cutoff = new Date(Date.now() - FRESH_HOURS * 3_600_000).toISOString().slice(0, 10)
-  const fresh = videos.filter(v => (v.collected_date ?? '') >= cutoff)
-  const rest  = videos.filter(v => (v.collected_date ?? '') < cutoff)
+  const cutoffMs = Date.now() - FRESH_HOURS * 3_600_000
+  const fresh = videos.filter(v =>
+    v.collected_at
+      ? new Date(v.collected_at).getTime() >= cutoffMs
+      : (v.collected_date ?? '') >= new Date(cutoffMs).toISOString().slice(0, 10)
+  )
+  const rest = videos.filter(v =>
+    v.collected_at
+      ? new Date(v.collected_at).getTime() < cutoffMs
+      : (v.collected_date ?? '') < new Date(cutoffMs).toISOString().slice(0, 10)
+  )
   return [...shuffle(fresh), ...shuffle(rest)]
 }
 

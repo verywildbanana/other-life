@@ -8,10 +8,10 @@ const MAX_DATES_PER_REQUEST = 3
 const MAX_VIDEOS_PER_DATE = 30
 
 // 공개 응답에서 제외할 민감 필드
-type PublicVideo = Omit<Video, 'score' | 'collected_at' | 'feed_source'>
+type PublicVideo = Omit<Video, 'score' | 'feed_source'>
 
 function toPublicVideo(v: Video): PublicVideo {
-  const { score: _s, collected_at: _c, feed_source: _f, ...pub } = v
+  const { score: _s, feed_source: _f, ...pub } = v
   return pub
 }
 
@@ -122,7 +122,7 @@ export async function getPaginatedFeed(
   // 최신순 + 점수순 정렬, offset 기반 페이지네이션
   const { data: rows } = await supabase
     .from('videos')
-    .select('video_id, persona_id, title, channel, url, thumbnail_url, view_count, keyword, feed_source, collected_date, published_at, titles_i18n, summary_i18n')
+    .select('video_id, persona_id, title, channel, url, thumbnail_url, view_count, keyword, feed_source, collected_date, collected_at, published_at, titles_i18n, summary_i18n')
     .eq('persona_id', personaId)
     .order('collected_date', { ascending: false })
     .order('score', { ascending: false })
