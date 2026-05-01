@@ -1100,11 +1100,10 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     const isIOS = /iPhone|iPad|iPod/i.test(ua)
     const isAndroid = /Android/i.test(ua)
     if (isIOS) {
-      // iOS Universal Link: https:// YouTube URL로 열면
-      // YouTube 앱 설치 시 → iOS가 자동으로 앱으로 라우팅
-      // YouTube 앱 없으면 → Safari에서 웹으로 열림
-      // vnd.youtube:// 딥링크는 PWA URL을 오염시켜 뒤로가기 시 빈 페이지 발생
-      window.open(`https://www.youtube.com/shorts/${video.video_id}`, '_blank')
+      // iOS PWA standalone: window.open(_blank) → 새 Safari 창 열림 → 빈 페이지 잔류
+      // window.location.href(https://) → Universal Links가 navigation 가로채서 YouTube 앱 오픈
+      // → 새 창 없음, PWA URL 그대로 유지
+      window.location.href = `https://www.youtube.com/shorts/${video.video_id}`
     } else if (isAndroid) {
       window.location.href = `intent://www.youtube.com/shorts/${video.video_id}#Intent;scheme=https;package=com.google.android.youtube;S.browser_fallback_url=https://www.youtube.com/shorts/${video.video_id};end`
     } else {
@@ -1125,10 +1124,10 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     const isIOS = /iPhone|iPad|iPod/i.test(ua)
     const isAndroid = /Android/i.test(ua)
     if (isIOS) {
-      // iOS Universal Link: https:// YouTube URL로 열면
-      // YouTube 앱 설치 시 → iOS가 자동으로 앱으로 라우팅
-      // YouTube 앱 없으면 → Safari에서 웹으로 열림
-      window.open(`https://www.youtube.com/watch?v=${video.video_id}`, '_blank')
+      // iOS PWA standalone: window.open(_blank) → 새 Safari 창 열림 → 빈 페이지 잔류
+      // window.location.href(https://) → Universal Links가 navigation 가로채서 YouTube 앱 오픈
+      // → 새 창 없음, PWA URL 그대로 유지
+      window.location.href = `https://www.youtube.com/watch?v=${video.video_id}`
     } else if (isAndroid) {
       window.location.href = `intent://www.youtube.com/watch?v=${video.video_id}#Intent;scheme=https;package=com.google.android.youtube;S.browser_fallback_url=https://www.youtube.com/watch?v=${video.video_id};end`
     } else {
