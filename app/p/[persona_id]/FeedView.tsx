@@ -1102,8 +1102,17 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     if (isIOS) {
       const appUrl = `vnd.youtube://${video.video_id}`
       const webUrl = `https://www.youtube.com/shorts/${video.video_id}`
+      // window.location.href 사용 시 PWA 탭 URL이 딥링크로 오염 → 뒤로가면 빈 페이지
+      // iframe으로 딥링크 실행하면 현재 페이지 URL 유지
+      const iframe = document.createElement('iframe')
+      iframe.style.display = 'none'
+      iframe.src = appUrl
+      document.body.appendChild(iframe)
+      setTimeout(() => {
+        document.body.removeChild(iframe)
+      }, 500)
+      // YouTube 앱 없으면 300ms 후 웹으로 fallback
       const start = Date.now()
-      window.location.href = appUrl
       setTimeout(() => {
         if (Date.now() - start < 1500) window.open(webUrl, '_blank')
       }, 300)
@@ -1129,8 +1138,16 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     if (isIOS) {
       const appUrl = `vnd.youtube://${video.video_id}`
       const webUrl = `https://www.youtube.com/watch?v=${video.video_id}`
+      // window.location.href 사용 시 PWA 탭 URL이 딥링크로 오염 → 뒤로가면 빈 페이지
+      // iframe으로 딥링크 실행하면 현재 페이지 URL 유지
+      const iframe = document.createElement('iframe')
+      iframe.style.display = 'none'
+      iframe.src = appUrl
+      document.body.appendChild(iframe)
+      setTimeout(() => {
+        document.body.removeChild(iframe)
+      }, 500)
       const start = Date.now()
-      window.location.href = appUrl
       setTimeout(() => {
         if (Date.now() - start < 1500) window.open(webUrl, '_blank')
       }, 300)
