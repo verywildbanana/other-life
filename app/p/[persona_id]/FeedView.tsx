@@ -1021,6 +1021,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
       setHasMore(cached.shuffled.length > FEED_PAGE)
       setNextOffset(FEED_PAGE)
       setTotal(cached.data.total_accumulated)
+      setIsEmpty(cached.shuffled.length === 0)
       // Shorts 캐시 히트 시 재사용 (없으면 useEffect가 별도 fetch)
       const cachedShorts = shortsOrderCacheRef.current.get(nextPersonaId)
       if (cachedShorts && cachedShorts.length > 0) {
