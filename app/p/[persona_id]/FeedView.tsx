@@ -663,7 +663,10 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
   const isScrollingRef = useRef(false)
   const sentinelRef = useRef<HTMLDivElement>(null)
   // 현재 활성 페르소나 ID를 ref로도 보관 — loadMore가 비동기 완료 시점에 페르소나가 바뀌었는지 확인용
-  const activePersonaIdRef = useRef<string>(persona.id)
+  // localStorage 복원값이 있으면 그걸 우선 사용 (초기 마운트 시 URL 페르소나보다 우선)
+  const activePersonaIdRef = useRef<string>(currentPersona.id)
+  // 최초 마운트 여부 — 초기 진입 시 localStorage 복원 페르소나를 URL 페르소나로 덮어쓰지 않기 위해 사용
+  const isFirstMountRef = useRef<boolean>(true)
   // loadMore 동시 실행 방지 — state는 리렌더 전까지 반영 안 되므로 ref로 동기 가드
   const isLoadingRef = useRef(false)
 
@@ -946,9 +949,24 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
   // window.history.pushState 사용으로 Next.js navigation이 트리거되지 않아 이 effect는
   // 초기 마운트 시에만 발동됨 (브라우저 직접 접근 / 새로고침)
   useEffect(() => {
-    setCurrentPersona(persona)
+    // 최초 마운트: localStorage에서 복원된 페르소나가 URL 페르소나와 다르면 복원값 사용
+    // (setCurrentPersona로 덮어쓰지 않음 — useState 초기화에서 이미 올바른 값 설정됨)
+    const isFirst = isFirstMountRef.current
+    isFirstMountRef.current = false
+
+    const targetPersona = isFirst ? currentPersona : persona
+    if (!isFirst) {
+      setCurrentPersona(persona)
+      activePersonaIdRef.current = persona.id
+    }
+
+    // 최초 마운트 + 복원 페르소나가 URL과 다를 경우 URL을 조용히 교체
+    if (isFirst && currentPersona.id !== persona.id) {
+      window.history.replaceState(null, '', `/p/${currentPersona.id}`)
+    }
+
     let cancelled = false
-    fetch(`/api/feed/${persona.id}?offset=0&limit=200`)
+    fetch(`/api/feed/${targetPersona.id}?offset=0&limit=200`)
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (cancelled || !data?.videos) return
@@ -958,14 +976,14 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
         setHasMore(shuffled.length > FEED_PAGE)
         setNextOffset(FEED_PAGE)
         setTotal(data.total_accumulated ?? shuffled.length)
-        setCachedFeed(persona.id, data, shuffled)
+        setCachedFeed(targetPersona.id, data, shuffled)
         setIsEmpty(shuffled.length === 0)
         setIsInitialLoading(false)
         setContentReady(true)
       })
       .catch(() => { setIsInitialLoading(false); setContentReady(true) })
     return () => { cancelled = true }
-  }, [persona.id])
+  }, [persona.id])  // eslint-disable-line react-hooks/exhaustive-deps
 
   // 클라이언트사이드 페르소나 전환 (새로고침 없음)
   const switchPersona = useCallback(async (nextPersonaId: string) => {
