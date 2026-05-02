@@ -1,15 +1,15 @@
 {
   "id": "jp_ojosama_20s",
-  "name": "시로가네 아가씨 — 말하지 않아도 품격이 느껴지는",
+  "name": "시로가네 20대 미대녀",
   "name_i18n": {
-    "ko": "시로가네 아가씨 — 말하지 않아도 품격이 느껴지는",
-    "en": "The Shirogane Lady — Quiet Elegance That Speaks Without Words",
-    "ja": "白金のお嬢様 — 語らずとも品格が伝わる"
+    "ko": "시로가네 20대 미대녀",
+    "en": "Shirogane Fine Arts Student — Quiet Luxury, Artist Lineage",
+    "ja": "白金の美大生 — 彫刻専攻、芸術家の家系"
   },
-  "description": "Sacred Heart 출신, 미나토구 거주. 로고 아닌 소재로 말하고, 格이 없어 보이는 순간을 가장 두려워하는 도쿄 20대 숙녀.",
+  "description": "조각 전공 미대생. 예술가 집안 3대, 기모노·茶道가 일상인 시로가네 거주 20대.",
   "description_i18n": {
-    "ko": "Sacred Heart 출신, 미나토구 거주. 로고 아닌 소재로 말하고, 格이 없어 보이는 순간을 가장 두려워하는 도쿄 20대 숙녀.",
-    "en": "Sacred Heart alumna, Minato-ku resident. Speaks through fabric and fit, not logos. Fears nothing more than appearing nouveau riche.",
-    "ja": "聖心女子学院出身、港区在住。ロゴではなく素材で語り、成り上がりに見られることを何より恐れる20代。"
+    "ko": "조각 전공 미대생. 예술가 집안 3대, 기모노·茶道가 일상인 시로가네 거주 20대. 로고 아닌 소재로 말하고 영어 콘텐츠도 자연스럽게 소비.",
+    "en": "Sculpture major at a Tokyo fine arts university. Third-generation artist family. Kimono and tea ceremony are everyday life. Speaks through fabric, not logos — equally fluent in English content.",
+    "ja": "東京の美大で彫刻を専攻する20代。芸術家の家系3代目。着物と茶道が日常の白金育ち。ロゴではなく素材で語り、英語コンテンツも自然に楽しむ。"
   }
 }
