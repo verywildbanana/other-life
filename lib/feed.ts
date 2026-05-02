@@ -100,29 +100,35 @@ export async function getPublicFeed(personaId: string): Promise<FeedResponsePubl
 
 const PAGE_LIMIT = 20  // 페이지당 영상 수
 
-// 페이지네이션 공개 API용 — 최신순 플랫 리스트, score/collected_at/feed_source 제외
+// 페이지네이션 공개 API용 — 최신순 플랫 리스트, score/feed_source 제외
+// skipCount=true → COUNT 쿼리 생략 (Stage 1 빠른 첫 화면용, total_accumulated=0 반환)
+//   COUNT는 풀 테이블 스캔이라 비용이 크므로 첫 화면 latency를 줄이기 위해 옵션화
 export async function getPaginatedFeed(
   personaId: string,
   offset: number = 0,
   limit: number = PAGE_LIMIT,
+  skipCount: boolean = false,
 ): Promise<FeedPageResponse | null> {
   const persona = loadPersona(personaId)
   if (!persona) return null
 
   const supabase = createServiceClient()
 
-  // 전체 개수
-  const { count } = await supabase
-    .from('videos')
-    .select('*', { count: 'exact', head: true })
-    .eq('persona_id', personaId)
-
-  const total = count ?? 0
+  // COUNT는 옵션 — Stage 1 fetch에서는 스킵해 첫 응답 속도 개선
+  let total = 0
+  if (!skipCount) {
+    const { count } = await supabase
+      .from('videos')
+      .select('*', { count: 'exact', head: true })
+      .eq('persona_id', personaId)
+    total = count ?? 0
+  }
 
   // 최신순 + 점수순 정렬, offset 기반 페이지네이션
+  // 미사용 컬럼 (view_count, keyword, feed_source) 제거 → 페이로드 ~25% 감소
   const { data: rows } = await supabase
     .from('videos')
-    .select('video_id, persona_id, title, channel, url, thumbnail_url, view_count, keyword, feed_source, collected_date, collected_at, published_at, titles_i18n, summary_i18n')
+    .select('video_id, persona_id, title, channel, url, thumbnail_url, collected_date, collected_at, published_at, titles_i18n, summary_i18n')
     .eq('persona_id', personaId)
     .order('collected_date', { ascending: false })
     .order('score', { ascending: false })
@@ -135,7 +141,7 @@ export async function getPaginatedFeed(
     persona_name: persona.name,
     total_accumulated: total,
     videos: rows as unknown as Video[],
-    has_more: offset + limit < total,
+    has_more: skipCount ? rows.length >= limit : offset + limit < total,
     next_offset: offset + limit,
   }
 }

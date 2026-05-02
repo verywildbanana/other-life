@@ -31,7 +31,9 @@ export async function GET(
   const { searchParams } = req.nextUrl
 
   const offset = Math.max(0, parseInt(searchParams.get('offset') ?? '0', 10))
-  const limit = Math.min(200, Math.max(1, parseInt(searchParams.get('limit') ?? '200', 10)))
+  const limit = Math.min(300, Math.max(1, parseInt(searchParams.get('limit') ?? '200', 10)))
+  // skip_count=1 → COUNT 쿼리 생략 (Stage 1 첫 화면 빠른 로딩용)
+  const skipCount = searchParams.get('skip_count') === '1'
 
   // Rate Limit: 분당 60회 초과 시 429 (access_logs 기반, Supabase DB 활용)
   // 첫 페이지 요청만 카운트 (페이지네이션 로딩은 허용)
@@ -47,7 +49,7 @@ export async function GET(
     logFeedAccess(req, persona_id)
   }
 
-  const feed = await getPaginatedFeed(persona_id, offset, limit)
+  const feed = await getPaginatedFeed(persona_id, offset, limit, skipCount)
 
   if (!feed) {
     return NextResponse.json({ error: '피드 없음' }, { status: 404 })
