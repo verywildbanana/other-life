@@ -1415,7 +1415,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
           gtag('feedback_click', { persona_id: currentPersona.id, lang })
           setShowFeedback(true)
         }}
-        className="fixed bottom-6 right-6 z-40 flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-medium px-4 py-2.5 rounded-full shadow-lg border border-zinc-700 transition-colors"
+        className="fixed bottom-6 left-6 z-40 flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-medium px-4 py-2.5 rounded-full shadow-lg border border-zinc-700 transition-colors"
         aria-label={t('feedback', lang)}
       >
         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
