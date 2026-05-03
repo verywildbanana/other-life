@@ -611,15 +611,18 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 // Epoch 셔플 — 한 번만 실행하고 cursor로 이동 (weightedShuffle 대체)
+// 우선순위: fresh+summary > fresh > rest+summary > rest > seen
 // viewed: localStorage 시청 이력 → 본 영상은 뒤쪽 seen 버킷으로 패널티
-// fresh → rest → seen 순서로 정렬 후 각 버킷 내부 랜덤 셔플
 function epochShuffle(videos: Video[], viewed: Set<string>): Video[] {
   const cutoffMs = Date.now() - FRESH_HOURS * 3_600_000
-  const fresh: Video[] = []
-  const rest: Video[] = []
+  const freshSummarized: Video[] = []
+  const freshRaw: Video[] = []
+  const restSummarized: Video[] = []
+  const restRaw: Video[] = []
   const seen: Video[] = []
 
   for (const v of videos) {
+    const hasSummary = v.summary_i18n && Object.keys(v.summary_i18n).length > 0
     if (viewed.has(v.video_id)) {
       seen.push(v)
     } else if (
@@ -627,12 +630,18 @@ function epochShuffle(videos: Video[], viewed: Set<string>): Video[] {
         ? new Date(v.collected_at).getTime() >= cutoffMs
         : (v.collected_date ?? '') >= new Date(cutoffMs).toISOString().slice(0, 10)
     ) {
-      fresh.push(v)
+      hasSummary ? freshSummarized.push(v) : freshRaw.push(v)
     } else {
-      rest.push(v)
+      hasSummary ? restSummarized.push(v) : restRaw.push(v)
     }
   }
-  return [...shuffle(fresh), ...shuffle(rest), ...shuffle(seen)]
+  return [
+    ...shuffle(freshSummarized),
+    ...shuffle(freshRaw),
+    ...shuffle(restSummarized),
+    ...shuffle(restRaw),
+    ...shuffle(seen),
+  ]
 }
 
 interface Props {
@@ -912,8 +921,9 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
 
         const data: FeedPageResponse = await feedRes.json()
         const shuffled = epochShuffle(data.videos, viewed)
+        const ptrStage1Displayed = shuffled.slice(0, FEED_PAGE)
         allVideosRef.current = shuffled
-        setVideos(shuffled.slice(0, FEED_PAGE))
+        setVideos(ptrStage1Displayed)
         setHasMore(true)  // Stage 2에서 보완
         setNextOffset(FEED_PAGE)
 
@@ -937,10 +947,13 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
         if (fullRes.ok) {
           const fullData: FeedPageResponse = await fullRes.json()
           const fullShuffled = epochShuffle(fullData.videos, viewed)
-          allVideosRef.current = fullShuffled
-          setHasMore(fullShuffled.length > FEED_PAGE)
+          // Stage 1 표시분 보존 + 나머지 붙임 (dedup 버그 방지)
+          const shownIds = new Set(ptrStage1Displayed.map(v => v.video_id))
+          const remaining = fullShuffled.filter(v => !shownIds.has(v.video_id))
+          allVideosRef.current = [...ptrStage1Displayed, ...remaining]
+          setHasMore(remaining.length > 0)
           setTotal(fullData.total_accumulated ?? fullShuffled.length)
-          setCachedFeed(currentPersona.id, fullData, fullShuffled)
+          setCachedFeed(currentPersona.id, fullData, allVideosRef.current)
         }
       } catch { /* 실패 시 현재 피드 유지 */ }
       finally { setIsRefreshing(false) }
@@ -998,6 +1011,8 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
 
     let cancelled = false
     const viewed = getViewedSet()
+    // Stage 1에서 실제 표시된 영상 — Stage 2 재조합 시 앞에 보존 (dedup 버그 방지)
+    let stage1Displayed: Video[] = []
 
     // Stage 1: 빠른 첫 화면 (50개, COUNT 스킵)
     fetch(`/api/feed/${targetPersona.id}?offset=0&limit=50&skip_count=1`)
@@ -1005,8 +1020,9 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
       .then(data => {
         if (cancelled || !data?.videos) return
         const shuffled = epochShuffle(data.videos, viewed)
+        stage1Displayed = shuffled.slice(0, FEED_PAGE)
         allVideosRef.current = shuffled
-        setVideos(shuffled.slice(0, FEED_PAGE))
+        setVideos(stage1Displayed)
         setHasMore(true)  // Stage 2에서 더 로드될 예정
         setNextOffset(FEED_PAGE)
         setIsEmpty(false)
@@ -1020,12 +1036,14 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
       .then(fullData => {
         if (cancelled || !fullData?.videos) return
         const fullShuffled = epochShuffle(fullData.videos, viewed)
-        // 이미 표시된 videos state는 유지, allVideosRef만 교체 (loadMore가 새 풀에서 서빙)
-        allVideosRef.current = fullShuffled
-        setHasMore(fullShuffled.length > FEED_PAGE)
+        // Stage 1 표시분을 앞에 보존 + 나머지를 뒤에 붙임 → loadMore가 slice(20~)부터 읽으면 중복 없음
+        const shownIds = new Set(stage1Displayed.map(v => v.video_id))
+        const remaining = fullShuffled.filter(v => !shownIds.has(v.video_id))
+        allVideosRef.current = [...stage1Displayed, ...remaining]
+        setHasMore(remaining.length > 0)
         setTotal(fullData.total_accumulated ?? fullShuffled.length)
         setIsEmpty(fullShuffled.length === 0)
-        setCachedFeed(targetPersona.id, fullData, fullShuffled)
+        setCachedFeed(targetPersona.id, fullData, allVideosRef.current)
       })
       .catch(() => { setIsInitialLoading(false); setContentReady(true) })
     return () => { cancelled = true }
@@ -1094,9 +1112,12 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
       if (fullRes.ok) {
         const fullData: FeedPageResponse = await fullRes.json()
         const fullShuffled = epochShuffle(fullData.videos, viewed)
-        allVideosRef.current = fullShuffled
-        setCachedFeed(nextPersonaId, fullData, fullShuffled)
-        setHasMore(fullShuffled.length > FEED_PAGE)
+        // Stage 1 표시분 보존 + 나머지 붙임 (dedup 버그 방지)
+        const shownIds = new Set(shuffled.slice(0, FEED_PAGE).map(v => v.video_id))
+        const remaining = fullShuffled.filter(v => !shownIds.has(v.video_id))
+        allVideosRef.current = [...shuffled.slice(0, FEED_PAGE), ...remaining]
+        setCachedFeed(nextPersonaId, fullData, allVideosRef.current)
+        setHasMore(remaining.length > 0)
         setTotal(fullData.total_accumulated ?? fullShuffled.length)
         setIsEmpty(fullShuffled.length === 0)
       }
