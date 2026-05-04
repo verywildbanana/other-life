@@ -1169,10 +1169,9 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     const isIOS = /iPhone|iPad|iPod/i.test(ua)
     const isAndroid = /Android/i.test(ua)
     if (isIOS) {
-      // iOS PWA standalone: window.open(_blank) → 새 Safari 창 열림 → 빈 페이지 잔류
-      // window.location.href(https://) → Universal Links가 navigation 가로채서 YouTube 앱 오픈
-      // → 새 창 없음, PWA URL 그대로 유지
-      window.location.href = `https://www.youtube.com/shorts/${video.video_id}`
+      // iOS: youtube.com은 Universal Links로 등록돼 네이티브 앱이 가로챔
+      // m.youtube.com 서브도메인은 Universal Links 미등록 → Safari에서 직접 열림
+      window.location.href = `https://m.youtube.com/shorts/${video.video_id}`
     } else if (isAndroid) {
       window.location.href = `intent://www.youtube.com/shorts/${video.video_id}#Intent;scheme=https;package=com.google.android.youtube;S.browser_fallback_url=https://www.youtube.com/shorts/${video.video_id};end`
     } else {
@@ -1194,10 +1193,9 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     const isIOS = /iPhone|iPad|iPod/i.test(ua)
     const isAndroid = /Android/i.test(ua)
     if (isIOS) {
-      // iOS PWA standalone: window.open(_blank) → 새 Safari 창 열림 → 빈 페이지 잔류
-      // window.location.href(https://) → Universal Links가 navigation 가로채서 YouTube 앱 오픈
-      // → 새 창 없음, PWA URL 그대로 유지
-      window.location.href = `https://www.youtube.com/watch?v=${video.video_id}`
+      // iOS: youtube.com은 Universal Links로 등록돼 네이티브 앱이 가로챔
+      // m.youtube.com 서브도메인은 Universal Links 미등록 → Safari에서 직접 열림
+      window.location.href = `https://m.youtube.com/watch?v=${video.video_id}`
     } else if (isAndroid) {
       window.location.href = `intent://www.youtube.com/watch?v=${video.video_id}#Intent;scheme=https;package=com.google.android.youtube;S.browser_fallback_url=https://www.youtube.com/watch?v=${video.video_id};end`
     } else {
