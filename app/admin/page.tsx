@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Persona } from '@/types'
 
-type VideoStats = Record<string, { total: number; latest_date: string | null }>
+type VideoStats = Record<string, { total: number; with_summary: number; stt_skip: number; no_summary: number; latest_date: string | null }>
 type AccessLogs = {
   total_7d: number
   unique_ips: number
@@ -13,7 +13,15 @@ type AccessLogs = {
   by_country: Record<string, number>
   daily: Record<string, number>
 }
-type StatsResponse = { videos: VideoStats; access_logs: AccessLogs }
+type UserBehavior = {
+  sessions_7d: number
+  video_clicks_7d: number
+  scroll_loads_7d: number
+  avg_clicks_per_session: number
+  scroll_depth: { page1_only: number; page2_4: number; page5_plus: number }
+  top_videos: { video_id: string; clicks: number }[]
+}
+type StatsResponse = { videos: VideoStats; access_logs: AccessLogs; user_behavior?: UserBehavior }
 
 type VideoRow = {
   video_id: string
@@ -53,6 +61,7 @@ export default function AdminPage() {
   const [loginError, setLoginError] = useState<string | null>(null)
   const [videoStats, setVideoStats] = useState<VideoStats>({})
   const [accessLogs, setAccessLogs] = useState<AccessLogs | null>(null)
+  const [userBehavior, setUserBehavior] = useState<UserBehavior | null>(null)
   const [personas, setPersonas] = useState<Persona[]>([])
   const [selectedPersona, setSelectedPersona] = useState('')
   const [videos, setVideos] = useState<VideoRow[]>([])
@@ -74,6 +83,7 @@ export default function AdminPage() {
       if (data) {
         setVideoStats(data.videos)
         setAccessLogs(data.access_logs)
+        if (data.user_behavior) setUserBehavior(data.user_behavior)
         setView('dashboard')
       }
     })
@@ -124,6 +134,7 @@ export default function AdminPage() {
       if (data) {
         setVideoStats(data.videos)
         setAccessLogs(data.access_logs)
+        if (data.user_behavior) setUserBehavior(data.user_behavior)
         setView('dashboard')
       }
     } else {
@@ -137,6 +148,7 @@ export default function AdminPage() {
     setToken('')
     setVideoStats({})
     setAccessLogs(null)
+    setUserBehavior(null)
     setVideos([])
   }
 
@@ -393,6 +405,72 @@ export default function AdminPage() {
           )}
         </div>
 
+        {/* ── 유저 행동 분석 (최근 7일) ── */}
+        {userBehavior && (
+          <div>
+            <h2 className="text-sm font-semibold text-zinc-400 mb-3">📊 유저 행동 분석 — 최근 7일</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
+              <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+                <p className="text-xs text-zinc-500 mb-1">고유 세션</p>
+                <p className="text-3xl font-bold text-blue-400">{userBehavior.sessions_7d}</p>
+              </div>
+              <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+                <p className="text-xs text-zinc-500 mb-1">영상 클릭</p>
+                <p className="text-3xl font-bold">{userBehavior.video_clicks_7d}</p>
+                <p className="text-xs text-zinc-600 mt-1">세션당 평균 {userBehavior.avg_clicks_per_session}회</p>
+              </div>
+              <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+                <p className="text-xs text-zinc-500 mb-1">스크롤 깊이</p>
+                <div className="mt-1 space-y-1">
+                  {(() => {
+                    const d = userBehavior.scroll_depth
+                    const total = d.page1_only + d.page2_4 + d.page5_plus
+                    return total > 0 ? (
+                      <>
+                        <div className="flex justify-between text-xs">
+                          <span className="text-zinc-400">1배치만</span>
+                          <span>{Math.round(d.page1_only / total * 100)}%</span>
+                        </div>
+                        <div className="flex justify-between text-xs">
+                          <span className="text-zinc-400">2-4배치</span>
+                          <span>{Math.round(d.page2_4 / total * 100)}%</span>
+                        </div>
+                        <div className="flex justify-between text-xs">
+                          <span className="text-zinc-400">5배치+</span>
+                          <span className="text-emerald-400">{Math.round(d.page5_plus / total * 100)}%</span>
+                        </div>
+                      </>
+                    ) : <p className="text-xs text-zinc-600">데이터 없음</p>
+                  })()}
+                </div>
+              </div>
+              <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+                <p className="text-xs text-zinc-500 mb-2">🔥 인기 영상 TOP 5</p>
+                {userBehavior.top_videos.length === 0 ? (
+                  <p className="text-xs text-zinc-600">데이터 없음</p>
+                ) : (
+                  <div className="space-y-1">
+                    {userBehavior.top_videos.map((v, i) => (
+                      <div key={v.video_id} className="flex items-center gap-2 text-xs">
+                        <span className="text-zinc-600 w-4">{i + 1}.</span>
+                        <a
+                          href={`https://www.youtube.com/watch?v=${v.video_id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-zinc-400 hover:text-zinc-200 truncate flex-1 font-mono"
+                        >
+                          {v.video_id}
+                        </a>
+                        <span className="text-zinc-300 font-semibold shrink-0">{v.clicks}클릭</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* ── 영상 누적 현황 ── */}
         <div>
           <h2 className="text-sm font-semibold text-zinc-400 mb-3">페르소나별 누적 현황</h2>
@@ -407,7 +485,28 @@ export default function AdminPage() {
                     {info.total}
                     <span className="text-sm font-normal text-zinc-500">개</span>
                   </p>
-                  <p className="text-xs text-zinc-600 mt-1">최근: {info.latest_date ?? '-'}</p>
+                  {/* AI요약 / skip / 미완료 분포 */}
+                  <div className="flex gap-2 mt-2 flex-wrap">
+                    <span className="text-xs bg-emerald-900/40 text-emerald-400 px-2 py-0.5 rounded-full">
+                      AI요약 {info.with_summary ?? 0}
+                      {info.total > 0 && (
+                        <span className="text-emerald-600 ml-0.5">
+                          ({Math.round(((info.with_summary ?? 0) / info.total) * 100)}%)
+                        </span>
+                      )}
+                    </span>
+                    {(info.stt_skip ?? 0) > 0 && (
+                      <span className="text-xs bg-zinc-800 text-zinc-500 px-2 py-0.5 rounded-full">
+                        skip {info.stt_skip}
+                      </span>
+                    )}
+                    {(info.no_summary ?? 0) > 0 && (
+                      <span className="text-xs bg-amber-900/30 text-amber-500 px-2 py-0.5 rounded-full">
+                        미완료 {info.no_summary}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-zinc-600 mt-2">최근: {info.latest_date ?? '-'}</p>
                 </div>
               ))
             )}
@@ -442,6 +541,30 @@ export default function AdminPage() {
             <h2 className="text-sm font-semibold text-zinc-400">피드백 목록</h2>
             <span className="text-xs text-zinc-500">{feedbacks.length}건</span>
           </div>
+          {/* 별점 분포 요약 */}
+          {feedbacks.length > 0 && (() => {
+            const dist = [5,4,3,2,1].map(n => ({
+              star: n,
+              count: feedbacks.filter(f => f.rating === n).length,
+            }))
+            const rated = feedbacks.filter(f => f.rating).length
+            const avg = rated > 0
+              ? (feedbacks.reduce((s, f) => s + (f.rating ?? 0), 0) / rated).toFixed(1)
+              : '-'
+            return (
+              <div className="bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 mb-3">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <span className="text-amber-400 font-bold text-lg">★ {avg}</span>
+                  {dist.map(d => (
+                    <span key={d.star} className="text-xs text-zinc-400">
+                      {'★'.repeat(d.star)}
+                      <span className="text-zinc-500 ml-1">{d.count}</span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )
+          })()}
           {feedbacks.length === 0 ? (
             <p className="text-zinc-500 text-sm">아직 피드백이 없습니다.</p>
           ) : (

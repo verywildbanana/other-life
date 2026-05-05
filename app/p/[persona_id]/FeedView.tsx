@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef, memo } from 'react'
 import Image from 'next/image'
 import { FeedPageResponse, Video, Persona } from '@/types'
 import { markViewed, getViewedSet } from '@/lib/viewedTracker'
+import { useEventQueue } from '@/lib/useEventQueue'
 
 // ── 페이지 전환 Progress Bar ───────────────────────────────────────────────────
 function NavigationProgress({ active }: { active: boolean }) {
@@ -653,6 +654,8 @@ interface Props {
 }
 
 export default function FeedView({ feed, persona, allPersonas }: Props) {
+  const { enqueueEvent } = useEventQueue()
+
   const [lang, setLang] = useState<Lang>(() => {
     if (typeof window === 'undefined') return 'ko'
     const saved = localStorage.getItem('feed_lang') as Lang | null
@@ -1157,6 +1160,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
       updateNextOffset(newOffset)
       setHasMore(newOffset < allVideosRef.current.length)
       gtag('infinite_scroll_load', { persona_id: currentPersona.id, offset: currentOffset, loaded: next.length })
+      enqueueEvent({ type: 'scroll_load', persona_id: currentPersona.id, scroll_page: Math.floor(currentOffset / FEED_PAGE) + 1, lang })
     } else {
       setHasMore(false)
     }
@@ -1177,6 +1181,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     stopAllPlayback()
     markViewed(video.video_id)
     gtag('shorts_click', { video_id: video.video_id, persona_id: currentPersona.id, lang })
+    enqueueEvent({ type: 'shorts_click', persona_id: currentPersona.id, video_id: video.video_id, lang })
     const ua = navigator.userAgent
     const isIOS = /iPhone|iPad|iPod/i.test(ua)
     const isAndroid = /Android/i.test(ua)
@@ -1201,6 +1206,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
       position: idx + 1,
       lang,
     })
+    enqueueEvent({ type: 'video_click', persona_id: currentPersona.id, video_id: video.video_id, position: idx + 1, lang })
     const ua = navigator.userAgent
     const isIOS = /iPhone|iPad|iPod/i.test(ua)
     const isAndroid = /Android/i.test(ua)
