@@ -709,7 +709,6 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
   const scrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   // 스크롤 중 여부 — setMobilePlayingId(null)을 첫 이벤트에서만 1회 호출하기 위한 가드
   const isScrollingRef = useRef(false)
-  const sentinelRef = useRef<HTMLDivElement>(null)
   // 현재 활성 페르소나 ID를 ref로도 보관 — loadMore가 비동기 완료 시점에 페르소나가 바뀌었는지 확인용
   // localStorage 복원값이 있으면 그걸 우선 사용 (초기 마운트 시 URL 페르소나보다 우선)
   const activePersonaIdRef = useRef<string>(currentPersona.id)
@@ -1174,6 +1173,26 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     setIsLoading(false)
   }, [currentPersona.id, updateNextOffset, updateHasMore])
 
+  // sentinelRef: callback ref — DOM에 붙는 순간 Observer 자동 연결
+  // useRef + useEffect 방식은 sentinel이 조건부 렌더링될 때 effect 재실행 안 됨 → Read More 불작동
+  // callback ref는 element mount/unmount 시 즉시 호출 → 항상 올바르게 Observer 연결/해제
+  const sentinelObserverRef = useRef<IntersectionObserver | null>(null)
+  const sentinelRef = useCallback((node: HTMLDivElement | null) => {
+    if (sentinelObserverRef.current) {
+      sentinelObserverRef.current.disconnect()
+      sentinelObserverRef.current = null
+    }
+    if (!node) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) loadMore()
+      },
+      { rootMargin: '200px' },
+    )
+    observer.observe(node)
+    sentinelObserverRef.current = observer
+  }, [loadMore])
+
   // 비디오 클릭 핸들러 — useCallback으로 메모이제이션해 VideoCard 불필요한 재렌더 방지
   const stopAllPlayback = useCallback(() => {
     shortPlayIdRef.current = null
@@ -1239,20 +1258,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     return () => document.removeEventListener('visibilitychange', onVisibility)
   }, [supportsHover, stopAllPlayback])
 
-  // IntersectionObserver — sentinel이 뷰포트에 들어오면 자동 로드
-  useEffect(() => {
-    const sentinel = sentinelRef.current
-    if (!sentinel) return
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) loadMore()
-      },
-      { rootMargin: '200px' }, // 바닥에서 200px 전에 미리 로드
-    )
-    observer.observe(sentinel)
-    return () => observer.disconnect()
-  }, [loadMore])
+  // IntersectionObserver는 sentinelRef callback ref 안에서 직접 처리됨 (위 sentinelRef 정의 참조)
 
   function switchLang(l: Lang) {
     gtag('language_switch', { from: lang, to: l, persona_id: currentPersona.id })
@@ -1413,20 +1419,20 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
             ))}
           </div>
 
-          {/* 무한 스크롤 sentinel + 로딩 인디케이터 */}
-          {hasMore && (
-            <div ref={sentinelRef} className="flex justify-center py-8">
-              {isLoading && (
-                <div className="flex items-center gap-2 text-zinc-500 text-sm">
-                  <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                  </svg>
-                  {t('loading', lang)}
-                </div>
-              )}
-            </div>
-          )}
+          {/* 무한 스크롤 sentinel — 항상 DOM에 유지해야 Observer가 작동함
+               hasMore 조건부 렌더링 시: hasMore=false → sentinel 미마운트 → Observer 미설정
+               → hasMore=true가 돼도 Observer가 재실행 안 됨 → Read More 영구 불작동 */}
+          <div ref={sentinelRef} className="flex justify-center py-8">
+            {isLoading && hasMore && (
+              <div className="flex items-center gap-2 text-zinc-500 text-sm">
+                <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                </svg>
+                {t('loading', lang)}
+              </div>
+            )}
+          </div>
         </main>
       )}
 
