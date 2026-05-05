@@ -669,14 +669,19 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
   })
   const [videos, setVideos] = useState<Video[]>([])
   const [hasMore, setHasMore] = useState(false)
+  const hasMoreRef = useRef(false)
   const [nextOffset, setNextOffset] = useState(0)
-  // nextOffsetRef: loadMore useCallback deps에서 nextOffset(state)을 제거하기 위해 ref로 동기화
-  // nextOffset이 deps에 있으면 매 로드마다 loadMore 함수가 교체 → IntersectionObserver 재생성 →
-  // sentinel이 이미 뷰포트 안에 있을 때 다음 스크롤까지 발화 안 함 (Read More 느려지는 원인)
+  // nextOffsetRef / hasMoreRef: loadMore useCallback deps에서 state를 제거하기 위해 ref로 동기화
+  // state가 deps에 있으면 매 로드마다 loadMore 함수가 교체 → IntersectionObserver 재생성 →
+  // sentinel이 이미 뷰포트 안에 있을 때 다음 스크롤까지 발화 안 함 (Read More 동작 안 하는 원인)
   const nextOffsetRef = useRef(0)
   const updateNextOffset = useCallback((v: number) => {
     nextOffsetRef.current = v
-    updateNextOffset(v)
+    setNextOffset(v)
+  }, [])
+  const updateHasMore = useCallback((v: boolean) => {
+    hasMoreRef.current = v
+    setHasMore(v)
   }, [])
   const [isLoading, setIsLoading] = useState(false)
   const [total, setTotal] = useState(0)
@@ -937,7 +942,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
         const ptrStage1Displayed = shuffled.slice(0, FEED_PAGE)
         allVideosRef.current = shuffled
         setVideos(ptrStage1Displayed)
-        setHasMore(true)  // Stage 2에서 보완
+        updateHasMore(true)  // Stage 2에서 보완
         updateNextOffset(FEED_PAGE)
 
         // Shorts 재셔플
@@ -964,7 +969,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
           const shownIds = new Set(ptrStage1Displayed.map(v => v.video_id))
           const remaining = fullShuffled.filter(v => !shownIds.has(v.video_id))
           allVideosRef.current = [...ptrStage1Displayed, ...remaining]
-          setHasMore(remaining.length > 0)
+          updateHasMore(remaining.length > 0)
           setTotal(fullData.total_accumulated ?? fullShuffled.length)
           setCachedFeed(currentPersona.id, fullData, allVideosRef.current)
         }
@@ -1036,7 +1041,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
         stage1Displayed = shuffled.slice(0, FEED_PAGE)
         allVideosRef.current = shuffled
         setVideos(stage1Displayed)
-        setHasMore(true)  // Stage 2에서 더 로드될 예정
+        updateHasMore(true)  // Stage 2에서 더 로드될 예정
         updateNextOffset(FEED_PAGE)
         setIsEmpty(false)
         setIsInitialLoading(false)
@@ -1053,7 +1058,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
         const shownIds = new Set(stage1Displayed.map(v => v.video_id))
         const remaining = fullShuffled.filter(v => !shownIds.has(v.video_id))
         allVideosRef.current = [...stage1Displayed, ...remaining]
-        setHasMore(remaining.length > 0)
+        updateHasMore(remaining.length > 0)
         setTotal(fullData.total_accumulated ?? fullShuffled.length)
         setIsEmpty(fullShuffled.length === 0)
         setCachedFeed(targetPersona.id, fullData, allVideosRef.current)
@@ -1083,7 +1088,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     if (cached) {
       allVideosRef.current = cached.shuffled
       setVideos(cached.shuffled.slice(0, FEED_PAGE))
-      setHasMore(cached.shuffled.length > FEED_PAGE)
+      updateHasMore(cached.shuffled.length > FEED_PAGE)
       updateNextOffset(FEED_PAGE)
       setTotal(cached.data.total_accumulated)
       setIsEmpty(cached.shuffled.length === 0)
@@ -1100,7 +1105,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
 
     // 캐시 미스 — 2단계 fetch
     setVideos([])
-    setHasMore(false)
+    updateHasMore(false)
     updateNextOffset(0)
     setNavigating(true)
     const viewed = getViewedSet()
@@ -1114,7 +1119,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
       const shuffled = epochShuffle(data.videos, viewed)
       allVideosRef.current = shuffled
       setVideos(shuffled.slice(0, FEED_PAGE))
-      setHasMore(true)
+      updateHasMore(true)
       updateNextOffset(FEED_PAGE)
       setIsEmpty(false)
       setNavigating(false)
@@ -1130,7 +1135,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
         const remaining = fullShuffled.filter(v => !shownIds.has(v.video_id))
         allVideosRef.current = [...shuffled.slice(0, FEED_PAGE), ...remaining]
         setCachedFeed(nextPersonaId, fullData, allVideosRef.current)
-        setHasMore(remaining.length > 0)
+        updateHasMore(remaining.length > 0)
         setTotal(fullData.total_accumulated ?? fullShuffled.length)
         setIsEmpty(fullShuffled.length === 0)
       }
@@ -1143,7 +1148,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
 
   const loadMore = useCallback(() => {
     // isLoadingRef: 동기 가드 — IntersectionObserver 중복 발화 방지
-    if (isLoadingRef.current || !hasMore) return
+    if (isLoadingRef.current || !hasMoreRef.current) return
     isLoadingRef.current = true
     setIsLoading(true)
 
@@ -1158,16 +1163,16 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
       })
       const newOffset = currentOffset + next.length
       updateNextOffset(newOffset)
-      setHasMore(newOffset < allVideosRef.current.length)
+      updateHasMore(newOffset < allVideosRef.current.length)
       gtag('infinite_scroll_load', { persona_id: currentPersona.id, offset: currentOffset, loaded: next.length })
       enqueueEvent({ type: 'scroll_load', persona_id: currentPersona.id, scroll_page: Math.floor(currentOffset / FEED_PAGE) + 1, lang })
     } else {
-      setHasMore(false)
+      updateHasMore(false)
     }
 
     isLoadingRef.current = false
     setIsLoading(false)
-  }, [hasMore, currentPersona.id, updateNextOffset])
+  }, [currentPersona.id, updateNextOffset, updateHasMore])
 
   // 비디오 클릭 핸들러 — useCallback으로 메모이제이션해 VideoCard 불필요한 재렌더 방지
   const stopAllPlayback = useCallback(() => {
