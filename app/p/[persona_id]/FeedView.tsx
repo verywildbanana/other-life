@@ -599,7 +599,6 @@ const ShortsCarousel = memo(function ShortsCarousel({
 const FEED_PAGE = 20
 // NEXT_PUBLIC_FRESH_HOURS: 이 시간 이내 수집된 콘텐츠를 신규로 간주 (기본 3시간)
 const FRESH_HOURS = Number(process.env.NEXT_PUBLIC_FRESH_HOURS ?? 3)
-const FRESH_CUTOFF_DATE = new Date(Date.now() - FRESH_HOURS * 3_600_000).toISOString().slice(0, 10)
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr]
@@ -622,7 +621,10 @@ function epochShuffle(videos: Video[], viewed: Set<string>): Video[] {
   const seen: Video[] = []
 
   for (const v of videos) {
-    const hasSummary = v.summary_i18n && Object.keys(v.summary_i18n).length > 0
+    // stt_skip 마킹된 영상은 요약 없는 것으로 취급 (summary_i18n = {stt_skip:true} 형태)
+    const hasSummary = v.summary_i18n
+      && !v.summary_i18n.stt_skip
+      && (v.summary_i18n.ko || v.summary_i18n.en || v.summary_i18n.ja)
     if (viewed.has(v.video_id)) {
       seen.push(v)
     } else if (
@@ -665,6 +667,14 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
   const [videos, setVideos] = useState<Video[]>([])
   const [hasMore, setHasMore] = useState(false)
   const [nextOffset, setNextOffset] = useState(0)
+  // nextOffsetRef: loadMore useCallback deps에서 nextOffset(state)을 제거하기 위해 ref로 동기화
+  // nextOffset이 deps에 있으면 매 로드마다 loadMore 함수가 교체 → IntersectionObserver 재생성 →
+  // sentinel이 이미 뷰포트 안에 있을 때 다음 스크롤까지 발화 안 함 (Read More 느려지는 원인)
+  const nextOffsetRef = useRef(0)
+  const updateNextOffset = useCallback((v: number) => {
+    nextOffsetRef.current = v
+    updateNextOffset(v)
+  }, [])
   const [isLoading, setIsLoading] = useState(false)
   const [total, setTotal] = useState(0)
   // 초기 클라이언트 fetch 완료 전 로딩 상태
@@ -925,7 +935,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
         allVideosRef.current = shuffled
         setVideos(ptrStage1Displayed)
         setHasMore(true)  // Stage 2에서 보완
-        setNextOffset(FEED_PAGE)
+        updateNextOffset(FEED_PAGE)
 
         // Shorts 재셔플
         if (shortsRes.ok) {
@@ -1024,7 +1034,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
         allVideosRef.current = shuffled
         setVideos(stage1Displayed)
         setHasMore(true)  // Stage 2에서 더 로드될 예정
-        setNextOffset(FEED_PAGE)
+        updateNextOffset(FEED_PAGE)
         setIsEmpty(false)
         setIsInitialLoading(false)
         setContentReady(true)
@@ -1071,7 +1081,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
       allVideosRef.current = cached.shuffled
       setVideos(cached.shuffled.slice(0, FEED_PAGE))
       setHasMore(cached.shuffled.length > FEED_PAGE)
-      setNextOffset(FEED_PAGE)
+      updateNextOffset(FEED_PAGE)
       setTotal(cached.data.total_accumulated)
       setIsEmpty(cached.shuffled.length === 0)
       // Shorts 캐시 히트 시 재사용 (없으면 useEffect가 별도 fetch)
@@ -1088,7 +1098,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     // 캐시 미스 — 2단계 fetch
     setVideos([])
     setHasMore(false)
-    setNextOffset(0)
+    updateNextOffset(0)
     setNavigating(true)
     const viewed = getViewedSet()
 
@@ -1102,7 +1112,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
       allVideosRef.current = shuffled
       setVideos(shuffled.slice(0, FEED_PAGE))
       setHasMore(true)
-      setNextOffset(FEED_PAGE)
+      updateNextOffset(FEED_PAGE)
       setIsEmpty(false)
       setNavigating(false)
       window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -1134,24 +1144,26 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     isLoadingRef.current = true
     setIsLoading(true)
 
-    // allVideosRef에서 다음 배치 slice (서버 요청 없음)
-    const next = allVideosRef.current.slice(nextOffset, nextOffset + FEED_PAGE)
+    // nextOffsetRef로 최신 offset 읽기 — state(nextOffset)를 deps에서 제거해
+    // loadMore 함수가 교체되지 않으므로 IntersectionObserver 재생성이 없음
+    const currentOffset = nextOffsetRef.current
+    const next = allVideosRef.current.slice(currentOffset, currentOffset + FEED_PAGE)
     if (next.length > 0) {
       setVideos(prev => {
         const ids = new Set(prev.map(v => v.video_id))
         return [...prev, ...next.filter(v => !ids.has(v.video_id))]
       })
-      const newOffset = nextOffset + next.length
-      setNextOffset(newOffset)
+      const newOffset = currentOffset + next.length
+      updateNextOffset(newOffset)
       setHasMore(newOffset < allVideosRef.current.length)
-      gtag('infinite_scroll_load', { persona_id: currentPersona.id, offset: nextOffset, loaded: next.length })
+      gtag('infinite_scroll_load', { persona_id: currentPersona.id, offset: currentOffset, loaded: next.length })
     } else {
       setHasMore(false)
     }
 
     isLoadingRef.current = false
     setIsLoading(false)
-  }, [hasMore, nextOffset, currentPersona.id])
+  }, [hasMore, currentPersona.id, updateNextOffset])
 
   // 비디오 클릭 핸들러 — useCallback으로 메모이제이션해 VideoCard 불필요한 재렌더 방지
   const stopAllPlayback = useCallback(() => {
