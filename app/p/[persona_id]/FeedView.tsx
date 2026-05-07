@@ -165,10 +165,6 @@ function PersonaBottomSheet({ personas, currentId, lang, onSelect, onClose }: Pe
     return () => document.removeEventListener('keydown', handleKey)
   }, [onClose])
 
-  function getDesc(p: import('@/types').Persona): string {
-    return p.description_i18n?.[lang] ?? p.description ?? ''
-  }
-
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       {/* 오버레이 */}
@@ -177,9 +173,9 @@ function PersonaBottomSheet({ personas, currentId, lang, onSelect, onClose }: Pe
       {/* 시트 */}
       <div
         ref={sheetRef}
-        className="relative w-full sm:max-w-sm bg-zinc-900 rounded-t-2xl sm:rounded-2xl
+        className="relative w-full sm:max-w-xs bg-zinc-900 rounded-t-2xl sm:rounded-2xl
                    border border-zinc-700 shadow-2xl
-                   max-h-[70vh] flex flex-col overflow-hidden
+                   max-h-[60vh] flex flex-col overflow-hidden
                    animate-in slide-in-from-bottom-4 duration-200"
       >
         {/* 핸들 바 (모바일) */}
@@ -188,8 +184,8 @@ function PersonaBottomSheet({ personas, currentId, lang, onSelect, onClose }: Pe
         </div>
 
         {/* 헤더 */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800">
-          <span className="text-sm font-semibold text-zinc-200">
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-zinc-800">
+          <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
             {{ ko: '페르소나 선택', en: 'Select Persona', ja: 'ペルソナを選択' }[lang]}
           </span>
           <button
@@ -197,8 +193,8 @@ function PersonaBottomSheet({ personas, currentId, lang, onSelect, onClose }: Pe
             className="text-zinc-500 hover:text-zinc-300 p-1 rounded-lg hover:bg-zinc-800 transition-colors"
             aria-label="닫기"
           >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M3 3l10 10M13 3L3 13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M2 2l10 10M12 2L2 12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
             </svg>
           </button>
         </div>
@@ -208,28 +204,20 @@ function PersonaBottomSheet({ personas, currentId, lang, onSelect, onClose }: Pe
           {personas.map(p => {
             const isActive = p.id === currentId
             const name = p.name_i18n?.[lang] ?? p.name
-            const desc = getDesc(p)
             return (
               <button
                 key={p.id}
                 onClick={() => { onSelect(p.id); onClose() }}
-                className={`w-full text-left px-4 py-3 flex items-start gap-3 transition-colors
+                className={`w-full text-left px-4 py-2.5 flex items-center justify-between gap-3 transition-colors
                   ${isActive
                     ? 'bg-zinc-800 text-zinc-100'
                     : 'text-zinc-300 hover:bg-zinc-800/60'
                   }`}
               >
-                <div className="flex-1 min-w-0">
-                  <p className={`text-sm font-medium truncate ${isActive ? 'text-zinc-100' : 'text-zinc-200'}`}>
-                    {name}
-                  </p>
-                  {desc && (
-                    <p className="text-xs text-zinc-500 mt-0.5 line-clamp-2 leading-snug">{desc}</p>
-                  )}
-                </div>
+                <span className={`text-sm truncate ${isActive ? 'font-medium' : ''}`}>{name}</span>
                 {isActive && (
-                  <svg className="shrink-0 mt-0.5 text-zinc-400" width="14" height="14" viewBox="0 0 14 14" fill="none">
-                    <path d="M2 7l4 4 6-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                  <svg className="shrink-0 text-zinc-400" width="13" height="13" viewBox="0 0 13 13" fill="none">
+                    <path d="M1.5 6.5l3.5 3.5 6-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
                 )}
               </button>
