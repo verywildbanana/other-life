@@ -1,0 +1,15 @@
+{
+  "id": "thanos_post_endgame",
+  "name": "엔드게임 이후 타노스",
+  "name_i18n": {
+    "ko": "엔드게임 이후 타노스",
+    "en": "Post-Endgame Thanos",
+    "ja": "エンドゲーム後のサノス"
+  },
+  "description": "스냅 완수 후 패배·소멸한 타노스의 시선. MCU 철학 분석 + 인구·자원·문명 붕괴 다큐.",
+  "description_i18n": {
+    "ko": "스냅 완수 후 패배·소멸한 타노스의 시선. MCU 철학 분석 + 인구·자원·문명 붕괴 다큐.",
+    "en": "The Mad Titan's perspective after defeat. MCU philosophy breakdowns + population, resource, and civilization collapse docs.",
+    "ja": "敗北・消滅後のサノスの視点。MCU哲学分析＋人口・資源・文明崩壊ドキュメンタリー。"
+  }
+}
