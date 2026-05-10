@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Geist } from 'next/font/google'
 import Script from 'next/script'
+import InstallPrompt from '@/components/InstallPrompt'
 import './globals.css'
 
 const GA_ID = 'G-JNHYK6SN57'
@@ -73,9 +74,18 @@ export default function RootLayout({
             gtag('config', '${GA_ID}');
           `}
         </Script>
+        {/* Service Worker 등록 (PWA 홈 화면 추가 활성화) */}
+        <Script id="sw-register" strategy="afterInteractive">
+          {`
+            if ('serviceWorker' in navigator) {
+              navigator.serviceWorker.register('/sw.js').catch(() => {});
+            }
+          `}
+        </Script>
       </head>
       <body className="min-h-full bg-zinc-950 text-zinc-100 font-sans antialiased">
         {children}
+        <InstallPrompt />
       </body>
     </html>
   )
