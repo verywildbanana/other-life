@@ -1,0 +1,15 @@
+{
+  "id": "torino_banker_30s",
+  "name": "하루의 피로를 위스키 한 잔으로 달래는 토리노 은행원",
+  "name_i18n": {
+    "ko": "하루의 피로를 위스키 한 잔으로 달래는 토리노 은행원",
+    "en": "A Turin Banker Who Unwinds with a Glass of Whisky After Work",
+    "ja": "一日の疲れをウイスキー一杯で癒すトリノの銀行員"
+  },
+  "description": "토리노 중심가 은행에서 일하는 30대 이탈리아 남성. 절제된 스타일, 에스프레소, 베르무트, 위스키 바가 일상인 현실 젠틀맨.",
+  "description_i18n": {
+    "ko": "토리노 중심가 은행에서 일하는 30대 이탈리아 남성. 절제된 스타일, 에스프레소, 베르무트, 위스키 바가 일상인 현실 젠틀맨.",
+    "en": "A 30-something Italian banker in central Turin. Espresso, vermouth, tailored suits, and a quiet whisky bar are his daily rituals.",
+    "ja": "トリノ中心部の銀行に勤める30代イタリア人男性。エスプレッソ、ベルモット、仕立てスーツ、ウイスキーバーが日常のリアルなジェントルマン。"
+  }
+}
