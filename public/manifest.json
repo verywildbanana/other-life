@@ -1,6 +1,6 @@
 {
-  "name": "Persona Feed",
-  "short_name": "Persona Feed",
+  "name": "Anomess",
+  "short_name": "Anomess",
   "description": "YouTube 알고리즘 페르소나 시뮬레이터",
   "start_url": "/",
   "scope": "/",
