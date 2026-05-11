@@ -18,9 +18,9 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'Persona Feed',
+    title: 'Anomess',
   },
-  title: 'Persona Feed — YouTube 알고리즘 시뮬레이터',
+  title: 'Anomess — YouTube 알고리즘 시뮬레이터',
   description:
     '페르소나 기반 YouTube 피드 시뮬레이터. 다양한 관심사를 가진 페르소나가 실제로 어떤 영상을 추천받는지 확인하세요.',
   alternates: {
@@ -37,14 +37,14 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: 'website',
-    title: 'Persona Feed — YouTube 알고리즘 시뮬레이터',
+    title: 'Anomess — YouTube 알고리즘 시뮬레이터',
     description:
       '페르소나 기반 YouTube 피드 시뮬레이터. 다양한 관심사를 가진 페르소나가 실제로 어떤 영상을 추천받는지 확인하세요.',
     locale: 'ko_KR',
   },
   twitter: {
     card: 'summary',
-    title: 'Persona Feed',
+    title: 'Anomess',
     description: 'YouTube 알고리즘 페르소나 시뮬레이터',
   },
 }
