@@ -20,7 +20,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const persona = loadPersona(persona_id)
   if (!persona) return {}
 
-  const title = `${persona.name} — YouTube 알고리즘 피드 | Persona Feed`
+  const title = `${persona.name} — YouTube 알고리즘 피드 | Anomess`
   const description = `${persona.name}(${persona.description})의 YouTube 홈피드. 알고리즘이 이 페르소나에게 실제로 어떤 영상을 추천하는지 확인하세요.`
   const url = `${BASE_URL}/p/${persona_id}`
 
@@ -42,7 +42,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description,
       url,
       locale: 'ko_KR',
-      siteName: 'Persona Feed',
+      siteName: 'Anomess',
     },
     twitter: {
       card: 'summary_large_image',
