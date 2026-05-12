@@ -1401,7 +1401,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
             <img
               src="/images/anomess-logo.png"
               alt="Anomess"
-              className="h-10 w-auto rounded-xl"
+              className="h-20 w-auto rounded-xl"
             />
           </a>
           {/* 언어 토글 */}
