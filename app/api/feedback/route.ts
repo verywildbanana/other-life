@@ -15,13 +15,16 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null)
   if (!body) return NextResponse.json({ error: 'Invalid body' }, { status: 400 })
 
-  const { persona_id, rating, comment, lang } = body
+  const { persona_id, rating, comment, content_suggestion, lang } = body
 
   if (rating !== undefined && (typeof rating !== 'number' || rating < 1 || rating > 5)) {
     return NextResponse.json({ error: 'Invalid rating' }, { status: 400 })
   }
   if (comment && comment.length > 1000) {
     return NextResponse.json({ error: 'Comment too long' }, { status: 400 })
+  }
+  if (content_suggestion && content_suggestion.length > 500) {
+    return NextResponse.json({ error: 'Suggestion too long' }, { status: 400 })
   }
 
   const ip = getClientIp(req)
@@ -52,6 +55,7 @@ export async function POST(req: NextRequest) {
     persona_id: persona_id ?? null,
     rating: rating ?? null,
     comment: comment?.trim() ?? null,
+    content_suggestion: content_suggestion?.trim() ?? null,
     lang: lang ?? null,
     ip_hash,
   })

@@ -77,8 +77,10 @@ export async function GET(req: NextRequest) {
     stats[s.persona_id] = s
   }
 
-  // 접근 로그 통계 (최근 7일)
-  const since7d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+  // period 파라미터 — 7d(기본) / 30d / 90d
+  const period = req.nextUrl.searchParams.get('period') ?? '7d'
+  const periodDays = period === '90d' ? 90 : period === '30d' ? 30 : 7
+  const since7d = new Date(Date.now() - periodDays * 24 * 60 * 60 * 1000).toISOString()
   const myIpHash = getAdminIpHash(req)
 
   const { data: logRows } = await supabase
@@ -251,5 +253,8 @@ export async function GET(req: NextRequest) {
     return { count, avg: Math.round((total / count) * 10) / 10, dist }
   })()
 
-  return NextResponse.json({ videos: stats, access_logs: accessLogs, admin_logs: adminLogs, user_behavior: userBehavior, feedback_stats: feedbackStats })
+  return NextResponse.json(
+    { videos: stats, access_logs: accessLogs, admin_logs: adminLogs, user_behavior: userBehavior, feedback_stats: feedbackStats },
+    { headers: { 'Cache-Control': 'no-store' } },
+  )
 }
