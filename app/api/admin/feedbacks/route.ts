@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
   const supabase = createServiceClient()
   const { data, error } = await supabase
     .from('feedbacks')
-    .select('id, persona_id, rating, comment, lang, created_at')
+    .select('id, persona_id, rating, comment, content_suggestion, lang, created_at')
     .order('created_at', { ascending: false })
     .limit(100)
 

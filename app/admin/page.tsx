@@ -13,6 +13,8 @@ type AccessLogs = {
   by_country: Record<string, number>
   daily: Record<string, number>
 }
+
+type StatPeriod = '7d' | '30d' | '90d'
 type UserBehavior = {
   sessions_7d: number
   video_clicks_7d: number
@@ -49,6 +51,7 @@ type FeedbackRow = {
   persona_id: string | null
   rating: number | null
   comment: string | null
+  content_suggestion: string | null
   lang: string | null
   created_at: string
 }
@@ -62,6 +65,7 @@ export default function AdminPage() {
   const [videoStats, setVideoStats] = useState<VideoStats>({})
   const [accessLogs, setAccessLogs] = useState<AccessLogs | null>(null)
   const [userBehavior, setUserBehavior] = useState<UserBehavior | null>(null)
+  const [statPeriod, setStatPeriod] = useState<StatPeriod>('7d')
   const [personas, setPersonas] = useState<Persona[]>([])
   const [selectedPersona, setSelectedPersona] = useState('')
   const [videos, setVideos] = useState<VideoRow[]>([])
@@ -89,10 +93,19 @@ export default function AdminPage() {
     })
   }, [])
 
-  async function fetchStats(): Promise<StatsResponse | null> {
-    const res = await fetch('/api/admin/stats', { credentials: 'include' })
+  async function fetchStats(period: StatPeriod = '7d'): Promise<StatsResponse | null> {
+    const res = await fetch(`/api/admin/stats?period=${period}`, { credentials: 'include' })
     if (!res.ok) return null
     return res.json()
+  }
+
+  async function changePeriod(p: StatPeriod) {
+    setStatPeriod(p)
+    const data = await fetchStats(p)
+    if (data) {
+      setAccessLogs(data.access_logs)
+      if (data.user_behavior) setUserBehavior(data.user_behavior)
+    }
   }
 
   async function loadPersonas(): Promise<void> {
@@ -342,9 +355,28 @@ export default function AdminPage() {
 
       <section className="px-6 py-6 max-w-7xl mx-auto space-y-10">
 
-        {/* ── 접근 로그 통계 (최근 7일) ── */}
+        {/* ── 접근 로그 통계 ── */}
         <div>
-          <h2 className="text-sm font-semibold text-zinc-400 mb-3">접근 통계 — 최근 7일</h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold text-zinc-400">
+              접근 통계 — {{ '7d': '최근 7일', '30d': '최근 30일', '90d': '최근 90일' }[statPeriod]}
+            </h2>
+            <div className="flex rounded-lg overflow-hidden border border-zinc-700 text-xs">
+              {(['7d', '30d', '90d'] as StatPeriod[]).map(p => (
+                <button
+                  key={p}
+                  onClick={() => changePeriod(p)}
+                  className={`px-3 py-1.5 transition-colors ${
+                    statPeriod === p
+                      ? 'bg-zinc-700 text-zinc-100'
+                      : 'text-zinc-400 hover:bg-zinc-800'
+                  }`}
+                >
+                  {{ '7d': '7일', '30d': '30일', '90d': '90일' }[p]}
+                </button>
+              ))}
+            </div>
+          </div>
           {accessLogs ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
               {/* 외부 방문자 (나 제외) */}
@@ -575,6 +607,12 @@ export default function AdminPage() {
                     {fb.rating ? '★'.repeat(fb.rating) : '—'}
                   </div>
                   <div className="flex-1 min-w-0">
+                    {fb.content_suggestion && (
+                      <div className="flex items-start gap-1.5 mb-1.5">
+                        <span className="text-[10px] text-blue-400 bg-blue-950/40 border border-blue-800/40 rounded px-1.5 py-0.5 shrink-0 mt-0.5">콘텐츠 제안</span>
+                        <p className="text-sm text-blue-200 break-words">{fb.content_suggestion}</p>
+                      </div>
+                    )}
                     <p className="text-sm text-zinc-200 break-words">{fb.comment || <span className="text-zinc-600 italic">코멘트 없음</span>}</p>
                     <div className="flex items-center gap-2 mt-1 text-[11px] text-zinc-500">
                       <span>{personaName(fb.persona_id ?? '')}</span>

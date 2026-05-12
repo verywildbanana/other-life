@@ -50,12 +50,14 @@ interface FeedbackModalProps {
 }
 
 const FEEDBACK_LABELS = {
-  title: { ko: '피드백 남기기', en: 'Leave Feedback', ja: 'フィードバック' },
-  ratingLabel: { ko: '서비스는 어떠셨나요?', en: 'How was your experience?', ja: 'ご感想をお聞かせください' },
-  commentPlaceholder: { ko: '의견을 자유롭게 남겨주세요 (선택)', en: 'Share your thoughts (optional)', ja: 'ご意見をお聞かせください（任意）' },
-  submit: { ko: '제출', en: 'Submit', ja: '送信' },
-  submitting: { ko: '제출 중...', en: 'Submitting...', ja: '送信中...' },
-  thanks: { ko: '감사합니다! 소중한 의견이 반영됩니다.', en: 'Thank you for your feedback!', ja: 'ご意見ありがとうございます！' },
+  title: { ko: '이 피드, 어떠셨나요?', en: 'How was this feed?', ja: 'このフィードはいかがでしたか？' },
+  ratingLabel: { ko: '알고리즘이 이 사람답게 느껴졌나요?', en: 'Did the algorithm feel true to this person?', ja: 'アルゴリズムはこの人らしく感じましたか？' },
+  commentPlaceholder: { ko: '자유롭게 남겨주세요 (선택)', en: 'Share your thoughts (optional)', ja: 'ご意見をお聞かせください（任意）' },
+  suggestionLabel: { ko: '이 사람이라면 이런 콘텐츠도 볼 것 같아요 (선택)', en: 'This person might also watch... (optional)', ja: 'この人はこんなコンテンツも見そうです（任意）' },
+  suggestionPlaceholder: { ko: '예) 해외 이민 브이로그, 스타트업 투자 이야기, 명품 언박싱...', en: 'e.g. expat vlogs, startup funding stories, luxury unboxing...', ja: '例）海外移住vlog、スタートアップ投資、高級品アンボクシング...' },
+  submit: { ko: '의견 보내기', en: 'Submit', ja: '送信' },
+  submitting: { ko: '보내는 중...', en: 'Submitting...', ja: '送信中...' },
+  thanks: { ko: '감사합니다! 더 현실감 있는 피드를 만드는 데 반영됩니다.', en: 'Thank you! Your input helps make the feed more realistic.', ja: 'ありがとうございます！よりリアルなフィードに活かされます。' },
   close: { ko: '닫기', en: 'Close', ja: '閉じる' },
 }
 
@@ -63,6 +65,7 @@ function FeedbackModal({ lang, personaId, onClose }: FeedbackModalProps) {
   const [rating, setRating] = useState(0)
   const [hovered, setHovered] = useState(0)
   const [comment, setComment] = useState('')
+  const [suggestion, setSuggestion] = useState('')
   const [status, setStatus] = useState<'idle' | 'submitting' | 'done'>('idle')
 
   async function handleSubmit() {
@@ -72,10 +75,10 @@ function FeedbackModal({ lang, personaId, onClose }: FeedbackModalProps) {
       await fetch('/api/feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ persona_id: personaId, rating, comment, lang }),
+        body: JSON.stringify({ persona_id: personaId, rating, comment, content_suggestion: suggestion.trim() || null, lang }),
       })
       setStatus('done')
-      setTimeout(onClose, 2000)
+      setTimeout(onClose, 2500)
     } catch {
       setStatus('idle')
     }
@@ -92,9 +95,10 @@ function FeedbackModal({ lang, personaId, onClose }: FeedbackModalProps) {
               <h3 className="text-sm font-semibold">{FEEDBACK_LABELS.title[lang]}</h3>
               <button onClick={onClose} className="text-zinc-500 hover:text-zinc-300 text-lg leading-none">×</button>
             </div>
-            <p className="text-xs text-zinc-400 mb-3">{FEEDBACK_LABELS.ratingLabel[lang]}</p>
+
             {/* 별점 */}
-            <div className="flex gap-2 mb-4">
+            <p className="text-xs text-zinc-400 mb-2">{FEEDBACK_LABELS.ratingLabel[lang]}</p>
+            <div className="flex gap-2 mb-5">
               {[1, 2, 3, 4, 5].map(n => (
                 <button
                   key={n}
@@ -109,15 +113,28 @@ function FeedbackModal({ lang, personaId, onClose }: FeedbackModalProps) {
                 </button>
               ))}
             </div>
+
+            {/* 콘텐츠 제안 */}
+            <p className="text-xs text-zinc-400 mb-2">{FEEDBACK_LABELS.suggestionLabel[lang]}</p>
+            <textarea
+              value={suggestion}
+              onChange={e => setSuggestion(e.target.value)}
+              placeholder={FEEDBACK_LABELS.suggestionPlaceholder[lang]}
+              maxLength={300}
+              rows={2}
+              className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-zinc-500 mb-4"
+            />
+
             {/* 코멘트 */}
             <textarea
               value={comment}
               onChange={e => setComment(e.target.value)}
               placeholder={FEEDBACK_LABELS.commentPlaceholder[lang]}
               maxLength={500}
-              rows={3}
+              rows={2}
               className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-zinc-500 mb-4"
             />
+
             <button
               onClick={handleSubmit}
               disabled={rating === 0 || status === 'submitting'}
@@ -200,7 +217,7 @@ function PersonaBottomSheet({ personas, currentId, lang, onSelect, onClose }: Pe
         {/* 헤더 */}
         <div className="flex items-center justify-between px-4 py-2.5 border-b border-zinc-800">
           <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
-            {{ ko: '페르소나 선택', en: 'Select Persona', ja: 'ペルソナを選択' }[lang]}
+            {{ ko: '누구의 피드를 볼까요?', en: 'Whose feed are you exploring?', ja: '誰のフィードを見ますか？' }[lang]}
           </span>
           <button
             onClick={onClose}
@@ -260,9 +277,9 @@ const LABELS = {
     ja: 'YouTubeアルゴリズム シミュレーター',
   },
   selectPersona: {
-    ko: '페르소나 선택',
-    en: 'Select Persona',
-    ja: 'ペルソナを選択',
+    ko: '다른 사람 피드 보기',
+    en: 'Explore another feed',
+    ja: '別の人のフィードを見る',
   },
   langToggle: {
     ko: '언어 변경',
