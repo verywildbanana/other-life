@@ -213,9 +213,12 @@ function PersonaBottomSheet({ personas, currentId, lang, onSelect, onClose }: Pe
           </button>
         </div>
 
-        {/* 목록 + 하단 페이드 마스크 */}
-        <div className="relative flex-1 min-h-0">
-          <div ref={listRef} className="overflow-y-auto h-full py-1">
+        {/* 목록 */}
+        <div
+          ref={listRef}
+          className="overflow-y-auto flex-1 py-1"
+          style={{ WebkitOverflowScrolling: 'touch' }}
+        >
           {personas.map(p => {
             const isActive = p.id === currentId
             const name = p.name_i18n?.[lang] ?? p.name
@@ -238,14 +241,13 @@ function PersonaBottomSheet({ personas, currentId, lang, onSelect, onClose }: Pe
               </button>
             )
           })}
-          </div>
-
-          {/* 하단 페이드 마스크 — 스크롤 끝에 도달하면 사라짐 */}
-          {hasScrollBelow && (
-            <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-12
-                            bg-gradient-to-t from-zinc-900 to-transparent" />
-          )}
         </div>
+
+        {/* 하단 페이드 마스크 — 스크롤 끝에 도달하면 사라짐 (pointer-events-none으로 스크롤 방해 안 함) */}
+        {hasScrollBelow && (
+          <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-12
+                          bg-gradient-to-t from-zinc-900 to-transparent rounded-b-2xl" />
+        )}
       </div>
     </div>
   )
