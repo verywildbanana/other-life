@@ -253,5 +253,8 @@ export async function GET(req: NextRequest) {
     return { count, avg: Math.round((total / count) * 10) / 10, dist }
   })()
 
-  return NextResponse.json({ videos: stats, access_logs: accessLogs, admin_logs: adminLogs, user_behavior: userBehavior, feedback_stats: feedbackStats })
+  return NextResponse.json(
+    { videos: stats, access_logs: accessLogs, admin_logs: adminLogs, user_behavior: userBehavior, feedback_stats: feedbackStats },
+    { headers: { 'Cache-Control': 'no-store' } },
+  )
 }
