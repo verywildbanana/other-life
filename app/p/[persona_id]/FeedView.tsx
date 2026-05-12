@@ -145,6 +145,20 @@ interface PersonaSheetProps {
 
 function PersonaBottomSheet({ personas, currentId, lang, onSelect, onClose }: PersonaSheetProps) {
   const sheetRef = useRef<HTMLDivElement>(null)
+  const listRef  = useRef<HTMLDivElement>(null)
+  const [hasScrollBelow, setHasScrollBelow] = useState(true)
+
+  // 스크롤 여부 감지 — 하단에 더 내용이 있으면 마스크 표시
+  useEffect(() => {
+    const el = listRef.current
+    if (!el) return
+    const check = () => {
+      setHasScrollBelow(el.scrollTop + el.clientHeight < el.scrollHeight - 4)
+    }
+    check()
+    el.addEventListener('scroll', check, { passive: true })
+    return () => el.removeEventListener('scroll', check)
+  }, [])
 
   // 바깥 클릭 시 닫기
   useEffect(() => {
@@ -199,8 +213,9 @@ function PersonaBottomSheet({ personas, currentId, lang, onSelect, onClose }: Pe
           </button>
         </div>
 
-        {/* 목록 */}
-        <div className="overflow-y-auto flex-1 py-1">
+        {/* 목록 + 하단 페이드 마스크 */}
+        <div className="relative flex-1 min-h-0">
+          <div ref={listRef} className="overflow-y-auto h-full py-1">
           {personas.map(p => {
             const isActive = p.id === currentId
             const name = p.name_i18n?.[lang] ?? p.name
@@ -223,6 +238,13 @@ function PersonaBottomSheet({ personas, currentId, lang, onSelect, onClose }: Pe
               </button>
             )
           })}
+          </div>
+
+          {/* 하단 페이드 마스크 — 스크롤 끝에 도달하면 사라짐 */}
+          {hasScrollBelow && (
+            <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-12
+                            bg-gradient-to-t from-zinc-900 to-transparent" />
+          )}
         </div>
       </div>
     </div>
