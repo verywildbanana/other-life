@@ -62,20 +62,20 @@ const FEEDBACK_LABELS = {
 }
 
 function FeedbackModal({ lang, personaId, onClose }: FeedbackModalProps) {
-  const [rating, setRating] = useState(0)
-  const [hovered, setHovered] = useState(0)
   const [comment, setComment] = useState('')
   const [suggestion, setSuggestion] = useState('')
   const [status, setStatus] = useState<'idle' | 'submitting' | 'done'>('idle')
 
+  const isEmpty = comment.trim() === '' && suggestion.trim() === ''
+
   async function handleSubmit() {
-    if (rating === 0) return
+    if (isEmpty) return
     setStatus('submitting')
     try {
       await fetch('/api/feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ persona_id: personaId, rating, comment, content_suggestion: suggestion.trim() || null, lang }),
+        body: JSON.stringify({ persona_id: personaId, comment, content_suggestion: suggestion.trim() || null, lang }),
       })
       setStatus('done')
       setTimeout(onClose, 2500)
@@ -94,24 +94,6 @@ function FeedbackModal({ lang, personaId, onClose }: FeedbackModalProps) {
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-semibold">{FEEDBACK_LABELS.title[lang]}</h3>
               <button onClick={onClose} className="text-zinc-500 hover:text-zinc-300 text-lg leading-none">×</button>
-            </div>
-
-            {/* 별점 */}
-            <p className="text-xs text-zinc-400 mb-2">{FEEDBACK_LABELS.ratingLabel[lang]}</p>
-            <div className="flex gap-2 mb-5">
-              {[1, 2, 3, 4, 5].map(n => (
-                <button
-                  key={n}
-                  onClick={() => setRating(n)}
-                  onMouseEnter={() => setHovered(n)}
-                  onMouseLeave={() => setHovered(0)}
-                  className={`text-2xl transition-transform hover:scale-110 ${
-                    n <= (hovered || rating) ? 'text-amber-400' : 'text-zinc-600'
-                  }`}
-                >
-                  ★
-                </button>
-              ))}
             </div>
 
             {/* 콘텐츠 제안 */}
@@ -137,7 +119,7 @@ function FeedbackModal({ lang, personaId, onClose }: FeedbackModalProps) {
 
             <button
               onClick={handleSubmit}
-              disabled={rating === 0 || status === 'submitting'}
+              disabled={isEmpty || status === 'submitting'}
               className="w-full bg-zinc-100 text-zinc-900 font-medium py-2 rounded-lg text-sm hover:bg-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {status === 'submitting' ? FEEDBACK_LABELS.submitting[lang] : FEEDBACK_LABELS.submit[lang]}
