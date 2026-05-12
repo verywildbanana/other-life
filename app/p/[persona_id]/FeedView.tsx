@@ -1398,7 +1398,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
         <div className="flex items-center justify-between mb-2">
           <div>
             <h1 className="text-lg font-semibold tracking-tight">
-              <a href="/" className="hover:text-zinc-300">Persona Feed</a>
+              <a href="/" className="hover:text-zinc-300">Anomess</a>
             </h1>
             <p className="text-[11px] text-zinc-500 leading-tight">
               {t('subtitle', lang)}

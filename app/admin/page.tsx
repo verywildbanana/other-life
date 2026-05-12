@@ -325,7 +325,7 @@ export default function AdminPage() {
       <header className="border-b border-zinc-800 px-6 py-4 flex items-center justify-between sticky top-0 bg-zinc-950 z-10">
         <div>
           <h1 className="text-xl font-semibold">관리자 대시보드</h1>
-          <p className="text-xs text-zinc-500 mt-0.5">Persona Feed 관리</p>
+          <p className="text-xs text-zinc-500 mt-0.5">Anomess 관리</p>
         </div>
         <div className="flex items-center gap-3">
           <a href="/" className="text-xs text-zinc-500 hover:text-zinc-300">
