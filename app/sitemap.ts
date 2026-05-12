@@ -1,7 +1,7 @@
 import { MetadataRoute } from 'next'
 import { listPersonas } from '@/lib/personas'
 
-const BASE_URL = 'https://other-life.vercel.app'
+const BASE_URL = 'https://play.anomess.com'
 
 // Google Search Console에 제출되는 sitemap.xml 자동 생성
 export default function sitemap(): MetadataRoute.Sitemap {

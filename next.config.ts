@@ -28,7 +28,7 @@ const nextConfig: NextConfig = {
         headers: securityHeaders,
       },
       {
-        // 피드 API: feed.anomess.com + other-life.vercel.app 허용 (공개 읽기 전용)
+        // 피드 API: play.anomess.com + other-life.vercel.app 허용 (공개 읽기 전용)
         source: '/api/feed/:path*',
         headers: [
           { key: 'Access-Control-Allow-Origin', value: '*' },
@@ -36,7 +36,7 @@ const nextConfig: NextConfig = {
         ],
       },
       {
-        // ingest API: feed_token 인증이 실질적 보안 — CORS 완화 가능
+        // ingest API: feed_token 인증이 실질적 보안 — CORS 완화
         source: '/api/ingest/:path*',
         headers: [
           { key: 'Access-Control-Allow-Origin', value: '*' },
