@@ -124,24 +124,40 @@ export async function getPaginatedFeed(
     total = count ?? 0
   }
 
-  // 최신순 + 점수순 정렬, offset 기반 페이지네이션
-  // 미사용 컬럼 (view_count, keyword, feed_source) 제거 → 페이로드 ~25% 감소
-  const { data: rows } = await supabase
-    .from('videos')
-    .select('video_id, persona_id, title, channel, url, thumbnail_url, collected_date, collected_at, published_at, titles_i18n, summary_i18n')
-    .eq('persona_id', personaId)
-    .order('collected_date', { ascending: false })
-    .order('score', { ascending: false })
-    .range(offset, offset + limit - 1)
+  // 두 쿼리로 분리 — epochShuffle 버킷 정확도 보장
+  // 1) summary 있는 영상 전부 (limit 300)
+  // 2) summary 없는 영상 최신 100개
+  // → summary 영상이 limit 밖으로 밀려나는 문제 해결, 페이로드는 최대 ~400개로 제한
+  const COLS = 'video_id, persona_id, title, channel, url, thumbnail_url, collected_date, collected_at, published_at, titles_i18n, summary_i18n'
 
-  if (!rows) return null
+  const [withSummaryRes, noSummaryRes] = await Promise.all([
+    supabase
+      .from('videos')
+      .select(COLS)
+      .eq('persona_id', personaId)
+      .not('summary_i18n', 'is', null)
+      .order('collected_date', { ascending: false })
+      .order('score', { ascending: false })
+      .limit(300),
+    supabase
+      .from('videos')
+      .select(COLS)
+      .eq('persona_id', personaId)
+      .is('summary_i18n', null)
+      .order('collected_date', { ascending: false })
+      .order('score', { ascending: false })
+      .limit(100),
+  ])
+
+  const rows = [...(withSummaryRes.data ?? []), ...(noSummaryRes.data ?? [])]
+  if (rows.length === 0) return null
 
   return {
     persona_id: personaId,
     persona_name: persona.name,
     total_accumulated: total,
     videos: rows as unknown as Video[],
-    has_more: skipCount ? rows.length >= limit : offset + limit < total,
-    next_offset: offset + limit,
+    has_more: false,   // 전체 일괄 로드 — 클라이언트 epochShuffle이 무한스크롤 담당
+    next_offset: rows.length,
   }
 }
