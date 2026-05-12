@@ -28,18 +28,18 @@ const nextConfig: NextConfig = {
         headers: securityHeaders,
       },
       {
-        // 피드 API: 외부 직접 호출 차단 (브라우저 CORS)
+        // 피드 API: play.anomess.com + other-life.vercel.app 허용 (공개 읽기 전용)
         source: '/api/feed/:path*',
         headers: [
-          { key: 'Access-Control-Allow-Origin', value: 'https://other-life.vercel.app' },
+          { key: 'Access-Control-Allow-Origin', value: '*' },
           { key: 'Access-Control-Allow-Methods', value: 'GET' },
         ],
       },
       {
-        // ingest API: 서버 간 통신만 허용
+        // ingest API: feed_token 인증이 실질적 보안 — CORS 완화
         source: '/api/ingest/:path*',
         headers: [
-          { key: 'Access-Control-Allow-Origin', value: 'https://other-life.vercel.app' },
+          { key: 'Access-Control-Allow-Origin', value: '*' },
           { key: 'Access-Control-Allow-Methods', value: 'POST' },
         ],
       },

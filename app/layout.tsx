@@ -11,7 +11,7 @@ const geist = Geist({
   subsets: ['latin'],
 })
 
-const BASE_URL = 'https://other-life.vercel.app'
+const BASE_URL = 'https://play.anomess.com'
 
 export const metadata: Metadata = {
   manifest: '/manifest.json',

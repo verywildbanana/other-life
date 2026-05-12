@@ -7,7 +7,7 @@ interface Props {
   params: Promise<{ persona_id: string }>
 }
 
-const BASE_URL = 'https://other-life.vercel.app'
+const BASE_URL = 'https://play.anomess.com'
 
 // 빌드 시 알려진 페르소나 경로 사전 생성
 export async function generateStaticParams() {
