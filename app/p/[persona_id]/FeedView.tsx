@@ -717,8 +717,8 @@ const ShortsCarousel = memo(function ShortsCarousel({
 
 // ── 랜덤 순서 유틸 ────────────────────────────────────────────────────────────
 const FEED_PAGE = 20
-// NEXT_PUBLIC_FRESH_HOURS: 이 시간 이내 수집된 콘텐츠를 신규로 간주 (기본 3시간)
-const FRESH_HOURS = Number(process.env.NEXT_PUBLIC_FRESH_HOURS ?? 3)
+// NEXT_PUBLIC_FRESH_HOURS: 이 시간 이내 수집된 콘텐츠를 신규로 간주 (기본 12시간)
+const FRESH_HOURS = Number(process.env.NEXT_PUBLIC_FRESH_HOURS ?? 12)
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr]
