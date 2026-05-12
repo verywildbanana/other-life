@@ -1396,14 +1396,14 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
       {/* 헤더 */}
       <header className="border-b border-zinc-800 px-4 py-3 sticky top-0 bg-zinc-950 z-10">
         <div className="flex items-center justify-between mb-2">
-          <div>
-            <h1 className="text-lg font-semibold tracking-tight">
-              <a href="/" className="hover:text-zinc-300">Anomess</a>
-            </h1>
-            <p className="text-[11px] text-zinc-500 leading-tight">
-              {t('subtitle', lang)}
-            </p>
-          </div>
+          <a href="/" className="flex items-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/images/anomess-logo.png"
+              alt="Anomess"
+              className="h-[66px] w-auto rounded-xl"
+            />
+          </a>
           {/* 언어 토글 */}
           <div className="flex rounded-lg overflow-hidden border border-zinc-700 text-xs font-medium shrink-0">
             {(['ko', 'en', 'ja'] as Lang[]).map(l => (
