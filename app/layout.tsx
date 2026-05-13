@@ -27,9 +27,9 @@ export const metadata: Metadata = {
     statusBarStyle: 'black-translucent',
     title: 'Anomess',
   },
-  title: 'Anomess — YouTube 알고리즘 시뮬레이터',
+  title: 'Anomess — See the world more than your algorithm',
   description:
-    '페르소나 기반 YouTube 피드 시뮬레이터. 다양한 관심사를 가진 페르소나가 실제로 어떤 영상을 추천받는지 확인하세요.',
+    'Peek into other people\'s YouTube feeds and discover what you never knew you were missing. See the world beyond your own algorithm.',
   alternates: {
     canonical: BASE_URL,
     languages: {
@@ -40,19 +40,19 @@ export const metadata: Metadata = {
     },
   },
   verification: {
-    google: 'ARx7X1sVLfQHWKRkaF2bRaxvzfA-8nHXxJpQS4wMTSc',
+    google: '-efCTUv6tXM5wHSb8WsTQ6ekRBdwBAKtCVeuK_ZGJxk',
   },
   openGraph: {
     type: 'website',
-    title: 'Anomess — YouTube 알고리즘 시뮬레이터',
+    title: 'Anomess — See the world more than your algorithm',
     description:
-      '페르소나 기반 YouTube 피드 시뮬레이터. 다양한 관심사를 가진 페르소나가 실제로 어떤 영상을 추천받는지 확인하세요.',
-    locale: 'ko_KR',
+      'Peek into other people\'s YouTube feeds and discover what you never knew you were missing. See the world beyond your own algorithm.',
+    locale: 'en_US',
   },
   twitter: {
     card: 'summary',
-    title: 'Anomess',
-    description: 'YouTube 알고리즘 페르소나 시뮬레이터',
+    title: 'Anomess — See the world more than your algorithm',
+    description: 'Peek into other people\'s YouTube feeds and discover what you never knew you were missing.',
   },
 }
 
@@ -62,7 +62,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="ko" className={`${geist.variable} h-full dark`}>
+    <html lang="en" className={`${geist.variable} h-full dark`}>
       <head>
         {/* PWA */}
         <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
