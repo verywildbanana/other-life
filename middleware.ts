@@ -10,6 +10,14 @@ import { issueToken, verifyToken, COOKIE_NAME, TOKEN_TTL_MS } from '@/lib/feed-t
 import { logAdminAccess } from '@/lib/admin-log'
 
 export async function middleware(req: NextRequest) {
+  // feed.anomess.com → play.anomess.com 영구 리다이렉트
+  const host = req.headers.get('host') ?? ''
+  if (host === 'feed.anomess.com') {
+    const url = req.nextUrl.clone()
+    url.host = 'play.anomess.com'
+    return NextResponse.redirect(url, { status: 301 })
+  }
+
   const { pathname } = req.nextUrl
 
   // /admin, /api/admin/* 접근 로깅
@@ -53,5 +61,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/p/:path*', '/admin', '/admin/login', '/api/admin/:path*'],
+  matcher: ['/', '/p/:path*', '/admin', '/admin/login', '/api/admin/:path*'],
 }

@@ -27,9 +27,9 @@ export const metadata: Metadata = {
     statusBarStyle: 'black-translucent',
     title: 'Anomess',
   },
-  title: 'Anomess — YouTube 알고리즘 시뮬레이터',
+  title: 'Anomess — See the world more than your algorithm',
   description:
-    '페르소나 기반 YouTube 피드 시뮬레이터. 다양한 관심사를 가진 페르소나가 실제로 어떤 영상을 추천받는지 확인하세요.',
+    '알고리즘 밖의 세상을 보세요. 나와 다른 사람들이 보는 유튜브 피드를 엿보며, 내가 몰랐던 취향과 더 넓은 세상을 직접 발견하세요.',
   alternates: {
     canonical: BASE_URL,
     languages: {
@@ -44,15 +44,15 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: 'website',
-    title: 'Anomess — YouTube 알고리즘 시뮬레이터',
+    title: 'Anomess — See the world more than your algorithm',
     description:
-      '페르소나 기반 YouTube 피드 시뮬레이터. 다양한 관심사를 가진 페르소나가 실제로 어떤 영상을 추천받는지 확인하세요.',
+      '알고리즘 밖의 세상을 보세요. 나와 다른 사람들이 보는 유튜브 피드를 엿보며, 내가 몰랐던 취향과 더 넓은 세상을 직접 발견하세요.',
     locale: 'ko_KR',
   },
   twitter: {
     card: 'summary',
-    title: 'Anomess',
-    description: 'YouTube 알고리즘 페르소나 시뮬레이터',
+    title: 'Anomess — See the world more than your algorithm',
+    description: '알고리즘 밖의 세상을 보세요. 다른 사람의 유튜브 피드를 엿보며 더 넓은 세상을 발견하세요.',
   },
 }
 
