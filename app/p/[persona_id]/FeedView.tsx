@@ -46,27 +46,29 @@ function NavigationProgress({ active }: { active: boolean }) {
 interface FeedbackModalProps {
   lang: Lang
   personaId: string
+  personaName: string
   onClose: () => void
 }
 
 const FEEDBACK_LABELS = {
   title: { ko: '이 피드, 어떠셨나요?', en: 'How was this feed?', ja: 'このフィードはいかがでしたか？' },
-  ratingLabel: { ko: '알고리즘이 이 사람답게 느껴졌나요?', en: 'Did the algorithm feel true to this person?', ja: 'アルゴリズムはこの人らしく感じましたか？' },
-  commentPlaceholder: { ko: '자유롭게 남겨주세요 (선택)', en: 'Share your thoughts (optional)', ja: 'ご意見をお聞かせください（任意）' },
-  suggestionLabel: { ko: '이 사람이라면 이런 콘텐츠도 볼 것 같아요 (선택)', en: 'This person might also watch... (optional)', ja: 'この人はこんなコンテンツも見そうです（任意）' },
-  suggestionPlaceholder: { ko: '예) 해외 이민 브이로그, 스타트업 투자 이야기, 명품 언박싱...', en: 'e.g. expat vlogs, startup funding stories, luxury unboxing...', ja: '例）海外移住vlog、スタートアップ投資、高級品アンボクシング...' },
+  suggestionLabel: {
+    ko: (name: string) => `${name}에게 추천하는 유튜브 링크나 엿보고 싶은 페르소나를 알려주세요.`,
+    en: (name: string) => `Know someone whose YouTube feed you'd love to peek into? Tell us about them.`,
+    ja: (name: string) => `${name}に見せたいYouTubeリンクを持つペルソナを教えてください。`,
+  },
+  suggestionPlaceholder: { ko: '예) 20대 직장인 남성, 게임과 테크에 관심 많은...', en: 'e.g. A 20s male office worker into gaming and tech...', ja: '例）20代の会社員男性、ゲームやテクノロジーに興味がある...' },
   submit: { ko: '의견 보내기', en: 'Submit', ja: '送信' },
   submitting: { ko: '보내는 중...', en: 'Submitting...', ja: '送信中...' },
   thanks: { ko: '감사합니다! 더 현실감 있는 피드를 만드는 데 반영됩니다.', en: 'Thank you! Your input helps make the feed more realistic.', ja: 'ありがとうございます！よりリアルなフィードに活かされます。' },
   close: { ko: '닫기', en: 'Close', ja: '閉じる' },
 }
 
-function FeedbackModal({ lang, personaId, onClose }: FeedbackModalProps) {
-  const [comment, setComment] = useState('')
+function FeedbackModal({ lang, personaId, personaName, onClose }: FeedbackModalProps) {
   const [suggestion, setSuggestion] = useState('')
   const [status, setStatus] = useState<'idle' | 'submitting' | 'done'>('idle')
 
-  const isEmpty = comment.trim() === '' && suggestion.trim() === ''
+  const isEmpty = suggestion.trim() === ''
 
   async function handleSubmit() {
     if (isEmpty) return
@@ -75,7 +77,7 @@ function FeedbackModal({ lang, personaId, onClose }: FeedbackModalProps) {
       await fetch('/api/feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ persona_id: personaId, comment, content_suggestion: suggestion.trim() || null, lang }),
+        body: JSON.stringify({ persona_id: personaId, content_suggestion: suggestion.trim() || null, lang }),
       })
       setStatus('done')
       setTimeout(onClose, 2500)
@@ -96,24 +98,14 @@ function FeedbackModal({ lang, personaId, onClose }: FeedbackModalProps) {
               <button onClick={onClose} className="text-zinc-500 hover:text-zinc-300 text-lg leading-none">×</button>
             </div>
 
-            {/* 콘텐츠 제안 */}
-            <p className="text-xs text-zinc-400 mb-2">{FEEDBACK_LABELS.suggestionLabel[lang]}</p>
+            {/* 페르소나 제안 */}
+            <p className="text-xs text-zinc-400 mb-2">{FEEDBACK_LABELS.suggestionLabel[lang](personaName)}</p>
             <textarea
               value={suggestion}
               onChange={e => setSuggestion(e.target.value)}
               placeholder={FEEDBACK_LABELS.suggestionPlaceholder[lang]}
               maxLength={300}
-              rows={2}
-              className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-zinc-500 mb-4"
-            />
-
-            {/* 코멘트 */}
-            <textarea
-              value={comment}
-              onChange={e => setComment(e.target.value)}
-              placeholder={FEEDBACK_LABELS.commentPlaceholder[lang]}
-              maxLength={500}
-              rows={2}
+              rows={3}
               className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-zinc-500 mb-4"
             />
 
@@ -1574,6 +1566,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
         <FeedbackModal
           lang={lang}
           personaId={currentPersona.id}
+          personaName={currentPersona.name}
           onClose={() => setShowFeedback(false)}
         />
       )}
