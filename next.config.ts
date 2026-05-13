@@ -16,6 +16,17 @@ const securityHeaders = [
 ]
 
 const nextConfig: NextConfig = {
+  async redirects() {
+    return [
+      {
+        // feed.anomess.com → play.anomess.com 영구 리다이렉트 (모든 경로)
+        source: '/:path*',
+        has: [{ type: 'host', value: 'feed.anomess.com' }],
+        destination: 'https://play.anomess.com/:path*',
+        permanent: true,
+      },
+    ]
+  },
   images: {
     // Vercel 이미지 최적화 무료 한도 초과(402) 우회 — i.ytimg.com 직접 로드
     unoptimized: true,
