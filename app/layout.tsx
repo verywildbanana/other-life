@@ -29,7 +29,7 @@ export const metadata: Metadata = {
   },
   title: 'Anomess — See the world more than your algorithm',
   description:
-    '알고리즘 밖의 세상을 보세요. 나와 다른 사람들이 보는 유튜브 피드를 엿보며, 내가 몰랐던 취향과 더 넓은 세상을 직접 발견하세요.',
+    'Peek into other people\'s YouTube feeds and discover what you never knew you were missing. See the world beyond your own algorithm.',
   alternates: {
     canonical: BASE_URL,
     languages: {
@@ -46,13 +46,13 @@ export const metadata: Metadata = {
     type: 'website',
     title: 'Anomess — See the world more than your algorithm',
     description:
-      '알고리즘 밖의 세상을 보세요. 나와 다른 사람들이 보는 유튜브 피드를 엿보며, 내가 몰랐던 취향과 더 넓은 세상을 직접 발견하세요.',
-    locale: 'ko_KR',
+      'Peek into other people\'s YouTube feeds and discover what you never knew you were missing. See the world beyond your own algorithm.',
+    locale: 'en_US',
   },
   twitter: {
     card: 'summary',
     title: 'Anomess — See the world more than your algorithm',
-    description: '알고리즘 밖의 세상을 보세요. 다른 사람의 유튜브 피드를 엿보며 더 넓은 세상을 발견하세요.',
+    description: 'Peek into other people\'s YouTube feeds and discover what you never knew you were missing.',
   },
 }
 
@@ -62,7 +62,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="ko" className={`${geist.variable} h-full dark`}>
+    <html lang="en" className={`${geist.variable} h-full dark`}>
       <head>
         {/* PWA */}
         <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
