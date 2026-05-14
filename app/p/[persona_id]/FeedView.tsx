@@ -53,9 +53,9 @@ interface FeedbackModalProps {
 const FEEDBACK_LABELS = {
   title: { ko: '이 피드, 어떠셨나요?', en: 'How was this feed?', ja: 'このフィードはいかがでしたか？' },
   suggestionLabel: {
-    ko: (name: string) => `${name}에게 추천하는 유튜브 링크나 엿보고 싶은 페르소나를 알려주세요.`,
-    en: (name: string) => `Share a YouTube link for ${name}, or tell us about a persona whose feed you'd love to peek into.`,
-    ja: (name: string) => `${name}に勧めたいYouTubeリンクか、覗いてみたいペルソナを教えてください。`,
+    ko: (name: string) => `${name}에게 추천하는 유튜브 링크를 알려주세요.`,
+    en: (name: string) => `Share a YouTube link you'd recommend for ${name}.`,
+    ja: (name: string) => `${name}に勧めたいYouTubeリンクを教えてください。`,
   },
   suggestionPlaceholder: { ko: '예) 20대 직장인 남성, 게임과 테크에 관심 많은...', en: 'e.g. A 20s male office worker into gaming and tech...', ja: '例）20代の会社員男性、ゲームやテクノロジーに興味がある...' },
   submit: { ko: '의견 보내기', en: 'Submit', ja: '送信' },
