@@ -1429,7 +1429,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
           <a href="/" className="flex items-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/images/anomess-logo.jpeg"
+              src="/images/anomess-logo.png"
               alt="Anomess"
               className="h-[66px] w-auto rounded-xl"
             />
