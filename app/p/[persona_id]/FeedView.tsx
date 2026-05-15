@@ -772,6 +772,12 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
 
   const [lang, setLang] = useState<Lang>(() => {
     if (typeof window === 'undefined') return 'ko'
+    // URL 쿼리 파라미터 ?lang=ja 우선 → 없으면 localStorage → 기본 ko
+    const urlLang = new URLSearchParams(window.location.search).get('lang') as Lang | null
+    if (urlLang && ['ko', 'en', 'ja'].includes(urlLang)) {
+      localStorage.setItem('feed_lang', urlLang)  // 다음 방문에도 유지
+      return urlLang
+    }
     const saved = localStorage.getItem('feed_lang') as Lang | null
     return (saved && ['ko', 'en', 'ja'].includes(saved)) ? saved : 'ko'
   })
