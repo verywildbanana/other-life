@@ -16,7 +16,8 @@ export default function RootPage() {
   return (
     <main className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center px-6 text-center">
       {/* 사용자에게는 로고만 보임 — 리다이렉트 전 잠깐 표시 */}
-      <h1 className="text-3xl font-bold text-zinc-100">Anomess</h1>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/images/anomess-logo.jpeg" alt="Anomess" className="h-24 w-auto rounded-2xl" />
       {/* 구글 크롤러용 desc — 배경과 동일 색으로 사람 눈에 안 보임 */}
       <p className="text-zinc-950 select-none" aria-hidden="true">
         See the world more than your algorithm. Peek into other people&apos;s YouTube feeds

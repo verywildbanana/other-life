@@ -676,7 +676,6 @@ const ShortsCarousel = memo(function ShortsCarousel({
           <path d="M17.77 10.32l-1.2-.5L18 9.06a3.74 3.74 0 00-4.64-5.88L6 7.18H4a2 2 0 00-2 2v9a2 2 0 002 2h16a2 2 0 002-2V13a2.69 2.69 0 00-4.23-2.68zM10 17.18v-6l5 3z"/>
         </svg>
         <h2 className="text-sm font-semibold text-zinc-300">Shorts</h2>
-        <span className="text-xs text-zinc-600">{shorts.length}</span>
       </div>
       {/* overflow-x-auto + scrollbar 숨김 + snap */}
       <div
@@ -1430,7 +1429,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
           <a href="/" className="flex items-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/images/anomess-logo.png"
+              src="/images/anomess-logo.jpeg"
               alt="Anomess"
               className="h-[66px] w-auto rounded-xl"
             />
