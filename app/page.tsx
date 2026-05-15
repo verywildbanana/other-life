@@ -18,8 +18,8 @@ export default function RootPage() {
       {/* 사용자에게는 로고만 보임 — 리다이렉트 전 잠깐 표시 */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/images/anomess-logo.png" alt="Anomess" className="h-24 w-auto rounded-2xl" />
-      {/* 구글 크롤러용 desc — 배경과 동일 색으로 사람 눈에 안 보임 */}
-      <p className="text-zinc-950 select-none" aria-hidden="true">
+      {/* 구글 크롤러용 desc — 배경과 동일 색으로 사람 눈에 안 보임, aria-hidden 제거로 크롤러 인덱싱 보장 */}
+      <p className="text-zinc-950 select-none">
         See the world more than your algorithm. Peek into other people&apos;s YouTube feeds
         and discover what you never knew you were missing.
       </p>
