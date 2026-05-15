@@ -265,6 +265,11 @@ const LABELS = {
     en: (n: number) => `${n}/500 videos`,
     ja: (n: number) => `累計 ${n}/500件`,
   },
+  viewCount: {
+    ko: (weekly: number, total: number) => `👀 이번 주 ${weekly}회 · 누적 ${total}회`,
+    en: (weekly: number, total: number) => `👀 ${weekly} this week · ${total} total`,
+    ja: (weekly: number, total: number) => `👀 今週 ${weekly}回 · 累計 ${total}回`,
+  },
   showing: {
     ko: (n: number, total: number) => `${n} / ${total}개 표시 중`,
     en: (n: number, total: number) => `Showing ${n} of ${total}`,
@@ -799,6 +804,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
   const [isInitialLoading, setIsInitialLoading] = useState(true)
   // fetch 완료 후 실제 영상이 0개인 경우 — "피드 없음" 표시용 (로딩 중에는 false 유지)
   const [isEmpty, setIsEmpty] = useState(false)
+  const [viewStats, setViewStats] = useState<{ weekly: number; total: number } | null>(null)
   const [showFeedback, setShowFeedback] = useState(false)
   const [showPersonaSheet, setShowPersonaSheet] = useState(false)
   const [navigating, setNavigating] = useState(false)
@@ -864,6 +870,16 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
         }
       })
       .catch(() => {/* 에러 무시 — Shorts 없어도 메인 피드는 정상 동작 */})
+    return () => { cancelled = true }
+  }, [currentPersona.id])
+
+  // 페르소나 변경 시 조회수 통계 fetch
+  useEffect(() => {
+    let cancelled = false
+    fetch(`/api/feed/stats/${currentPersona.id}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (!cancelled && data) setViewStats(data) })
+      .catch(() => {/* 에러 무시 */})
     return () => { cancelled = true }
   }, [currentPersona.id])
 
@@ -1465,6 +1481,11 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
               {(LABELS.showing[lang] as (n: number, total: number) => string)(videos.length, total)}
             </span>
           </div>
+          {viewStats && (
+            <div className="mt-0.5 text-zinc-500">
+              {(LABELS.viewCount[lang] as (w: number, t: number) => string)(viewStats.weekly, viewStats.total)}
+            </div>
+          )}
         </div>
       )}
 
