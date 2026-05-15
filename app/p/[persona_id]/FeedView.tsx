@@ -266,9 +266,9 @@ const LABELS = {
     ja: (n: number) => `累計 ${n}/500件`,
   },
   viewCount: {
-    ko: (weekly: number, total: number) => `👀 이번 주 ${weekly}회 · 누적 ${total}회`,
-    en: (weekly: number, total: number) => `👀 ${weekly} this week · ${total} total`,
-    ja: (weekly: number, total: number) => `👀 今週 ${weekly}回 · 累計 ${total}回`,
+    ko: (weekly: number, total: number) => `이번 주 ${weekly}회 · 누적 ${total}회`,
+    en: (weekly: number, total: number) => `${weekly} this week · ${total} total`,
+    ja: (weekly: number, total: number) => `今週 ${weekly}回 · 累計 ${total}回`,
   },
   showing: {
     ko: (n: number, total: number) => `${n} / ${total}개 표시 중`,

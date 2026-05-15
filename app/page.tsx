@@ -14,9 +14,11 @@ export default function RootPage() {
   }, [router])
 
   return (
-    <main className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col items-center justify-center px-6 text-center">
-      <h1 className="text-3xl font-bold mb-4">Anomess</h1>
-      <p className="text-lg text-zinc-300 max-w-xl">
+    <main className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center px-6 text-center">
+      {/* 사용자에게는 로고만 보임 — 리다이렉트 전 잠깐 표시 */}
+      <h1 className="text-3xl font-bold text-zinc-100">Anomess</h1>
+      {/* 구글 크롤러용 desc — 배경과 동일 색으로 사람 눈에 안 보임 */}
+      <p className="text-zinc-950 select-none" aria-hidden="true">
         See the world more than your algorithm. Peek into other people&apos;s YouTube feeds
         and discover what you never knew you were missing.
       </p>
