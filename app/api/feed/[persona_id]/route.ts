@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getPaginatedFeed } from '@/lib/feed'
+import { getPaginatedUserFeed } from '@/lib/user-feed'
 import { logFeedAccess } from '@/lib/access-log'
 import { verifyToken, COOKIE_NAME } from '@/lib/feed-token'
 import { logSuspicious } from '@/lib/suspicious'
@@ -47,6 +48,17 @@ export async function GET(
       )
     }
     logFeedAccess(req, persona_id)
+  }
+
+  // 유저 페르소나 (u_ prefix) — user_videos 테이블에서 조회
+  if (persona_id.startsWith('u_')) {
+    const userFeed = await getPaginatedUserFeed(persona_id, offset, limit)
+    if (!userFeed) {
+      return NextResponse.json({ error: '피드 없음' }, { status: 404 })
+    }
+    return NextResponse.json(userFeed, {
+      headers: { 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' },
+    })
   }
 
   const feed = await getPaginatedFeed(persona_id, offset, limit, skipCount)
