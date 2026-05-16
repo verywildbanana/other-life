@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Geist } from 'next/font/google'
 import Script from 'next/script'
 import InstallPrompt from '@/components/InstallPrompt'
+import CookieBanner from '@/components/CookieBanner'
 import './globals.css'
 
 const GA_ID = 'G-JNHYK6SN57'
@@ -93,6 +94,7 @@ export default function RootLayout({
       <body className="min-h-full bg-zinc-950 text-zinc-100 font-sans antialiased">
         {children}
         <InstallPrompt />
+        <CookieBanner />
       </body>
     </html>
   )

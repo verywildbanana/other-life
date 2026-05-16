@@ -5,6 +5,8 @@ import Image from 'next/image'
 import { FeedPageResponse, Video, Persona } from '@/types'
 import { markViewed, getViewedSet } from '@/lib/viewedTracker'
 import { useEventQueue } from '@/lib/useEventQueue'
+import { createClient } from '@/lib/supabase/client'
+import type { User } from '@supabase/supabase-js'
 
 // ── 페이지 전환 Progress Bar ───────────────────────────────────────────────────
 function NavigationProgress({ active }: { active: boolean }) {
@@ -813,6 +815,8 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
   const [showFeedback, setShowFeedback] = useState(false)
   const [showPersonaSheet, setShowPersonaSheet] = useState(false)
   const [navigating, setNavigating] = useState(false)
+  const [user, setUser] = useState<User | null>(null)
+  const [showUserMenu, setShowUserMenu] = useState(false)
   // PTR 완료 후 fade-in 제어 — false: 콘텐츠 숨김(no-transition), true: fade-in(300ms)
   // 초기 진입 시에도 false → 클라이언트 fetch 완료 후 fade-in (SSR flash 방지)
   const [contentReady, setContentReady] = useState(false)
@@ -838,6 +842,16 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
   const isFirstMountRef = useRef<boolean>(true)
   // loadMore 동시 실행 방지 — state는 리렌더 전까지 반영 안 되므로 ref로 동기 가드
   const isLoadingRef = useRef(false)
+
+  // ── 로그인 유저 상태 로드 ─────────────────────────────────────────────────────
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getUser().then(({ data }) => setUser(data.user))
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+    })
+    return () => subscription.unsubscribe()
+  }, [])
 
   // ── 피드 전체 풀 (셔플 후 가상 페이지네이션용) ────────────────────────────────
   const allVideosRef = useRef<Video[]>([])
@@ -1440,22 +1454,73 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
               className="h-[66px] w-auto rounded-xl"
             />
           </a>
-          {/* 언어 토글 */}
-          <div className="flex rounded-lg overflow-hidden border border-zinc-700 text-xs font-medium shrink-0">
-            {(['ko', 'en', 'ja'] as Lang[]).map(l => (
-              <button
-                key={l}
-                onClick={() => switchLang(l)}
-                className={`px-2.5 py-1.5 ${
-                  lang === l
-                    ? 'bg-zinc-100 text-zinc-900'
-                    : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
-                }`}
-                aria-label={`${t('langToggle', lang)}: ${l.toUpperCase()}`}
+          <div className="flex items-center gap-2 shrink-0">
+            {/* 언어 토글 */}
+            <div className="flex rounded-lg overflow-hidden border border-zinc-700 text-xs font-medium">
+              {(['ko', 'en', 'ja'] as Lang[]).map(l => (
+                <button
+                  key={l}
+                  onClick={() => switchLang(l)}
+                  className={`px-2.5 py-1.5 ${
+                    lang === l
+                      ? 'bg-zinc-100 text-zinc-900'
+                      : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+                  }`}
+                  aria-label={`${t('langToggle', lang)}: ${l.toUpperCase()}`}
+                >
+                  {l.toUpperCase()}
+                </button>
+              ))}
+            </div>
+
+            {/* 로그인/아바타 */}
+            {user ? (
+              <div className="relative">
+                <button
+                  onClick={() => setShowUserMenu(v => !v)}
+                  className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white text-xs font-semibold"
+                  aria-label="내 계정"
+                >
+                  {(user.user_metadata?.full_name as string)?.[0]?.toUpperCase() ?? 'U'}
+                </button>
+                {showUserMenu && (
+                  <div className="absolute right-0 top-10 w-44 bg-zinc-800 border border-zinc-700 rounded-xl shadow-xl z-50 py-1 text-sm">
+                    <a
+                      href="/my/personas"
+                      className="block px-4 py-2 text-zinc-200 hover:bg-zinc-700"
+                      onClick={() => setShowUserMenu(false)}
+                    >
+                      내 피드 관리
+                    </a>
+                    <a
+                      href="/my/create"
+                      className="block px-4 py-2 text-zinc-200 hover:bg-zinc-700"
+                      onClick={() => setShowUserMenu(false)}
+                    >
+                      새 피드 만들기
+                    </a>
+                    <hr className="border-zinc-700 my-1" />
+                    <button
+                      onClick={async () => {
+                        const supabase = createClient()
+                        await supabase.auth.signOut()
+                        setShowUserMenu(false)
+                      }}
+                      className="w-full text-left px-4 py-2 text-zinc-400 hover:bg-zinc-700"
+                    >
+                      로그아웃
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <a
+                href="/login"
+                className="text-xs text-zinc-400 hover:text-zinc-200 border border-zinc-700 rounded-lg px-2.5 py-1.5 transition-colors"
               >
-                {l.toUpperCase()}
-              </button>
-            ))}
+                로그인
+              </a>
+            )}
           </div>
         </div>
 
