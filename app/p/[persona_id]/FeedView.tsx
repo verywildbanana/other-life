@@ -1502,17 +1502,11 @@ function shuffle<T>(arr: T[]): T[] {
   return a
 }
 
-// 유저 피드 정렬 — 서버 순서(최신 추가순) 유지, 시청한 영상만 뒤로
-function userFeedSort(videos: Video[], viewed: Set<string>): Video[] {
-  const unseen = videos.filter(v => !viewed.has(v.video_id))
-  const seen   = videos.filter(v => viewed.has(v.video_id))
-  return [...unseen, ...seen]
-}
-
 // 페르소나 종류에 따라 정렬 방식 분기
+// 유저 피드(u_): 서버 순서 그대로 (최신 추가순), 시스템 피드: epochShuffle
 function sortVideos(personaId: string, videos: Video[], viewed: Set<string>): Video[] {
   return personaId.startsWith('u_')
-    ? userFeedSort(videos, viewed)
+    ? [...videos]
     : epochShuffle(videos, viewed)
 }
 
