@@ -98,107 +98,176 @@ const CURRENT_TERMS_VERSION = 1
 
 // ── 약관 내용 ─────────────────────────────────────────────────────────────────
 const TERMS_CONTENT: Record<Lang, string> = {
-  ko: `이용약관
+  ko: `개인정보처리방침
+최종 수정: 2026년 5월 17일
 
-최종 업데이트: 2025년 5월
+1. 수집하는 개인정보
+Google OAuth 인증 시: 이메일 주소, 이름, 프로필 사진 URL
+서비스 이용 시: 접속 IP 해시, 국가, 페르소나 조회 기록
+유저 생성 콘텐츠: 닉네임, 생성한 페르소나, 추가한 YouTube 링크
 
-1. 서비스 개요
-Anomess는 YouTube 알고리즘 시뮬레이터 서비스입니다. 유저는 개인 피드 페르소나를 만들고 YouTube 영상 링크를 추가할 수 있습니다.
+2. 수집 목적
+회원 인증 및 서비스 제공
+서비스 품질 향상 및 어뷰징 방지
+중요 공지사항 전달 (이메일)
 
-2. 콘텐츠 정책
-다음 유형의 콘텐츠는 업로드 금지입니다:
-• 혐오 발언, 차별적 표현, 폭력·성적 콘텐츠
-• 허위 정보, 사기, 스팸성 콘텐츠
-• 타인의 저작권을 침해하는 콘텐츠
-• 불법적 활동을 조장하거나 묘사하는 콘텐츠
+3. 보유 기간
+회원 탈퇴 요청 시 30일 이내 모든 개인정보를 삭제합니다. 법령에 의해 보존이 필요한 경우 해당 기간 동안 보관합니다.
 
-위반 콘텐츠는 사전 통보 없이 삭제될 수 있으며, 반복 위반 시 계정이 제한될 수 있습니다.
+4. 제3자 제공
+수집한 개인정보는 제3자에게 제공하거나 판매하지 않습니다. 서비스 운영을 위한 인프라 제공자(Supabase, Vercel)에게 필요 최소 범위에서 위탁됩니다.
 
-3. 비활성 계정
-6개월 이상 활동이 없는 유저 페르소나는 삭제 예정 30일 전에 이메일 알림을 발송합니다.
-알림 후 30일 내 응답이 없으면 해당 페르소나와 영상 데이터가 삭제됩니다.
+5. 쿠키
+서비스는 세션 유지 및 서비스 분석을 위해 쿠키를 사용합니다. 브라우저 설정에서 쿠키를 거부할 수 있으나, 일부 기능이 제한될 수 있습니다.
 
-4. 서비스 변경 및 중단
-운영 여건에 따라 서비스 내용을 변경하거나 중단할 수 있습니다.
-중요한 변경은 사전에 이메일 또는 서비스 내 공지로 안내합니다.
+6. 이용자 권리
+개인정보 열람, 수정, 삭제를 요청할 수 있습니다. 아래 이메일로 문의해주세요.
 
-5. 면책 조항
-Anomess는 유저가 추가한 콘텐츠에 대해 책임지지 않습니다.
-서비스 이용으로 인한 직·간접 손해에 대해 법적 책임을 지지 않습니다.
+────────────────────────
 
-6. 약관 변경
-약관이 변경될 경우 서비스 로그인 시 재동의를 요청합니다.
-변경된 약관에 동의하지 않으면 서비스 이용이 제한될 수 있습니다.
+이용약관
+최종 수정: 2026년 5월 17일
 
-이 약관에 동의하면 위 내용을 이해하고 수락한 것으로 간주합니다.`,
+제1조 (목적)
+본 약관은 Anomess(이하 "서비스")가 제공하는 YouTube 피드 큐레이션 서비스의 이용에 관한 조건 및 절차 등을 규정함을 목적으로 합니다.
 
-  en: `Terms of Service
+제2조 (이용 자격)
+서비스는 만 14세 이상 누구나 이용할 수 있습니다. 만 14세 미만은 서비스에 가입하거나 유저 페르소나를 생성할 수 없습니다.
 
-Last updated: May 2025
+제3조 (서비스 내용)
+서비스는 다양한 페르소나의 YouTube 피드를 탐색하고, 로그인 후 자신만의 유저 페르소나를 최대 3개까지 생성·공유할 수 있는 기능을 제공합니다.
 
-1. Service Overview
-Anomess is a YouTube algorithm simulator. Users can create personal feed personas and add YouTube video links.
+제4조 (유저 페르소나 및 콘텐츠)
+유저가 생성한 페르소나에 72시간 이상 아무런 업데이트(영상 추가)가 없는 경우, 운영자에게 검토 알림이 전송되며 운영자 판단에 따라 해당 페르소나가 삭제될 수 있습니다. 삭제 전 이메일로 안내가 제공됩니다. 부적절한 콘텐츠(스팸, 혐오, 저작권 침해 등)가 포함된 페르소나는 사전 통보 없이 즉시 삭제될 수 있습니다.
 
-2. Content Policy
-The following types of content are prohibited:
-• Hate speech, discriminatory expressions, violent or sexual content
-• Misinformation, fraud, or spam content
-• Content that infringes on others' copyrights
-• Content that promotes or depicts illegal activities
+제5조 (금지 행위)
+• 타인을 사칭하거나 허위 정보를 등록하는 행위
+• 서비스를 자동화 도구로 남용하는 행위
+• 저작권이 있는 콘텐츠를 무단으로 공유하는 행위
+• 혐오·폭력·음란물 등 불법·유해 콘텐츠를 게시하는 행위
 
-Violating content may be removed without prior notice, and repeated violations may result in account restrictions.
+제6조 (계정 정지 및 해지)
+운영자는 금지 행위 위반 시 사전 경고 없이 계정을 정지하거나 해지할 수 있습니다. 이용자는 언제든지 서비스 탈퇴를 요청할 수 있으며, 탈퇴 시 관련 데이터는 30일 내 삭제됩니다.
 
-3. Inactive Accounts
-User personas inactive for 6 months or more will receive an email notification 30 days before scheduled deletion.
-If there is no response within 30 days of notification, the persona and video data will be deleted.
+제7조 (면책)
+서비스는 YouTube 링크를 큐레이션하는 플랫폼으로, 링크된 영상의 내용에 대해 책임을 지지 않습니다. 서비스는 YouTube의 공개 영상만 참조하며 저작권 침해를 목적으로 하지 않습니다.
 
-4. Service Changes and Termination
-We may modify or discontinue the service based on operational conditions.
-Important changes will be communicated in advance via email or in-service notice.
+제8조 (약관 변경)
+본 약관은 사전 공지 후 변경될 수 있습니다. 중요 변경 사항은 서비스 내 공지 또는 이메일로 안내합니다.`,
 
-5. Disclaimer
-Anomess is not responsible for content added by users.
-We are not legally liable for direct or indirect damages resulting from use of the service.
+  en: `Privacy Policy
+Last updated: May 17, 2026
 
-6. Changes to Terms
-If the terms change, we will request re-agreement upon login.
-Failure to agree to updated terms may result in restricted access to the service.
+1. Information We Collect
+Upon Google OAuth authentication: email address, name, profile picture URL
+During service use: hashed IP address, country, persona view history
+User-generated content: nickname, created personas, added YouTube links
 
-By agreeing to these terms, you acknowledge that you have read and accepted the above.`,
+2. Purpose of Collection
+Member authentication and service provision
+Service quality improvement and abuse prevention
+Delivery of important notices (via email)
 
-  ja: `利用規約
+3. Retention Period
+All personal information will be deleted within 30 days of a withdrawal request. Data required to be retained by law will be kept for the legally required period.
 
-最終更新：2025年5月
+4. Third-Party Sharing
+We do not provide or sell collected personal information to third parties. Infrastructure providers (Supabase, Vercel) receive only the minimum data necessary for service operation.
 
-1. サービス概要
-AnolessはYouTubeアルゴリズムシミュレーターサービスです。ユーザーは個人フィードペルソナを作成し、YouTube動画リンクを追加できます。
+5. Cookies
+The service uses cookies for session management and analytics. You may disable cookies in your browser settings, though some features may be limited.
 
-2. コンテンツポリシー
-以下の種類のコンテンツはアップロード禁止です：
-• ヘイトスピーチ、差別的表現、暴力的・性的コンテンツ
-• 虚偽情報、詐欺、スパムコンテンツ
-• 他者の著作権を侵害するコンテンツ
-• 違法行為を助長または描写するコンテンツ
+6. Your Rights
+You may request access to, correction of, or deletion of your personal information. Please contact us at the email address below.
 
-違反コンテンツは事前通知なく削除される場合があり、繰り返し違反するとアカウントが制限される場合があります。
+────────────────────────
 
-3. 非アクティブアカウント
-6ヶ月以上活動のないユーザーペルソナは、削除予定の30日前にメール通知を送信します。
-通知後30日以内に応答がない場合、該当ペルソナと動画データが削除されます。
+Terms of Service
+Last updated: May 17, 2026
 
-4. サービスの変更・終了
-運営状況に応じてサービス内容を変更または終了する場合があります。
-重要な変更は事前にメールまたはサービス内通知でお知らせします。
+Article 1 (Purpose)
+These terms govern the conditions and procedures for using the YouTube feed curation service provided by Anomess (hereinafter "the Service").
 
-5. 免責事項
-Anomessはユーザーが追加したコンテンツについて責任を負いません。
-サービス利用による直接・間接的な損害について法的責任を負いません。
+Article 2 (Eligibility)
+The Service is available to anyone aged 14 or older. Users under 14 may not register or create user personas.
 
-6. 規約の変更
-規約が変更された場合、ログイン時に再同意をお願いします。
-変更された規約に同意しない場合、サービスの利用が制限される場合があります。
+Article 3 (Service Description)
+The Service allows users to explore YouTube feeds of various personas and, after logging in, to create and share up to 3 personal user personas.
 
-この規約に同意することで、上記内容を理解し承諾したものとみなします。`,
+Article 4 (User Personas and Content)
+If a user-created persona goes 72 hours or more without any update (video addition), a review notification will be sent to the operator, who may delete the persona at their discretion. Email notice will be provided before deletion. Personas containing inappropriate content (spam, hate speech, copyright infringement, etc.) may be deleted immediately without prior notice.
+
+Article 5 (Prohibited Activities)
+• Impersonating others or registering false information
+• Abusing the service with automated tools
+• Sharing copyrighted content without authorization
+• Posting illegal or harmful content including hate speech, violence, or obscenity
+
+Article 6 (Account Suspension and Termination)
+The operator may suspend or terminate an account without prior warning for violations of prohibited activities. Users may request withdrawal at any time; related data will be deleted within 30 days.
+
+Article 7 (Disclaimer)
+The Service is a platform that curates YouTube links and is not responsible for the content of linked videos. The Service references only publicly available YouTube videos and does not intend to infringe on any copyrights.
+
+Article 8 (Changes to Terms)
+These terms may be amended with prior notice. Important changes will be announced via in-service notice or email.`,
+
+  ja: `プライバシーポリシー
+最終更新：2026年5月17日
+
+1. 収集する個人情報
+Google OAuth認証時：メールアドレス、氏名、プロフィール画像URL
+サービス利用時：アクセスIPハッシュ、国、ペルソナ閲覧履歴
+ユーザー生成コンテンツ：ニックネーム、作成したペルソナ、追加したYouTubeリンク
+
+2. 収集目的
+会員認証およびサービス提供
+サービス品質向上および不正利用防止
+重要なお知らせの配信（メール）
+
+3. 保有期間
+退会申請から30日以内にすべての個人情報を削除します。法令により保存が必要な場合は、該当期間保管します。
+
+4. 第三者提供
+収集した個人情報を第三者に提供・販売することはありません。サービス運営に必要なインフラ提供者（Supabase、Vercel）には必要最小限の範囲で委託されます。
+
+5. クッキー
+サービスはセッション維持およびサービス分析のためにクッキーを使用します。ブラウザ設定でクッキーを拒否できますが、一部の機能が制限される場合があります。
+
+6. 利用者の権利
+個人情報の閲覧・修正・削除を申請できます。下記メールアドレスまでお問い合わせください。
+
+────────────────────────
+
+利用規約
+最終更新：2026年5月17日
+
+第1条（目的）
+本規約は、Anomess（以下「サービス」）が提供するYouTubeフィードキュレーションサービスの利用に関する条件および手続き等を定めることを目的とします。
+
+第2条（利用資格）
+サービスは14歳以上であれば誰でも利用できます。14歳未満の方はサービスへの登録またはユーザーペルソナの作成はできません。
+
+第3条（サービス内容）
+サービスは、様々なペルソナのYouTubeフィードを探索し、ログイン後に自分だけのユーザーペルソナを最大3つまで作成・共有する機能を提供します。
+
+第4条（ユーザーペルソナおよびコンテンツ）
+ユーザーが作成したペルソナに72時間以上何もアップデート（動画追加）がない場合、運営者に確認通知が送信され、運営者の判断によりペルソナが削除される場合があります。削除前にメールでご案内します。不適切なコンテンツ（スパム、ヘイト、著作権侵害等）を含むペルソナは、事前通知なく即時削除される場合があります。
+
+第5条（禁止行為）
+• 他者を詐称したり虚偽情報を登録する行為
+• サービスを自動化ツールで不正利用する行為
+• 著作権のあるコンテンツを無断で共有する行為
+• ヘイト・暴力・わいせつ物等の違法・有害コンテンツを投稿する行為
+
+第6条（アカウント停止および解約）
+運営者は禁止行為違反時、事前警告なくアカウントを停止または解約できます。利用者はいつでもサービスからの退会を申請でき、退会時の関連データは30日以内に削除されます。
+
+第7条（免責）
+サービスはYouTubeリンクをキュレーションするプラットフォームであり、リンクされた動画の内容については責任を負いません。サービスはYouTubeの公開動画のみを参照し、著作権侵害を目的とするものではありません。
+
+第8条（規約の変更）
+本規約は事前告知の上変更される場合があります。重要な変更はサービス内通知またはメールでお知らせします。`,
 }
 
 // ── 약관 동의 모달 ──────────────────────────────────────────────────────────────
