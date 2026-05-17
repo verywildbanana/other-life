@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
+import AnoHeader from '@/components/AnoHeader'
 
 type Lang = 'ko' | 'en' | 'ja'
 
@@ -111,14 +112,19 @@ function MyPersonasContent() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-zinc-950 text-zinc-100 flex items-center justify-center">
-        <span className="text-zinc-500 text-sm">{s.loading}</span>
+      <main className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col">
+        <AnoHeader />
+        <div className="flex-1 flex items-center justify-center">
+          <span className="text-zinc-500 text-sm">{s.loading}</span>
+        </div>
       </main>
     )
   }
 
   return (
-    <main className="min-h-screen bg-zinc-950 text-zinc-100 px-4 py-12 max-w-xl mx-auto">
+    <main className="min-h-screen bg-zinc-950 text-zinc-100">
+      <AnoHeader />
+      <div className="px-4 py-12 max-w-xl mx-auto">
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-2xl font-bold">{s.pageTitle}</h1>
         {personas.length < 3 && (
@@ -184,6 +190,7 @@ function MyPersonasContent() {
           )}
         </div>
       )}
+      </div>
     </main>
   )
 }

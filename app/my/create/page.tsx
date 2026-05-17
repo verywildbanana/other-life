@@ -2,6 +2,7 @@
 
 import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import AnoHeader from '@/components/AnoHeader'
 
 type Lang = 'ko' | 'en' | 'ja'
 
@@ -126,7 +127,9 @@ function CreatePersonaContent() {
   }
 
   return (
-    <main className="min-h-screen bg-zinc-950 text-zinc-100 px-4 py-12 max-w-xl mx-auto">
+    <main className="min-h-screen bg-zinc-950 text-zinc-100">
+      <AnoHeader />
+      <div className="px-4 py-12 max-w-xl mx-auto">
       <h1 className="text-2xl font-bold mb-8">{s.pageTitle}</h1>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -210,6 +213,7 @@ function CreatePersonaContent() {
           </button>
         </div>
       </form>
+      </div>
     </main>
   )
 }

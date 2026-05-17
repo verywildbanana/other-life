@@ -3,6 +3,7 @@
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Suspense } from 'react'
+import AnoHeader from '@/components/AnoHeader'
 
 type Lang = 'ko' | 'en' | 'ja'
 
@@ -71,7 +72,9 @@ function LoginContent() {
   const afterPrivacy = afterTermsParts[1] ?? ''
 
   return (
-    <main className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center px-6">
+    <main className="min-h-screen bg-zinc-950 flex flex-col">
+      <AnoHeader />
+      <div className="flex-1 flex flex-col items-center justify-center px-6">
       <div className="w-full max-w-sm space-y-8">
         {/* 로고 */}
         <div className="flex flex-col items-center gap-3">
@@ -113,6 +116,7 @@ function LoginContent() {
           <a href="/legal/privacy" className="underline hover:text-zinc-400">{s.privacy}</a>
           {afterPrivacy}
         </p>
+      </div>
       </div>
     </main>
   )

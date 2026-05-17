@@ -2,6 +2,7 @@
 
 import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import AnoHeader from '@/components/AnoHeader'
 
 type Lang = 'ko' | 'en' | 'ja'
 
@@ -109,7 +110,9 @@ function OnboardingContent() {
   }
 
   return (
-    <main className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center px-6">
+    <main className="min-h-screen bg-zinc-950 flex flex-col">
+      <AnoHeader />
+      <div className="flex-1 flex flex-col items-center justify-center px-6">
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center space-y-2">
           <h1 className="text-white text-xl font-semibold">{s.title}</h1>
@@ -197,6 +200,7 @@ function OnboardingContent() {
             </button>
           </div>
         </form>
+      </div>
       </div>
     </main>
   )
