@@ -49,14 +49,24 @@ export async function PATCH(req: NextRequest) {
   }
 
   const supabase = await createAuthClient()
-  const { error } = await supabase
-    .from('user_profiles')
-    .upsert(
-      { id: user.id, terms_version, terms_agreed_at: new Date().toISOString() },
-      { onConflict: 'id' },
-    )
+  const now = new Date().toISOString()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  // 기존 row UPDATE 시도 → 없으면 INSERT (nickname 없이도 저장 가능하도록)
+  const { error: updateError, count } = await supabase
+    .from('user_profiles')
+    .update({ terms_version, terms_agreed_at: now })
+    .eq('id', user.id)
+
+  if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 })
+
+  // UPDATE가 0행이면 row 없음 → INSERT
+  if ((count ?? 0) === 0) {
+    const { error: insertError } = await supabase
+      .from('user_profiles')
+      .insert({ id: user.id, terms_version, terms_agreed_at: now, tos_agreed: true })
+    if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 })
+  }
+
   return NextResponse.json({ ok: true })
 }
 

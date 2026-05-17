@@ -292,11 +292,12 @@ function TermsModal({ lang, onAgree }: { lang: Lang; onAgree: () => void }) {
   async function handleAgree() {
     setAgreeing(true)
     try {
-      await fetch('/api/user/profile', {
+      const res = await fetch('/api/user/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ terms_version: CURRENT_TERMS_VERSION }),
       })
+      if (!res.ok) throw new Error('save failed')
       onAgree()
     } catch {
       setAgreeing(false)
