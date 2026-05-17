@@ -66,8 +66,11 @@ export async function PATCH(req: NextRequest) {
       .eq('id', user.id)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   } else {
-    // 신규 row: nickname은 이메일 앞부분으로 채움
-    const fallbackNickname = (user.email ?? '').split('@')[0].slice(0, 20) || 'user'
+    // 신규 row: nickname은 이메일 앞부분으로 채움 (fallback: 'user')
+    const emailPart = typeof user.email === 'string'
+      ? user.email.split('@')[0].replace(/[^a-zA-Z0-9_가-힣]/g, '').slice(0, 20)
+      : ''
+    const fallbackNickname = emailPart.length >= 2 ? emailPart : 'user'
     const { error } = await supabase
       .from('user_profiles')
       .insert({ id: user.id, terms_version, terms_agreed_at: now, tos_agreed: true, nickname: fallbackNickname })
