@@ -214,10 +214,10 @@ function TermsModal({ lang, onAgree }: { lang: Lang; onAgree: () => void }) {
   }
 
   const labels = {
-    title:   { ko: '이용약관', en: 'Terms of Service', ja: '利用規約' }[lang],
-    scroll:  { ko: '약관을 끝까지 읽어주세요', en: 'Please read to the end', ja: '最後までお読みください' }[lang],
-    agree:   { ko: '동의하고 계속하기', en: 'Agree & Continue', ja: '同意して続ける' }[lang],
-    agreeIng: { ko: '처리 중...', en: 'Processing...', ja: '処理中...' }[lang],
+    title:   { ko: '이용약관', en: 'Terms of Service', ja: '利用規約' }[activeLang],
+    scroll:  { ko: '약관을 끝까지 읽어주세요', en: 'Please read to the end', ja: '最後までお読みください' }[activeLang],
+    agree:   { ko: '동의하고 계속하기', en: 'Agree & Continue', ja: '同意して続ける' }[activeLang],
+    agreeIng: { ko: '처리 중...', en: 'Processing...', ja: '処理中...' }[activeLang],
   }
 
   async function handleAgree() {
