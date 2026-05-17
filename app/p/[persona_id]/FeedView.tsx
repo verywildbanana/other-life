@@ -317,6 +317,51 @@ const LABELS = {
     en: 'AI Summary',
     ja: 'AI 要約',
   },
+  login: {
+    ko: '로그인',
+    en: 'Sign in',
+    ja: 'ログイン',
+  },
+  myAccount: {
+    ko: '내 계정',
+    en: 'My account',
+    ja: 'マイアカウント',
+  },
+  myFeedManage: {
+    ko: '내 피드 관리',
+    en: 'Manage my feeds',
+    ja: 'フィード管理',
+  },
+  newFeed: {
+    ko: '새 피드 만들기',
+    en: 'Create new feed',
+    ja: '新しいフィードを作成',
+  },
+  signOut: {
+    ko: '로그아웃',
+    en: 'Sign out',
+    ja: 'ログアウト',
+  },
+  cookieMsg: {
+    ko: 'Anomess는 서비스 품질 향상을 위해 분석용 쿠키를 사용합니다.',
+    en: 'Anomess uses analytics cookies to improve our service.',
+    ja: 'Anomessはサービス改善のために分析用クッキーを使用しています。',
+  },
+  cookieLearnMore: {
+    ko: '자세히 보기',
+    en: 'Learn more',
+    ja: '詳しく見る',
+  },
+  cookieDecline: {
+    ko: '거부',
+    en: 'Decline',
+    ja: '拒否',
+  },
+  cookieAccept: {
+    ko: '동의',
+    en: 'Accept',
+    ja: '同意',
+  },
 } as const
 
 function t(key: keyof typeof LABELS, lang: Lang): string {
@@ -1479,25 +1524,25 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
                 <button
                   onClick={() => setShowUserMenu(v => !v)}
                   className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white text-xs font-semibold"
-                  aria-label="내 계정"
+                  aria-label={t('myAccount', lang)}
                 >
                   {(user.user_metadata?.full_name as string)?.[0]?.toUpperCase() ?? 'U'}
                 </button>
                 {showUserMenu && (
                   <div className="absolute right-0 top-10 w-44 bg-zinc-800 border border-zinc-700 rounded-xl shadow-xl z-50 py-1 text-sm">
                     <a
-                      href="/my/personas"
+                      href={`/my/personas?lang=${lang}`}
                       className="block px-4 py-2 text-zinc-200 hover:bg-zinc-700"
                       onClick={() => setShowUserMenu(false)}
                     >
-                      내 피드 관리
+                      {t('myFeedManage', lang)}
                     </a>
                     <a
-                      href="/my/create"
+                      href={`/my/create?lang=${lang}`}
                       className="block px-4 py-2 text-zinc-200 hover:bg-zinc-700"
                       onClick={() => setShowUserMenu(false)}
                     >
-                      새 피드 만들기
+                      {t('newFeed', lang)}
                     </a>
                     <hr className="border-zinc-700 my-1" />
                     <button
@@ -1508,17 +1553,17 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
                       }}
                       className="w-full text-left px-4 py-2 text-zinc-400 hover:bg-zinc-700"
                     >
-                      로그아웃
+                      {t('signOut', lang)}
                     </button>
                   </div>
                 )}
               </div>
             ) : (
               <a
-                href="/login"
+                href={`/login?lang=${lang}`}
                 className="text-xs text-zinc-400 hover:text-zinc-200 border border-zinc-700 rounded-lg px-2.5 py-1.5 transition-colors"
               >
-                로그인
+                {t('login', lang)}
               </a>
             )}
           </div>

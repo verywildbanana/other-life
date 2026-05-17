@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 
-type Lang = 'ko' | 'en' | 'ja'
+export type Lang = 'ko' | 'en' | 'ja'
 
 const t: Record<Lang, { message: string; learnMore: string; decline: string; accept: string }> = {
   ko: {
@@ -27,18 +27,22 @@ const t: Record<Lang, { message: string; learnMore: string; decline: string; acc
 
 const COOKIE_CONSENT_KEY = 'anomess_cookie_consent'
 
-export default function CookieBanner() {
+export default function CookieBanner({ lang: langProp }: { lang?: Lang }) {
   const [visible, setVisible] = useState(false)
-  const [lang, setLang] = useState<Lang>('ko')
+  const [lang, setLang] = useState<Lang>(langProp ?? 'ko')
 
   useEffect(() => {
     const consent = localStorage.getItem(COOKIE_CONSENT_KEY)
     if (!consent) setVisible(true)
-    // URL パラメーターから lang を読む
-    const params = new URLSearchParams(window.location.search)
-    const l = params.get('lang') as Lang | null
-    if (l && l in t) setLang(l)
-  }, [])
+    // langProp이 있으면 우선 사용, 없으면 URL 파라미터에서 읽기
+    if (langProp) {
+      setLang(langProp)
+    } else {
+      const params = new URLSearchParams(window.location.search)
+      const l = params.get('lang') as Lang | null
+      if (l && l in t) setLang(l)
+    }
+  }, [langProp])
 
   function accept() {
     localStorage.setItem(COOKIE_CONSENT_KEY, 'accepted')
