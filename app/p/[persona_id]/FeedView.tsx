@@ -126,6 +126,185 @@ function FeedbackModal({ lang, personaId, personaName, onClose }: FeedbackModalP
   )
 }
 
+// ── 영상 추가 모달 ─────────────────────────────────────────────────────────────
+interface AddVideoModalProps {
+  lang: Lang
+  personaId: string
+  onClose: () => void
+  onAdded: (video: { video_id: string; title: string; channel: string; thumbnail_url: string; added_at: string }) => void
+}
+
+function AddVideoModal({ lang, personaId, onClose, onAdded }: AddVideoModalProps) {
+  const [url, setUrl] = useState('')
+  const [intro, setIntro] = useState('')
+  const [preview, setPreview] = useState<{ video_id: string; title: string; channel: string; thumbnail_url: string } | null>(null)
+  const [status, setStatus] = useState<'idle' | 'previewing' | 'adding' | 'done'>('idle')
+  const [error, setError] = useState<string | null>(null)
+
+  // YouTube video ID 추출 (클라이언트)
+  function extractVideoId(input: string): string | null {
+    const patterns = [
+      /(?:v=|\/embed\/|youtu\.be\/|\/v\/|\/shorts\/)([A-Za-z0-9_-]{11})/,
+      /^([A-Za-z0-9_-]{11})$/,
+    ]
+    for (const p of patterns) {
+      const m = input.trim().match(p)
+      if (m?.[1]) return m[1]
+    }
+    return null
+  }
+
+  async function handlePreview() {
+    setError(null)
+    const videoId = extractVideoId(url)
+    if (!videoId) { setError({ ko: '유효한 YouTube URL이 아닙니다.', en: 'Invalid YouTube URL.', ja: '無効なYouTube URLです。' }[lang]); return }
+    setStatus('previewing')
+    try {
+      const res = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`)
+      if (!res.ok) throw new Error()
+      const data = await res.json() as { title: string; author_name: string; thumbnail_url: string }
+      setPreview({
+        video_id: videoId,
+        title: data.title,
+        channel: data.author_name,
+        thumbnail_url: data.thumbnail_url ?? `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`,
+      })
+    } catch {
+      setError({ ko: '영상 정보를 가져올 수 없습니다. 공개된 영상인지 확인해주세요.', en: 'Could not fetch video info. Make sure it\'s a public video.', ja: '動画情報を取得できません。公開動画か確認してください。' }[lang])
+    } finally {
+      setStatus('idle')
+    }
+  }
+
+  async function handleAdd() {
+    if (!preview) return
+    setStatus('adding')
+    setError(null)
+    try {
+      const res = await fetch('/api/user/videos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          persona_id: personaId,
+          url: `https://www.youtube.com/watch?v=${preview.video_id}`,
+          user_intro: intro.trim() ? { ko: intro.trim(), en: intro.trim(), ja: intro.trim() } : null,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'error')
+      setStatus('done')
+      setTimeout(() => {
+        onAdded({ ...preview, added_at: new Date().toISOString() })
+        onClose()
+      }, 800)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'error')
+      setStatus('idle')
+    }
+  }
+
+  const labels = {
+    title: { ko: 'YouTube 영상 추가', en: 'Add YouTube Video', ja: 'YouTube動画を追加' }[lang],
+    urlPlaceholder: { ko: 'YouTube URL 또는 영상 ID', en: 'YouTube URL or video ID', ja: 'YouTube URLまたは動画ID' }[lang],
+    previewBtn: { ko: '미리보기', en: 'Preview', ja: 'プレビュー' }[lang],
+    addBtn: { ko: '추가하기', en: 'Add', ja: '追加する' }[lang],
+    adding: { ko: '추가 중...', en: 'Adding...', ja: '追加中...' }[lang],
+    done: { ko: '추가 완료!', en: 'Added!', ja: '追加しました！' }[lang],
+    introLabel: { ko: '소개 글 (선택)', en: 'Intro text (optional)', ja: '紹介文（任意）' }[lang],
+    introPlaceholder: { ko: '이 영상을 추천하는 이유', en: 'Why do you recommend this?', ja: 'おすすめの理由' }[lang],
+    cancel: { ko: '취소', en: 'Cancel', ja: 'キャンセル' }[lang],
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 px-4 pb-4 sm:pb-0">
+      <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-5 w-full max-w-sm shadow-2xl space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold">{labels.title}</h3>
+          <button onClick={onClose} className="text-zinc-500 hover:text-zinc-300 text-lg leading-none">×</button>
+        </div>
+
+        {status === 'done' ? (
+          <p className="text-center text-emerald-400 text-sm py-4">{labels.done}</p>
+        ) : (
+          <>
+            {/* URL 입력 */}
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={url}
+                onChange={e => { setUrl(e.target.value); setPreview(null); setError(null) }}
+                onKeyDown={e => e.key === 'Enter' && handlePreview()}
+                placeholder={labels.urlPlaceholder}
+                className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-500"
+              />
+              <button
+                onClick={handlePreview}
+                disabled={!url.trim() || status === 'previewing'}
+                className="px-3 py-2 bg-zinc-700 hover:bg-zinc-600 disabled:opacity-40 text-sm rounded-lg transition-colors shrink-0"
+              >
+                {status === 'previewing' ? (
+                  <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                  </svg>
+                ) : labels.previewBtn}
+              </button>
+            </div>
+
+            {error && <p className="text-red-400 text-xs">{error}</p>}
+
+            {/* 미리보기 카드 */}
+            {preview && (
+              <div className="flex gap-3 bg-zinc-800 rounded-xl p-3">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={preview.thumbnail_url} alt="" className="w-24 h-[54px] rounded-lg object-cover shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-white line-clamp-2 leading-snug">{preview.title}</p>
+                  <p className="text-[11px] text-zinc-400 mt-1 truncate">{preview.channel}</p>
+                </div>
+              </div>
+            )}
+
+            {/* 소개 텍스트 (미리보기 확인 후) */}
+            {preview && (
+              <div className="space-y-1.5">
+                <label className="text-xs text-zinc-400">{labels.introLabel}</label>
+                <textarea
+                  value={intro}
+                  onChange={e => setIntro(e.target.value)}
+                  placeholder={labels.introPlaceholder}
+                  maxLength={200}
+                  rows={2}
+                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:border-zinc-500"
+                />
+              </div>
+            )}
+
+            {/* 버튼 */}
+            <div className="flex gap-2">
+              <button
+                onClick={onClose}
+                className="flex-1 py-2 rounded-xl border border-zinc-700 text-zinc-400 hover:text-zinc-200 text-sm transition-colors"
+              >
+                {labels.cancel}
+              </button>
+              {preview && (
+                <button
+                  onClick={handleAdd}
+                  disabled={status === 'adding'}
+                  className="flex-1 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-medium transition-colors"
+                >
+                  {status === 'adding' ? labels.adding : labels.addBtn}
+                </button>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
 type Lang = 'ko' | 'en' | 'ja'
 
 // ── 페르소나 바텀시트 ──────────────────────────────────────────────────────────
@@ -317,6 +496,71 @@ const LABELS = {
     ko: 'AI 요약',
     en: 'AI Summary',
     ja: 'AI 要約',
+  },
+  userIntro: {
+    ko: '소개',
+    en: 'Intro',
+    ja: '紹介',
+  },
+  addVideo: {
+    ko: '+ YouTube 링크 추가',
+    en: '+ Add YouTube Link',
+    ja: '+ YouTubeリンクを追加',
+  },
+  addVideoTitle: {
+    ko: 'YouTube 영상 추가',
+    en: 'Add YouTube Video',
+    ja: 'YouTube動画を追加',
+  },
+  urlPlaceholder: {
+    ko: 'YouTube URL 또는 영상 ID',
+    en: 'YouTube URL or video ID',
+    ja: 'YouTube URLまたは動画ID',
+  },
+  preview: {
+    ko: '미리보기',
+    en: 'Preview',
+    ja: 'プレビュー',
+  },
+  addConfirm: {
+    ko: '추가하기',
+    en: 'Add',
+    ja: '追加する',
+  },
+  adding: {
+    ko: '추가 중...',
+    en: 'Adding...',
+    ja: '追加中...',
+  },
+  addSuccess: {
+    ko: '영상이 추가되었습니다!',
+    en: 'Video added!',
+    ja: '動画を追加しました！',
+  },
+  introOptional: {
+    ko: '소개 글 (선택)',
+    en: 'Intro text (optional)',
+    ja: '紹介文（任意）',
+  },
+  introPlaceholder: {
+    ko: '이 영상을 추천하는 이유를 적어주세요',
+    en: 'Why do you recommend this video?',
+    ja: 'この動画をおすすめする理由を書いてください',
+  },
+  maxReached: {
+    ko: '영상 500개 한도에 도달했습니다. 오래된 영상을 삭제 후 추가할 수 있습니다.',
+    en: 'You\'ve reached the 500 video limit. Delete older videos to add more.',
+    ja: '500件の上限に達しました。古い動画を削除してから追加できます。',
+  },
+  emptyUserFeed: {
+    ko: '아직 추가된 영상이 없습니다. YouTube 링크를 추가해보세요.',
+    en: 'No videos yet. Add a YouTube link to get started.',
+    ja: 'まだ動画がありません。YouTubeリンクを追加してみましょう。',
+  },
+  cancel: {
+    ko: '취소',
+    en: 'Cancel',
+    ja: 'キャンセル',
   },
   login: {
     ko: 'Log in',
@@ -863,6 +1107,8 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
   const [navigating, setNavigating] = useState(false)
   const [user, setUser] = useState<User | null>(null)
   const [showUserMenu, setShowUserMenu] = useState(false)
+  const [isOwner, setIsOwner] = useState(false)
+  const [addVideoOpen, setAddVideoOpen] = useState(false)
   // PTR 완료 후 fade-in 제어 — false: 콘텐츠 숨김(no-transition), true: fade-in(300ms)
   // 초기 진입 시에도 false → 클라이언트 fetch 완료 후 fade-in (SSR flash 방지)
   const [contentReady, setContentReady] = useState(false)
@@ -898,6 +1144,19 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     })
     return () => subscription.unsubscribe()
   }, [])
+
+  // ── 유저 페르소나 오너 체크 ────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!user || !currentPersona.id.startsWith('u_')) { setIsOwner(false); return }
+    fetch('/api/user/personas')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.personas) {
+          setIsOwner(data.personas.some((p: { persona_id: string }) => p.persona_id === currentPersona.id))
+        }
+      })
+      .catch(() => setIsOwner(false))
+  }, [user, currentPersona.id])
 
   // ── 피드 전체 풀 (셔플 후 가상 페이지네이션용) ────────────────────────────────
   const allVideosRef = useRef<Video[]>([])
@@ -1452,6 +1711,30 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
 
   // IntersectionObserver는 sentinelRef callback ref 안에서 직접 처리됨 (위 sentinelRef 정의 참조)
 
+  // 영상 추가 완료 → 피드 맨 앞에 삽입
+  const handleVideoAdded = useCallback((added: { video_id: string; title: string; channel: string; thumbnail_url: string; added_at: string }) => {
+    const newVideo: Video = {
+      video_id: added.video_id,
+      persona_id: currentPersona.id,
+      title: added.title,
+      channel: added.channel,
+      url: `https://www.youtube.com/watch?v=${added.video_id}`,
+      thumbnail_url: added.thumbnail_url,
+      view_count: 0,
+      keyword: '',
+      score: 0,
+      collected_at: added.added_at,
+      feed_source: 'user',
+      collected_date: added.added_at.split('T')[0],
+      published_at: null,
+      titles_i18n: { ko: added.title, en: added.title, ja: added.title },
+      summary_i18n: null,
+    }
+    setVideos(prev => [newVideo, ...prev])
+    setTotal(prev => prev + 1)
+    setIsEmpty(false)
+  }, [currentPersona.id])
+
   function switchLang(l: Lang) {
     gtag('language_switch', { from: lang, to: l, persona_id: currentPersona.id })
     setLang(l)
@@ -1605,6 +1888,30 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
         </div>
       )}
 
+      {/* 오너 전용 영상 추가 버튼 */}
+      {isOwner && currentPersona.id.startsWith('u_') && (
+        <div className="px-4 py-2 border-b border-zinc-800 flex items-center justify-between gap-3">
+          <span className="text-xs text-zinc-500">
+            {total}/500
+          </span>
+          {total >= 500 ? (
+            <p className="text-xs text-amber-500">
+              {{ ko: '500개 한도 도달 — 오래된 영상 삭제 후 추가 가능', en: '500 limit reached — delete older videos first', ja: '500件上限 — 古い動画を削除してから追加可能' }[lang]}
+            </p>
+          ) : (
+            <button
+              onClick={() => setAddVideoOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-lg transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              {{ ko: 'YouTube 링크 추가', en: 'Add YouTube Link', ja: 'YouTubeリンクを追加' }[lang]}
+            </button>
+          )}
+        </div>
+      )}
+
       {/* 초기 로딩 스피너 */}
       {isInitialLoading && (
         <div className="flex items-center justify-center py-32 gap-2 text-zinc-500 text-sm">
@@ -1618,8 +1925,20 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
 
       {/* 피드 없음 — fetch 완료 후 실제로 영상 0개일 때만 */}
       {isEmpty && (
-        <div className="flex items-center justify-center py-32 text-zinc-500 text-sm">
-          {t('noFeed', lang)}
+        <div className="flex flex-col items-center justify-center py-32 gap-4 text-zinc-500 text-sm">
+          {isOwner && currentPersona.id.startsWith('u_') ? (
+            <>
+              <p>{{ ko: '아직 추가된 영상이 없습니다.', en: 'No videos yet.', ja: 'まだ動画がありません。' }[lang]}</p>
+              <button
+                onClick={() => setAddVideoOpen(true)}
+                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-xl transition-colors"
+              >
+                {{ ko: 'YouTube 링크 추가하기', en: 'Add YouTube Link', ja: 'YouTubeリンクを追加する' }[lang]}
+              </button>
+            </>
+          ) : (
+            t('noFeed', lang)
+          )}
         </div>
       )}
 
@@ -1715,6 +2034,16 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
           lang={lang}
           onSelect={switchPersona}
           onClose={() => setShowPersonaSheet(false)}
+        />
+      )}
+
+      {/* 영상 추가 모달 */}
+      {addVideoOpen && (
+        <AddVideoModal
+          lang={lang}
+          personaId={currentPersona.id}
+          onClose={() => setAddVideoOpen(false)}
+          onAdded={handleVideoAdded}
         />
       )}
 
