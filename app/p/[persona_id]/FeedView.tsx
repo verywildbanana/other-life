@@ -382,11 +382,12 @@ interface PersonaSheetProps {
   personas: import('@/types').Persona[]
   currentId: string
   lang: Lang
+  myPersonaIds: Set<string>
   onSelect: (id: string) => void
   onClose: () => void
 }
 
-function PersonaBottomSheet({ personas, currentId, lang, onSelect, onClose }: PersonaSheetProps) {
+function PersonaBottomSheet({ personas, currentId, lang, myPersonaIds, onSelect, onClose }: PersonaSheetProps) {
   const sheetRef = useRef<HTMLDivElement>(null)
   const listRef  = useRef<HTMLDivElement>(null)
   const [hasScrollBelow, setHasScrollBelow] = useState(true)
@@ -463,8 +464,8 @@ function PersonaBottomSheet({ personas, currentId, lang, onSelect, onClose }: Pe
           style={{ WebkitOverflowScrolling: 'touch' }}
         >
           {(() => {
-            const userPersonas = personas.filter(p => p.id.startsWith('u_'))
-            const systemPersonas = personas.filter(p => !p.id.startsWith('u_'))
+            const userPersonas = personas.filter(p => myPersonaIds.has(p.id))
+            const systemPersonas = personas.filter(p => !myPersonaIds.has(p.id))
             const sectionLabel = { ko: '내 피드', en: 'My Feeds', ja: 'マイフィード' }[lang]
             const systemLabel = { ko: '시스템 피드', en: 'System Feeds', ja: 'システムフィード' }[lang]
 
@@ -1268,6 +1269,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
   const [user, setUser] = useState<User | null>(null)
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [isOwner, setIsOwner] = useState(false)
+  const [myPersonaIds, setMyPersonaIds] = useState<Set<string>>(new Set())
   const [addVideoOpen, setAddVideoOpen] = useState(false)
   // PTR 완료 후 fade-in 제어 — false: 콘텐츠 숨김(no-transition), true: fade-in(300ms)
   // 초기 진입 시에도 false → 클라이언트 fetch 완료 후 fade-in (SSR flash 방지)
@@ -1305,17 +1307,26 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     return () => subscription.unsubscribe()
   }, [])
 
-  // ── 유저 페르소나 오너 체크 ────────────────────────────────────────────────────
+  // ── 유저 페르소나 오너 체크 + 내 피드 ID 목록 ───────────────────────────────────
   useEffect(() => {
-    if (!user || !currentPersona.id.startsWith('u_')) { setIsOwner(false); return }
+    if (!user) {
+      setIsOwner(false)
+      setMyPersonaIds(new Set())
+      return
+    }
     fetch('/api/user/personas')
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (data?.personas) {
-          setIsOwner(data.personas.some((p: { persona_id: string }) => p.persona_id === currentPersona.id))
+          const ids = new Set<string>(data.personas.map((p: { persona_id: string }) => p.persona_id))
+          setMyPersonaIds(ids)
+          setIsOwner(currentPersona.id.startsWith('u_') && ids.has(currentPersona.id))
+        } else {
+          setMyPersonaIds(new Set())
+          setIsOwner(false)
         }
       })
-      .catch(() => setIsOwner(false))
+      .catch(() => { setIsOwner(false); setMyPersonaIds(new Set()) })
   }, [user, currentPersona.id])
 
   // ── 피드 전체 풀 (셔플 후 가상 페이지네이션용) ────────────────────────────────
@@ -2215,6 +2226,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
           personas={allPersonas}
           currentId={currentPersona.id}
           lang={lang}
+          myPersonaIds={myPersonaIds}
           onSelect={switchPersona}
           onClose={() => setShowPersonaSheet(false)}
         />
