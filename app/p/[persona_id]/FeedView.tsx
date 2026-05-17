@@ -462,28 +462,57 @@ function PersonaBottomSheet({ personas, currentId, lang, onSelect, onClose }: Pe
           className="overflow-y-auto flex-1 py-1"
           style={{ WebkitOverflowScrolling: 'touch' }}
         >
-          {personas.map(p => {
-            const isActive = p.id === currentId
-            const name = p.name_i18n?.[lang] ?? p.name
+          {(() => {
+            const userPersonas = personas.filter(p => p.id.startsWith('u_'))
+            const systemPersonas = personas.filter(p => !p.id.startsWith('u_'))
+            const sectionLabel = { ko: '내 피드', en: 'My Feeds', ja: 'マイフィード' }[lang]
+            const systemLabel = { ko: '시스템 피드', en: 'System Feeds', ja: 'システムフィード' }[lang]
+
+            const renderItem = (p: import('@/types').Persona, isUser: boolean) => {
+              const isActive = p.id === currentId
+              const name = p.name_i18n?.[lang] ?? p.name
+              return (
+                <button
+                  key={p.id}
+                  onClick={() => { onSelect(p.id); onClose() }}
+                  className={`w-full text-left px-4 py-2.5 flex items-center justify-between gap-3 transition-colors
+                    ${isActive ? 'bg-zinc-800 text-zinc-100' : 'text-zinc-300 hover:bg-zinc-800/60'}`}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className={`text-sm truncate ${isActive ? 'font-medium' : ''}`}>{name}</span>
+                    {isUser && (
+                      <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-indigo-900/60 text-indigo-300 border border-indigo-700/50">
+                        MY
+                      </span>
+                    )}
+                  </div>
+                  {isActive && (
+                    <svg className="shrink-0 text-zinc-400" width="13" height="13" viewBox="0 0 13 13" fill="none">
+                      <path d="M1.5 6.5l3.5 3.5 6-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  )}
+                </button>
+              )
+            }
+
             return (
-              <button
-                key={p.id}
-                onClick={() => { onSelect(p.id); onClose() }}
-                className={`w-full text-left px-4 py-2.5 flex items-center justify-between gap-3 transition-colors
-                  ${isActive
-                    ? 'bg-zinc-800 text-zinc-100'
-                    : 'text-zinc-300 hover:bg-zinc-800/60'
-                  }`}
-              >
-                <span className={`text-sm truncate ${isActive ? 'font-medium' : ''}`}>{name}</span>
-                {isActive && (
-                  <svg className="shrink-0 text-zinc-400" width="13" height="13" viewBox="0 0 13 13" fill="none">
-                    <path d="M1.5 6.5l3.5 3.5 6-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
+              <>
+                {userPersonas.length > 0 && (
+                  <>
+                    <div className="px-4 pt-2 pb-1">
+                      <span className="text-[10px] font-semibold text-indigo-400 uppercase tracking-wider">{sectionLabel}</span>
+                    </div>
+                    {userPersonas.map(p => renderItem(p, true))}
+                    <div className="mx-4 my-1 border-t border-zinc-800" />
+                    <div className="px-4 pt-2 pb-1">
+                      <span className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">{systemLabel}</span>
+                    </div>
+                  </>
                 )}
-              </button>
+                {systemPersonas.map(p => renderItem(p, false))}
+              </>
             )
-          })}
+          })()}
         </div>
 
         {/* 하단 페이드 마스크 — 스크롤 끝에 도달하면 사라짐 (pointer-events-none으로 스크롤 방해 안 함) */}
