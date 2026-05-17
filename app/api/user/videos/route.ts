@@ -43,10 +43,11 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: '로그인 필요' }, { status: 401 })
 
   const body = await req.json()
-  const { persona_id, url: videoUrl, user_intro } = body as {
+  const { persona_id, url: videoUrl, user_intro, titles_i18n } = body as {
     persona_id: string
     url: string
     user_intro?: Record<string, string>
+    titles_i18n?: Record<string, string>
   }
 
   if (!persona_id?.startsWith('u_')) {
@@ -120,6 +121,7 @@ export async function POST(req: NextRequest) {
       channel: meta.author_name,
       thumbnail_url: meta.thumbnail_url,
       user_intro: user_intro ?? null,
+      titles_i18n: titles_i18n ?? null,
     })
     .select()
     .single()

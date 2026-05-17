@@ -131,12 +131,19 @@ interface AddVideoModalProps {
   lang: Lang
   personaId: string
   onClose: () => void
-  onAdded: (video: { video_id: string; title: string; channel: string; thumbnail_url: string; added_at: string; db_id: number; user_intro: Record<string, string> | null }) => void
+  onAdded: (video: { video_id: string; title: string; channel: string; thumbnail_url: string; added_at: string; db_id: number; user_intro: Record<string, string> | null; titles_i18n: Record<string, string> }) => void
 }
 
 function AddVideoModal({ lang, personaId, onClose, onAdded }: AddVideoModalProps) {
   const [url, setUrl] = useState('')
-  const [intro, setIntro] = useState('')
+  // 타이틀 ko/en/ja
+  const [titleKo, setTitleKo] = useState('')
+  const [titleEn, setTitleEn] = useState('')
+  const [titleJa, setTitleJa] = useState('')
+  // 소개글 ko/en/ja
+  const [introKo, setIntroKo] = useState('')
+  const [introEn, setIntroEn] = useState('')
+  const [introJa, setIntroJa] = useState('')
   const [preview, setPreview] = useState<{ video_id: string; title: string; channel: string; thumbnail_url: string } | null>(null)
   const [status, setStatus] = useState<'idle' | 'previewing' | 'adding' | 'done'>('idle')
   const [error, setError] = useState<string | null>(null)
@@ -163,12 +170,17 @@ function AddVideoModal({ lang, personaId, onClose, onAdded }: AddVideoModalProps
       const res = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`)
       if (!res.ok) throw new Error()
       const data = await res.json() as { title: string; author_name: string; thumbnail_url: string }
-      setPreview({
+      const p = {
         video_id: videoId,
         title: data.title,
         channel: data.author_name,
         thumbnail_url: data.thumbnail_url ?? `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`,
-      })
+      }
+      setPreview(p)
+      // 타이틀 필드가 비어있으면 원본 제목으로 초기화
+      setTitleKo(v => v || p.title)
+      setTitleEn(v => v || p.title)
+      setTitleJa(v => v || p.title)
     } catch {
       setError({ ko: '영상 정보를 가져올 수 없습니다. 공개된 영상인지 확인해주세요.', en: 'Could not fetch video info. Make sure it\'s a public video.', ja: '動画情報を取得できません。公開動画か確認してください。' }[lang])
     } finally {
@@ -181,13 +193,18 @@ function AddVideoModal({ lang, personaId, onClose, onAdded }: AddVideoModalProps
     setStatus('adding')
     setError(null)
     try {
+      const titlesI18n = { ko: titleKo.trim() || preview.title, en: titleEn.trim() || preview.title, ja: titleJa.trim() || preview.title }
+      const userIntro = (introKo.trim() || introEn.trim() || introJa.trim())
+        ? { ko: introKo.trim(), en: introEn.trim(), ja: introJa.trim() }
+        : null
       const res = await fetch('/api/user/videos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           persona_id: personaId,
           url: `https://www.youtube.com/watch?v=${preview.video_id}`,
-          user_intro: intro.trim() ? { ko: intro.trim(), en: intro.trim(), ja: intro.trim() } : null,
+          titles_i18n: titlesI18n,
+          user_intro: userIntro,
         }),
       })
       const data = await res.json()
@@ -198,7 +215,8 @@ function AddVideoModal({ lang, personaId, onClose, onAdded }: AddVideoModalProps
           ...preview,
           added_at: new Date().toISOString(),
           db_id: data.video?.id ?? 0,
-          user_intro: intro.trim() ? { ko: intro.trim(), en: intro.trim(), ja: intro.trim() } : null,
+          user_intro: userIntro,
+          titles_i18n: titlesI18n,
         })
         onClose()
       }, 800)
@@ -215,6 +233,7 @@ function AddVideoModal({ lang, personaId, onClose, onAdded }: AddVideoModalProps
     addBtn: { ko: '추가하기', en: 'Add', ja: '追加する' }[lang],
     adding: { ko: '추가 중...', en: 'Adding...', ja: '追加中...' }[lang],
     done: { ko: '추가 완료!', en: 'Added!', ja: '追加しました！' }[lang],
+    titleLabel: { ko: '타이틀', en: 'Title', ja: 'タイトル' }[lang],
     introLabel: { ko: '소개 글 (선택)', en: 'Intro text (optional)', ja: '紹介文（任意）' }[lang],
     introPlaceholder: { ko: '이 영상을 추천하는 이유', en: 'Why do you recommend this?', ja: 'おすすめの理由' }[lang],
     cancel: { ko: '취소', en: 'Cancel', ja: 'キャンセル' }[lang],
@@ -270,11 +289,11 @@ function AddVideoModal({ lang, personaId, onClose, onAdded }: AddVideoModalProps
               </div>
             )}
 
-            {/* 소개 텍스트 (미리보기 확인 후) */}
+            {/* 타이틀 + 소개글 (미리보기 확인 후) */}
             {preview && (
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs text-zinc-400">{labels.introLabel}</label>
+              <div className="space-y-3">
+                {/* 번역기 버튼 */}
+                <div className="flex justify-end">
                   <button
                     type="button"
                     onClick={() => window.open('https://translate.google.com/', '_blank', 'width=700,height=520,noopener')}
@@ -283,17 +302,51 @@ function AddVideoModal({ lang, personaId, onClose, onAdded }: AddVideoModalProps
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
                     </svg>
-                    {{ ko: '번역기', en: 'Translator', ja: '翻訳' }[lang]}
+                    {{ ko: '번역기 열기', en: 'Open Translator', ja: '翻訳ツールを開く' }[lang]}
                   </button>
                 </div>
-                <textarea
-                  value={intro}
-                  onChange={e => setIntro(e.target.value)}
-                  placeholder={labels.introPlaceholder}
-                  maxLength={200}
-                  rows={2}
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:border-zinc-500"
-                />
+
+                {/* 타이틀 KO/EN/JA */}
+                <div className="space-y-1.5">
+                  <label className="text-xs text-zinc-400">{labels.titleLabel}</label>
+                  {([
+                    { lbl: 'KO', val: titleKo, set: setTitleKo },
+                    { lbl: 'EN', val: titleEn, set: setTitleEn },
+                    { lbl: 'JA', val: titleJa, set: setTitleJa },
+                  ] as const).map(({ lbl, val, set }) => (
+                    <div key={lbl} className="flex gap-2 items-center">
+                      <span className="text-[11px] text-zinc-500 w-5">{lbl}</span>
+                      <input
+                        value={val}
+                        onChange={e => set(e.target.value)}
+                        maxLength={120}
+                        className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-zinc-500"
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                {/* 소개글 KO/EN/JA */}
+                <div className="space-y-1.5">
+                  <label className="text-xs text-zinc-400">{labels.introLabel}</label>
+                  {([
+                    { lbl: 'KO', val: introKo, set: setIntroKo },
+                    { lbl: 'EN', val: introEn, set: setIntroEn },
+                    { lbl: 'JA', val: introJa, set: setIntroJa },
+                  ] as const).map(({ lbl, val, set }) => (
+                    <div key={lbl} className="flex gap-2 items-start">
+                      <span className="text-[11px] text-zinc-500 w-5 pt-1.5">{lbl}</span>
+                      <textarea
+                        value={val}
+                        onChange={e => set(e.target.value)}
+                        placeholder={labels.introPlaceholder}
+                        maxLength={200}
+                        rows={2}
+                        className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs resize-none focus:outline-none focus:border-zinc-500"
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -1798,7 +1851,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
   // IntersectionObserver는 sentinelRef callback ref 안에서 직접 처리됨 (위 sentinelRef 정의 참조)
 
   // 영상 추가 완료 → 피드 맨 앞에 삽입
-  const handleVideoAdded = useCallback((added: { video_id: string; title: string; channel: string; thumbnail_url: string; added_at: string; db_id: number; user_intro: Record<string, string> | null }) => {
+  const handleVideoAdded = useCallback((added: { video_id: string; title: string; channel: string; thumbnail_url: string; added_at: string; db_id: number; user_intro: Record<string, string> | null; titles_i18n: Record<string, string> }) => {
     const newVideo: Video = {
       video_id: added.video_id,
       persona_id: currentPersona.id,
@@ -1813,7 +1866,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
       feed_source: 'user',
       collected_date: added.added_at.split('T')[0],
       published_at: null,
-      titles_i18n: { ko: added.title, en: added.title, ja: added.title },
+      titles_i18n: added.titles_i18n,
       summary_i18n: added.user_intro ?? null,
       db_id: added.db_id,
     }

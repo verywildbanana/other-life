@@ -55,14 +55,15 @@ export async function getPaginatedUserFeed(
     channel: string
     thumbnail_url: string
     user_intro: Record<string, string> | null
+    titles_i18n: Record<string, string> | null
     collected_at?: string
-    created_at?: string   // Supabase 자동 생성 컬럼 대응
+    created_at?: string
   }>
 
-  // FeedView의 Video 타입으로 매핑 (user_intro → summary_i18n 자리에 표시)
-  // db_id: 삭제 API 호출에 사용하는 bigserial PK
   const mappedVideos: Video[] = rows.map(row => {
     const ts = row.collected_at ?? row.created_at ?? new Date().toISOString()
+    // titles_i18n이 있으면 우선 사용, 없으면 원본 title로 3개 언어 채움
+    const titlesI18n = row.titles_i18n ?? { ko: row.title, en: row.title, ja: row.title }
     return {
       video_id: row.video_id,
       persona_id: row.persona_id,
@@ -77,9 +78,9 @@ export async function getPaginatedUserFeed(
       feed_source: 'user',
       collected_date: ts.split('T')[0] ?? null,
       published_at: null,
-      titles_i18n: { ko: row.title, en: row.title, ja: row.title },
+      titles_i18n: titlesI18n,
       summary_i18n: row.user_intro ?? null,
-      db_id: row.id,  // 삭제 버튼용 DB row ID
+      db_id: row.id,
     }
   })
 
