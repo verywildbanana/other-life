@@ -16,16 +16,16 @@ const t: Record<Lang, {
   termsNote: string
 }> = {
   ko: {
-    title: 'Anomess에 로그인',
+    title: 'Log in to Anomess',
     subtitle: '나만의 YouTube 피드를 만들고 공유하세요',
-    googleBtn: 'Google로 계속하기',
+    googleBtn: 'Continue with Google',
     error: '로그인 중 문제가 발생했습니다. 다시 시도해주세요.',
     terms: '이용약관',
     privacy: '개인정보처리방침',
     termsNote: '계속하면 {terms} 및 {privacy}에 동의하는 것입니다',
   },
   en: {
-    title: 'Sign in to Anomess',
+    title: 'Log in to Anomess',
     subtitle: 'Create and share your own YouTube feed',
     googleBtn: 'Continue with Google',
     error: 'Something went wrong. Please try again.',
@@ -34,9 +34,9 @@ const t: Record<Lang, {
     termsNote: 'By continuing, you agree to the {terms} and {privacy}',
   },
   ja: {
-    title: 'Anomessにログイン',
+    title: 'Log in to Anomess',
     subtitle: '自分だけのYouTubeフィードを作って共有しよう',
-    googleBtn: 'Googleで続ける',
+    googleBtn: 'Continue with Google',
     error: 'ログイン中に問題が発生しました。もう一度お試しください。',
     terms: '利用規約',
     privacy: 'プライバシーポリシー',

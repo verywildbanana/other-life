@@ -318,9 +318,9 @@ const LABELS = {
     ja: 'AI 要約',
   },
   login: {
-    ko: '로그인',
-    en: 'Sign in',
-    ja: 'ログイン',
+    ko: 'Log in',
+    en: 'Log in',
+    ja: 'Log in',
   },
   myAccount: {
     ko: '내 계정',
