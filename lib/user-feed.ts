@@ -1,9 +1,10 @@
 /**
  * 유저 페르소나 피드 쿼리
- * user_videos 테이블에서 조회 — 기존 FeedResponse 형식과 호환
+ * user_videos 테이블에서 조회 — FeedPageResponse(플랫 videos 리스트) 형식으로 반환
+ * FeedView 클라이언트가 data.videos를 기대하므로 FeedResponse(dates 배열)가 아닌 FeedPageResponse 사용
  */
 import { createClient } from '@supabase/supabase-js'
-import type { FeedResponse, Video } from '@/types'
+import type { FeedPageResponse, Video } from '@/types'
 
 function getSupabase() {
   return createClient(
@@ -12,33 +13,36 @@ function getSupabase() {
   )
 }
 
-/** 유저 페르소나 피드 페이지네이션 */
+/** 유저 페르소나 피드 페이지네이션 — FeedPageResponse 반환 */
 export async function getPaginatedUserFeed(
   personaId: string,
   offset: number,
   limit: number,
-): Promise<FeedResponse | null> {
+): Promise<FeedPageResponse | null> {
   const supabase = getSupabase()
 
-  // 페르소나 존재 + 공개 확인
+  // 페르소나 존재 + 공개 확인 (비공개/밴된 페르소나는 null 반환)
   const { data: persona } = await supabase
     .from('user_personas')
     .select('persona_id, name_i18n, video_count')
     .eq('persona_id', personaId)
-    .eq('is_public', true)
     .eq('is_banned', false)
     .maybeSingle()
 
   if (!persona) return null
 
+  // collected_at: DB 컬럼명 (플랜 SQL 기준)
   const { data: videos, error } = await supabase
     .from('user_videos')
     .select('*')
     .eq('persona_id', personaId)
-    .order('added_at', { ascending: false })
+    .order('collected_at', { ascending: false })
     .range(offset, offset + limit - 1)
 
-  if (error) return null
+  if (error) {
+    console.error('[user-feed] query error:', error.message)
+    return null
+  }
 
   const rows = (videos ?? []) as Array<{
     id: number
@@ -48,10 +52,10 @@ export async function getPaginatedUserFeed(
     channel: string
     thumbnail_url: string
     user_intro: Record<string, string> | null
-    added_at: string
+    collected_at: string
   }>
 
-  // 기존 Video 타입으로 매핑 (user_intro → summary_i18n 역할)
+  // FeedView의 Video 타입으로 매핑 (user_intro → summary_i18n 자리에 표시)
   const mappedVideos: Video[] = rows.map(row => ({
     video_id: row.video_id,
     persona_id: row.persona_id,
@@ -62,9 +66,9 @@ export async function getPaginatedUserFeed(
     view_count: 0,
     keyword: '',
     score: 0,
-    collected_at: row.added_at,
+    collected_at: row.collected_at,
     feed_source: 'user',
-    collected_date: row.added_at.split('T')[0] ?? null,
+    collected_date: row.collected_at?.split('T')[0] ?? null,
     published_at: null,
     titles_i18n: { ko: row.title, en: row.title, ja: row.title },
     summary_i18n: row.user_intro ?? null,
@@ -72,17 +76,14 @@ export async function getPaginatedUserFeed(
 
   const nameI18n = persona.name_i18n as Record<string, string>
   const personaName = nameI18n?.ko ?? nameI18n?.en ?? personaId
+  const videoCount = (persona.video_count as number) ?? 0
 
   return {
     persona_id: personaId,
     persona_name: personaName,
-    total_accumulated: persona.video_count as number,
-    dates: [
-      {
-        date: new Date().toISOString().split('T')[0],
-        feed_source: 'user',
-        videos: mappedVideos,
-      },
-    ],
+    total_accumulated: videoCount,
+    videos: mappedVideos,
+    has_more: false,   // 유저 피드는 전체 일괄 로드 — 클라이언트 epochShuffle 담당
+    next_offset: rows.length,
   }
 }
