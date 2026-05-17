@@ -464,12 +464,17 @@ function PersonaBottomSheet({ personas, currentId, lang, myPersonaIds, onSelect,
           style={{ WebkitOverflowScrolling: 'touch' }}
         >
           {(() => {
-            const userPersonas = personas.filter(p => myPersonaIds.has(p.id))
-            const systemPersonas = personas.filter(p => !myPersonaIds.has(p.id))
-            const sectionLabel = { ko: '내 피드', en: 'My Feeds', ja: 'マイフィード' }[lang]
-            const systemLabel = { ko: '시스템 피드', en: 'System Feeds', ja: 'システムフィード' }[lang]
+            const myPersonas        = personas.filter(p => myPersonaIds.has(p.id))
+            const systemPersonas    = personas.filter(p => !p.id.startsWith('u_'))
+            const communityPersonas = personas.filter(p => p.id.startsWith('u_') && !myPersonaIds.has(p.id))
 
-            const renderItem = (p: import('@/types').Persona, isUser: boolean) => {
+            const labels = {
+              my:        { ko: '내 피드',   en: 'My Feeds',       ja: 'マイフィード' }[lang],
+              system:    { ko: '시스템 피드', en: 'System Feeds',   ja: 'システムフィード' }[lang],
+              community: { ko: '인기 피드',  en: 'Popular Feeds',  ja: '人気フィード' }[lang],
+            }
+
+            const renderItem = (p: import('@/types').Persona, badge?: 'my') => {
               const isActive = p.id === currentId
               const name = p.name_i18n?.[lang] ?? p.name
               return (
@@ -481,10 +486,8 @@ function PersonaBottomSheet({ personas, currentId, lang, myPersonaIds, onSelect,
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <span className={`text-sm truncate ${isActive ? 'font-medium' : ''}`}>{name}</span>
-                    {isUser && (
-                      <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-indigo-900/60 text-indigo-300 border border-indigo-700/50">
-                        MY
-                      </span>
+                    {badge === 'my' && (
+                      <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-indigo-900/60 text-indigo-300 border border-indigo-700/50">MY</span>
                     )}
                   </div>
                   {isActive && (
@@ -496,21 +499,32 @@ function PersonaBottomSheet({ personas, currentId, lang, myPersonaIds, onSelect,
               )
             }
 
+            const SectionHeader = ({ label, color = 'text-zinc-500' }: { label: string; color?: string }) => (
+              <div className="px-4 pt-2.5 pb-1">
+                <span className={`text-[10px] font-semibold uppercase tracking-wider ${color}`}>{label}</span>
+              </div>
+            )
+
+            const Divider = () => <div className="mx-4 my-1 border-t border-zinc-800" />
+
             return (
               <>
-                {userPersonas.length > 0 && (
+                {myPersonas.length > 0 && (
                   <>
-                    <div className="px-4 pt-2 pb-1">
-                      <span className="text-[10px] font-semibold text-indigo-400 uppercase tracking-wider">{sectionLabel}</span>
-                    </div>
-                    {userPersonas.map(p => renderItem(p, true))}
-                    <div className="mx-4 my-1 border-t border-zinc-800" />
-                    <div className="px-4 pt-2 pb-1">
-                      <span className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">{systemLabel}</span>
-                    </div>
+                    <SectionHeader label={labels.my} color="text-indigo-400" />
+                    {myPersonas.map(p => renderItem(p, 'my'))}
+                    <Divider />
                   </>
                 )}
-                {systemPersonas.map(p => renderItem(p, false))}
+                <SectionHeader label={labels.system} />
+                {systemPersonas.map(p => renderItem(p))}
+                {communityPersonas.length > 0 && (
+                  <>
+                    <Divider />
+                    <SectionHeader label={labels.community} color="text-amber-500/80" />
+                    {communityPersonas.map(p => renderItem(p))}
+                  </>
+                )}
               </>
             )
           })()}
