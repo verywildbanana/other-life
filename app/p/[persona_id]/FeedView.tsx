@@ -643,14 +643,16 @@ interface VideoCardProps {
   isPlaying: boolean
   isHovered: boolean
   personaId: string
+  isOwner?: boolean
   onMouseEnter: (videoId: string) => void
   onMouseLeave: () => void
   onVideoClick: (video: Video, title: string, idx: number) => void
+  onDelete?: (dbId: number) => void
 }
 
 const VideoCard = memo(function VideoCard({
   video, idx, lang, today, isPlaying, isHovered, personaId,
-  onMouseEnter, onMouseLeave, onVideoClick,
+  isOwner, onMouseEnter, onMouseLeave, onVideoClick, onDelete,
 }: VideoCardProps) {
   // collected_at(타임스탬프) 기준 FRESH_HOURS 이내면 NEW — 날짜만 비교하면 하루종일 NEW 뱃지가 붙음
   const isNew = video.collected_at
@@ -722,6 +724,23 @@ const VideoCard = memo(function VideoCard({
             referrerPolicy="strict-origin-when-cross-origin"
             title={video.title}
           />
+        )}
+        {/* 오너 전용 삭제 버튼 — 썸네일 우상단 오버레이 */}
+        {isOwner && video.db_id != null && onDelete && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              onDelete(video.db_id!)
+            }}
+            className="absolute top-1.5 right-1.5 z-20 w-6 h-6 flex items-center justify-center rounded-full bg-black/70 hover:bg-red-600 text-white transition-colors"
+            aria-label="삭제"
+          >
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+              <path d="M1.5 1.5l7 7M8.5 1.5l-7 7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+            </svg>
+          </button>
         )}
       </div>
       <div className="p-3 flex flex-col flex-1">
@@ -1743,6 +1762,18 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     setIsEmpty(false)
   }, [currentPersona.id])
 
+  // 영상 삭제 — db_id로 API 호출 후 state에서 제거
+  const handleVideoDelete = useCallback(async (dbId: number) => {
+    try {
+      const res = await fetch(`/api/user/videos/${dbId}`, { method: 'DELETE' })
+      if (!res.ok) return
+      setVideos(prev => prev.filter(v => v.db_id !== dbId))
+      setTotal(prev => Math.max(0, prev - 1))
+    } catch {
+      // 삭제 실패 시 무시 — 사용자에게 UI 변화 없음
+    }
+  }, [])
+
   function switchLang(l: Lang) {
     gtag('language_switch', { from: lang, to: l, persona_id: currentPersona.id })
     setLang(l)
@@ -1986,9 +2017,11 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
                 isPlaying={regularPlayId === video.video_id}
                 isHovered={hoveredId === video.video_id}
                 personaId={currentPersona.id}
+                isOwner={isOwner}
                 onMouseEnter={handleMouseEnter}
                 onMouseLeave={handleMouseLeave}
                 onVideoClick={handleVideoClick}
+                onDelete={handleVideoDelete}
               />
             ))}
           </div>

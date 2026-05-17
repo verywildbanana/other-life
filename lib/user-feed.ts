@@ -34,12 +34,12 @@ export async function getPaginatedUserFeed(
   }
   if (!persona) return null
 
-  // collected_at: DB 컬럼명 (플랜 SQL 기준)
+  // id DESC 정렬 — bigserial PK라 항상 존재 (collected_at 컬럼명 의존 제거)
   const { data: videos, error } = await supabase
     .from('user_videos')
     .select('*')
     .eq('persona_id', personaId)
-    .order('collected_at', { ascending: false })
+    .order('id', { ascending: false })
     .range(offset, offset + limit - 1)
 
   if (error) {
@@ -55,27 +55,33 @@ export async function getPaginatedUserFeed(
     channel: string
     thumbnail_url: string
     user_intro: Record<string, string> | null
-    collected_at: string
+    collected_at?: string
+    created_at?: string   // Supabase 자동 생성 컬럼 대응
   }>
 
   // FeedView의 Video 타입으로 매핑 (user_intro → summary_i18n 자리에 표시)
-  const mappedVideos: Video[] = rows.map(row => ({
-    video_id: row.video_id,
-    persona_id: row.persona_id,
-    title: row.title,
-    channel: row.channel,
-    url: `https://www.youtube.com/watch?v=${row.video_id}`,
-    thumbnail_url: row.thumbnail_url,
-    view_count: 0,
-    keyword: '',
-    score: 0,
-    collected_at: row.collected_at,
-    feed_source: 'user',
-    collected_date: row.collected_at?.split('T')[0] ?? null,
-    published_at: null,
-    titles_i18n: { ko: row.title, en: row.title, ja: row.title },
-    summary_i18n: row.user_intro ?? null,
-  }))
+  // db_id: 삭제 API 호출에 사용하는 bigserial PK
+  const mappedVideos: Video[] = rows.map(row => {
+    const ts = row.collected_at ?? row.created_at ?? new Date().toISOString()
+    return {
+      video_id: row.video_id,
+      persona_id: row.persona_id,
+      title: row.title,
+      channel: row.channel,
+      url: `https://www.youtube.com/watch?v=${row.video_id}`,
+      thumbnail_url: row.thumbnail_url,
+      view_count: 0,
+      keyword: '',
+      score: 0,
+      collected_at: ts,
+      feed_source: 'user',
+      collected_date: ts.split('T')[0] ?? null,
+      published_at: null,
+      titles_i18n: { ko: row.title, en: row.title, ja: row.title },
+      summary_i18n: row.user_intro ?? null,
+      db_id: row.id,  // 삭제 버튼용 DB row ID
+    }
+  })
 
   const nameI18n = persona.name_i18n as Record<string, string>
   const personaName = nameI18n?.ko ?? nameI18n?.en ?? personaId
