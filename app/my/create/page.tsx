@@ -4,6 +4,22 @@ import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import AnoHeader from '@/components/AnoHeader'
 
+/** 구글 번역 팝업 열기 버튼 */
+function OpenTranslatorBtn({ label }: { label: string }) {
+  return (
+    <button
+      type="button"
+      onClick={() => window.open('https://translate.google.com/', '_blank', 'width=700,height=520,noopener')}
+      className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+    >
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+      </svg>
+      {label}
+    </button>
+  )
+}
+
 type Lang = 'ko' | 'en' | 'ja'
 
 const t: Record<Lang, {
@@ -135,7 +151,10 @@ function CreatePersonaContent() {
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* 이름 */}
         <section className="space-y-3">
-          <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wide">{s.nameSection}</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wide">{s.nameSection}</h2>
+            <OpenTranslatorBtn label={{ ko: '번역기 열기', en: 'Open Translator', ja: '翻訳ツールを開く' }[lang]} />
+          </div>
           <div className="space-y-2">
             <div className="flex gap-2 items-center">
               <span className="text-xs text-zinc-500 w-6">KO</span>
@@ -173,15 +192,18 @@ function CreatePersonaContent() {
 
         {/* 소개 */}
         <section className="space-y-3">
-          <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wide">{s.descSection}</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wide">{s.descSection}</h2>
+            <OpenTranslatorBtn label={{ ko: '번역기 열기', en: 'Open Translator', ja: '翻訳ツールを開く' }[lang]} />
+          </div>
           <div className="space-y-2">
-            {[
-              { lang: 'KO', value: descKo, set: setDescKo, placeholder: s.descPlaceholderKo },
-              { lang: 'EN', value: descEn, set: setDescEn, placeholder: s.descPlaceholderEn },
-              { lang: 'JA', value: descJa, set: setDescJa, placeholder: s.descPlaceholderJa },
-            ].map(({ lang: l, value, set, placeholder }) => (
-              <div key={l} className="flex gap-2 items-center">
-                <span className="text-xs text-zinc-500 w-6">{l}</span>
+            {([
+              { lbl: 'KO', value: descKo, set: setDescKo, placeholder: s.descPlaceholderKo },
+              { lbl: 'EN', value: descEn, set: setDescEn, placeholder: s.descPlaceholderEn },
+              { lbl: 'JA', value: descJa, set: setDescJa, placeholder: s.descPlaceholderJa },
+            ]).map(({ lbl, value, set, placeholder }) => (
+              <div key={lbl} className="flex gap-2 items-center">
+                <span className="text-xs text-zinc-500 w-6">{lbl}</span>
                 <input
                   value={value}
                   onChange={e => set(e.target.value)}

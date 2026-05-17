@@ -273,7 +273,19 @@ function AddVideoModal({ lang, personaId, onClose, onAdded }: AddVideoModalProps
             {/* 소개 텍스트 (미리보기 확인 후) */}
             {preview && (
               <div className="space-y-1.5">
-                <label className="text-xs text-zinc-400">{labels.introLabel}</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs text-zinc-400">{labels.introLabel}</label>
+                  <button
+                    type="button"
+                    onClick={() => window.open('https://translate.google.com/', '_blank', 'width=700,height=520,noopener')}
+                    className="flex items-center gap-1 text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors"
+                  >
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                    </svg>
+                    {{ ko: '번역기', en: 'Translator', ja: '翻訳' }[lang]}
+                  </button>
+                </div>
                 <textarea
                   value={intro}
                   onChange={e => setIntro(e.target.value)}
