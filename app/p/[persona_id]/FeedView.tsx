@@ -7,6 +7,7 @@ import { markViewed, getViewedSet } from '@/lib/viewedTracker'
 import { useEventQueue } from '@/lib/useEventQueue'
 import { createClient } from '@/lib/supabase/client'
 import type { User } from '@supabase/supabase-js'
+import CookieBanner from '@/components/CookieBanner'
 
 // ── 페이지 전환 Progress Bar ───────────────────────────────────────────────────
 function NavigationProgress({ active }: { active: boolean }) {
@@ -1716,6 +1717,9 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
           onClose={() => setShowPersonaSheet(false)}
         />
       )}
+
+      {/* 쿠키 배너 — lang 상태를 직접 전달해 정확한 언어로 표시 */}
+      <CookieBanner lang={lang} />
     </>
   )
 }
