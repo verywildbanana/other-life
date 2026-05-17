@@ -45,6 +45,55 @@ function NavigationProgress({ active }: { active: boolean }) {
   )
 }
 
+// ── Share 버튼 ────────────────────────────────────────────────────────────────
+function ShareButton({ lang, personaId }: { lang: Lang; personaId: string }) {
+  const [copied, setCopied] = useState(false)
+
+  async function handleShare() {
+    const url = `${window.location.origin}/p/${personaId}?lang=${lang}`
+    const title = { ko: 'Anomess 피드', en: 'Anomess Feed', ja: 'Anomessフィード' }[lang]
+    const text  = { ko: '이 피드를 확인해보세요!', en: 'Check out this feed!', ja: 'このフィードをチェックしてみてください！' }[lang]
+
+    if (navigator.share) {
+      try { await navigator.share({ title, text, url }) } catch { /* 취소 무시 */ }
+      return
+    }
+    // 폴백: 클립보드 복사
+    try {
+      await navigator.clipboard.writeText(url)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch { /* 무시 */ }
+  }
+
+  const label = { ko: copied ? '복사됨!' : '공유', en: copied ? 'Copied!' : 'Share', ja: copied ? 'コピー済み' : '共有' }[lang]
+
+  return (
+    <button
+      type="button"
+      onClick={handleShare}
+      aria-label={label}
+      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+        copied
+          ? 'border-emerald-700 text-emerald-400 bg-emerald-900/20'
+          : 'border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:border-zinc-500'
+      }`}
+    >
+      {copied ? (
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+          <path d="M1.5 6l3 3 6-6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      ) : (
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+          <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+        </svg>
+      )}
+      {label}
+    </button>
+  )
+}
+
 // ── 피드백 모달 컴포넌트 ──────────────────────────────────────────────────────
 interface FeedbackModalProps {
   lang: Lang
@@ -1990,6 +2039,9 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
             />
           </a>
           <div className="flex items-center gap-2 shrink-0">
+            {/* Share 버튼 */}
+            <ShareButton lang={lang} personaId={currentPersona.id} />
+
             {/* 언어 토글 */}
             <div className="flex rounded-lg overflow-hidden border border-zinc-700 text-xs font-medium">
               {(['ko', 'en', 'ja'] as Lang[]).map(l => (
