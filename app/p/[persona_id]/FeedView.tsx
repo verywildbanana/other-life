@@ -781,9 +781,13 @@ const VideoCard = memo(function VideoCard({
                     e.stopPropagation()
                     setSummaryOpen(v => !v)
                   }}
-                  className="text-[10px] text-zinc-500 hover:text-zinc-300 border border-zinc-700 hover:border-zinc-500 px-1.5 py-0.5 rounded transition-colors"
+                  className={`text-[10px] border px-1.5 py-0.5 rounded transition-colors ${
+                    video.feed_source === 'user'
+                      ? 'text-indigo-400 hover:text-indigo-200 border-indigo-800 hover:border-indigo-500'
+                      : 'text-zinc-500 hover:text-zinc-300 border-zinc-700 hover:border-zinc-500'
+                  }`}
                 >
-                  {t('aiSummary', lang)}
+                  {video.feed_source === 'user' ? t('userIntro', lang) : t('aiSummary', lang)}
                 </button>
                 {summaryOpen && (
                   <div
