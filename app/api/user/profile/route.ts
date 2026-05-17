@@ -36,6 +36,30 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ profile: data }, { status: 201 })
 }
 
+/** PATCH /api/user/profile — terms_version 업데이트 */
+export async function PATCH(req: NextRequest) {
+  const supabaseAuth = await createAuthClient()
+  const { data: { user } } = await supabaseAuth.auth.getUser()
+  if (!user) return NextResponse.json({ error: '로그인 필요' }, { status: 401 })
+
+  const body = await req.json()
+  const { terms_version } = body as { terms_version: number }
+  if (typeof terms_version !== 'number') {
+    return NextResponse.json({ error: 'terms_version required' }, { status: 400 })
+  }
+
+  const supabase = await createAuthClient()
+  const { error } = await supabase
+    .from('user_profiles')
+    .upsert(
+      { id: user.id, terms_version, terms_agreed_at: new Date().toISOString() },
+      { onConflict: 'id' },
+    )
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ ok: true })
+}
+
 /** GET /api/user/profile — 내 프로필 조회 */
 export async function GET() {
   const supabaseAuth = await createAuthClient()

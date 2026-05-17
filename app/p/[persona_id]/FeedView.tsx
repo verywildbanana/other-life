@@ -66,31 +66,224 @@ function ShareButton({ lang, personaId }: { lang: Lang; personaId: string }) {
     } catch { /* 무시 */ }
   }
 
-  const label = { ko: copied ? '복사됨!' : '공유', en: copied ? 'Copied!' : 'Share', ja: copied ? 'コピー済み' : '共有' }[lang]
+  const ariaLabel = { ko: copied ? '복사됨!' : '공유', en: copied ? 'Copied!' : 'Share', ja: copied ? 'コピー済み' : '共有' }[lang]
 
   return (
     <button
       type="button"
       onClick={handleShare}
-      aria-label={label}
-      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+      aria-label={ariaLabel}
+      className={`w-8 h-8 flex items-center justify-center rounded-lg border transition-colors ${
         copied
           ? 'border-emerald-700 text-emerald-400 bg-emerald-900/20'
           : 'border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:border-zinc-500'
       }`}
     >
       {copied ? (
-        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+        <svg width="13" height="13" viewBox="0 0 12 12" fill="none">
           <path d="M1.5 6l3 3 6-6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
       ) : (
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
           <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
         </svg>
       )}
-      {label}
     </button>
+  )
+}
+
+// ── Terms 버전 상수 — 약관 변경 시 이 숫자를 올리면 기존 유저에게 재동의 요청 ──────
+const CURRENT_TERMS_VERSION = 1
+
+// ── 약관 내용 ─────────────────────────────────────────────────────────────────
+const TERMS_CONTENT: Record<Lang, string> = {
+  ko: `이용약관
+
+최종 업데이트: 2025년 5월
+
+1. 서비스 개요
+Anomess는 YouTube 알고리즘 시뮬레이터 서비스입니다. 유저는 개인 피드 페르소나를 만들고 YouTube 영상 링크를 추가할 수 있습니다.
+
+2. 콘텐츠 정책
+다음 유형의 콘텐츠는 업로드 금지입니다:
+• 혐오 발언, 차별적 표현, 폭력·성적 콘텐츠
+• 허위 정보, 사기, 스팸성 콘텐츠
+• 타인의 저작권을 침해하는 콘텐츠
+• 불법적 활동을 조장하거나 묘사하는 콘텐츠
+
+위반 콘텐츠는 사전 통보 없이 삭제될 수 있으며, 반복 위반 시 계정이 제한될 수 있습니다.
+
+3. 비활성 계정
+6개월 이상 활동이 없는 유저 페르소나는 삭제 예정 30일 전에 이메일 알림을 발송합니다.
+알림 후 30일 내 응답이 없으면 해당 페르소나와 영상 데이터가 삭제됩니다.
+
+4. 서비스 변경 및 중단
+운영 여건에 따라 서비스 내용을 변경하거나 중단할 수 있습니다.
+중요한 변경은 사전에 이메일 또는 서비스 내 공지로 안내합니다.
+
+5. 면책 조항
+Anomess는 유저가 추가한 콘텐츠에 대해 책임지지 않습니다.
+서비스 이용으로 인한 직·간접 손해에 대해 법적 책임을 지지 않습니다.
+
+6. 약관 변경
+약관이 변경될 경우 서비스 로그인 시 재동의를 요청합니다.
+변경된 약관에 동의하지 않으면 서비스 이용이 제한될 수 있습니다.
+
+이 약관에 동의하면 위 내용을 이해하고 수락한 것으로 간주합니다.`,
+
+  en: `Terms of Service
+
+Last updated: May 2025
+
+1. Service Overview
+Anomess is a YouTube algorithm simulator. Users can create personal feed personas and add YouTube video links.
+
+2. Content Policy
+The following types of content are prohibited:
+• Hate speech, discriminatory expressions, violent or sexual content
+• Misinformation, fraud, or spam content
+• Content that infringes on others' copyrights
+• Content that promotes or depicts illegal activities
+
+Violating content may be removed without prior notice, and repeated violations may result in account restrictions.
+
+3. Inactive Accounts
+User personas inactive for 6 months or more will receive an email notification 30 days before scheduled deletion.
+If there is no response within 30 days of notification, the persona and video data will be deleted.
+
+4. Service Changes and Termination
+We may modify or discontinue the service based on operational conditions.
+Important changes will be communicated in advance via email or in-service notice.
+
+5. Disclaimer
+Anomess is not responsible for content added by users.
+We are not legally liable for direct or indirect damages resulting from use of the service.
+
+6. Changes to Terms
+If the terms change, we will request re-agreement upon login.
+Failure to agree to updated terms may result in restricted access to the service.
+
+By agreeing to these terms, you acknowledge that you have read and accepted the above.`,
+
+  ja: `利用規約
+
+最終更新：2025年5月
+
+1. サービス概要
+AnolessはYouTubeアルゴリズムシミュレーターサービスです。ユーザーは個人フィードペルソナを作成し、YouTube動画リンクを追加できます。
+
+2. コンテンツポリシー
+以下の種類のコンテンツはアップロード禁止です：
+• ヘイトスピーチ、差別的表現、暴力的・性的コンテンツ
+• 虚偽情報、詐欺、スパムコンテンツ
+• 他者の著作権を侵害するコンテンツ
+• 違法行為を助長または描写するコンテンツ
+
+違反コンテンツは事前通知なく削除される場合があり、繰り返し違反するとアカウントが制限される場合があります。
+
+3. 非アクティブアカウント
+6ヶ月以上活動のないユーザーペルソナは、削除予定の30日前にメール通知を送信します。
+通知後30日以内に応答がない場合、該当ペルソナと動画データが削除されます。
+
+4. サービスの変更・終了
+運営状況に応じてサービス内容を変更または終了する場合があります。
+重要な変更は事前にメールまたはサービス内通知でお知らせします。
+
+5. 免責事項
+Anomessはユーザーが追加したコンテンツについて責任を負いません。
+サービス利用による直接・間接的な損害について法的責任を負いません。
+
+6. 規約の変更
+規約が変更された場合、ログイン時に再同意をお願いします。
+変更された規約に同意しない場合、サービスの利用が制限される場合があります。
+
+この規約に同意することで、上記内容を理解し承諾したものとみなします。`,
+}
+
+// ── 약관 동의 모달 ──────────────────────────────────────────────────────────────
+function TermsModal({ lang, onAgree }: { lang: Lang; onAgree: () => void }) {
+  const [scrolled, setScrolled] = useState(false)
+  const [activeLang, setActiveLang] = useState<Lang>(lang)
+  const [agreeing, setAgreeing] = useState(false)
+  const contentRef = useRef<HTMLDivElement>(null)
+
+  function handleScroll(e: React.UIEvent<HTMLDivElement>) {
+    const el = e.currentTarget
+    if (el.scrollHeight - el.scrollTop <= el.clientHeight + 40) setScrolled(true)
+  }
+
+  const labels = {
+    title:   { ko: '이용약관', en: 'Terms of Service', ja: '利用規約' }[lang],
+    scroll:  { ko: '약관을 끝까지 읽어주세요', en: 'Please read to the end', ja: '最後までお読みください' }[lang],
+    agree:   { ko: '동의하고 계속하기', en: 'Agree & Continue', ja: '同意して続ける' }[lang],
+    agreeIng: { ko: '처리 중...', en: 'Processing...', ja: '処理中...' }[lang],
+  }
+
+  async function handleAgree() {
+    setAgreeing(true)
+    try {
+      await fetch('/api/user/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ terms_version: CURRENT_TERMS_VERSION }),
+      })
+      onAgree()
+    } catch {
+      setAgreeing(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/70 px-4 pb-4 sm:pb-0">
+      <div className="bg-zinc-900 border border-zinc-700 rounded-2xl w-full max-w-md shadow-2xl flex flex-col max-h-[85vh]">
+        {/* 헤더 */}
+        <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-zinc-800">
+          <h2 className="text-sm font-semibold">{labels.title}</h2>
+          <div className="flex gap-1">
+            {(['ko', 'en', 'ja'] as Lang[]).map(l => (
+              <button
+                key={l}
+                onClick={() => {
+                  setActiveLang(l)
+                  if (contentRef.current) contentRef.current.scrollTop = 0
+                  setScrolled(false)
+                }}
+                className={`text-[11px] px-2 py-0.5 rounded transition-colors ${
+                  activeLang === l ? 'bg-zinc-700 text-zinc-100' : 'text-zinc-500 hover:text-zinc-300'
+                }`}
+              >
+                {l.toUpperCase()}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 약관 본문 */}
+        <div
+          ref={contentRef}
+          onScroll={handleScroll}
+          className="flex-1 overflow-y-auto px-5 py-4 text-xs text-zinc-300 leading-relaxed whitespace-pre-wrap"
+          style={{ WebkitOverflowScrolling: 'touch' }}
+        >
+          {TERMS_CONTENT[activeLang]}
+        </div>
+
+        {/* 하단 */}
+        <div className="px-5 pb-5 pt-3 border-t border-zinc-800">
+          {!scrolled && (
+            <p className="text-[11px] text-zinc-500 text-center mb-2">{labels.scroll}</p>
+          )}
+          <button
+            onClick={handleAgree}
+            disabled={!scrolled || agreeing}
+            className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium transition-colors"
+          >
+            {agreeing ? labels.agreeIng : labels.agree}
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -1333,6 +1526,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [isOwner, setIsOwner] = useState(false)
   const [myPersonaIds, setMyPersonaIds] = useState<Set<string>>(new Set())
+  const [showTerms, setShowTerms] = useState(false)
   const [addVideoOpen, setAddVideoOpen] = useState(false)
   // PTR 완료 후 fade-in 제어 — false: 콘텐츠 숨김(no-transition), true: fade-in(300ms)
   // 초기 진입 시에도 false → 클라이언트 fetch 완료 후 fade-in (SSR flash 방지)
@@ -1369,6 +1563,18 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     })
     return () => subscription.unsubscribe()
   }, [])
+
+  // ── 약관 동의 체크 — 로그인 유저만, 버전 낮으면 모달 표시 ─────────────────────────
+  useEffect(() => {
+    if (!user) { setShowTerms(false); return }
+    fetch('/api/user/profile')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        const version = data?.profile?.terms_version ?? 0
+        if (version < CURRENT_TERMS_VERSION) setShowTerms(true)
+      })
+      .catch(() => { /* 실패 시 약관 강제하지 않음 */ })
+  }, [user])
 
   // ── 유저 페르소나 오너 체크 + 내 피드 ID 목록 ───────────────────────────────────
   useEffect(() => {
@@ -2310,6 +2516,11 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
 
       {/* 쿠키 배너 — lang 상태를 직접 전달해 정확한 언어로 표시 */}
       <CookieBanner lang={lang} />
+
+      {/* 약관 동의 모달 — 로그인 유저 최초 또는 약관 변경 시 표시 */}
+      {showTerms && (
+        <TermsModal lang={lang} onAgree={() => setShowTerms(false)} />
+      )}
     </>
   )
 }
