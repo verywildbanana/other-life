@@ -634,6 +634,57 @@ function gtag(event: string, params: Record<string, unknown>) {
 }
 
 
+// ── 삭제 확인 팝업이 포함된 버튼 ──────────────────────────────────────────────
+function DeleteButton({ dbId, lang, onDelete }: { dbId: number; lang: Lang; onDelete: (id: number) => void }) {
+  const [confirming, setConfirming] = useState(false)
+
+  const labels = {
+    confirm:  { ko: '이 영상을 삭제할까요?', en: 'Delete this video?', ja: 'この動画を削除しますか？' }[lang],
+    yes:      { ko: '삭제', en: 'Delete', ja: '削除' }[lang],
+    no:       { ko: '취소', en: 'Cancel', ja: 'キャンセル' }[lang],
+  }
+
+  if (confirming) {
+    return (
+      <div
+        className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 bg-black/80 rounded-none"
+        onClick={(e) => { e.preventDefault(); e.stopPropagation() }}
+      >
+        <p className="text-white text-xs text-center px-3 leading-snug">{labels.confirm}</p>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => { onDelete(dbId); setConfirming(false) }}
+            className="px-3 py-1 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-medium transition-colors"
+          >
+            {labels.yes}
+          </button>
+          <button
+            type="button"
+            onClick={() => setConfirming(false)}
+            className="px-3 py-1 rounded-lg bg-zinc-700 hover:bg-zinc-600 text-white text-xs transition-colors"
+          >
+            {labels.no}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setConfirming(true) }}
+      className="absolute top-1.5 right-1.5 z-20 w-6 h-6 flex items-center justify-center rounded-full bg-black/70 hover:bg-red-600 text-white transition-colors"
+      aria-label="삭제"
+    >
+      <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+        <path d="M1.5 1.5l7 7M8.5 1.5l-7 7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+      </svg>
+    </button>
+  )
+}
+
 // ── VideoCard — memo로 분리해 isPlaying/isHovered 변경 시 해당 카드만 재렌더 ──────
 interface VideoCardProps {
   video: Video
@@ -727,20 +778,7 @@ const VideoCard = memo(function VideoCard({
         )}
         {/* 오너 전용 삭제 버튼 — 썸네일 우상단 오버레이 */}
         {isOwner && video.db_id != null && onDelete && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              onDelete(video.db_id!)
-            }}
-            className="absolute top-1.5 right-1.5 z-20 w-6 h-6 flex items-center justify-center rounded-full bg-black/70 hover:bg-red-600 text-white transition-colors"
-            aria-label="삭제"
-          >
-            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-              <path d="M1.5 1.5l7 7M8.5 1.5l-7 7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
-            </svg>
-          </button>
+          <DeleteButton dbId={video.db_id} lang={lang} onDelete={onDelete} />
         )}
       </div>
       <div className="p-3 flex flex-col flex-1">
