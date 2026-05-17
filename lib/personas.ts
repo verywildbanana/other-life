@@ -35,7 +35,6 @@ async function listUserPersonas(): Promise<Persona[]> {
     .from('user_personas')
     .select('persona_id, name_i18n, description_i18n')
     .eq('is_public', true)
-    .eq('is_banned', false)
     .order('created_at', { ascending: false })
     .limit(200)
 
@@ -83,7 +82,6 @@ export async function loadPersonaAsync(id: string): Promise<Persona | null> {
       .from('user_personas')
       .select('persona_id, name_i18n, description_i18n')
       .eq('persona_id', id)
-      .eq('is_banned', false)
       .maybeSingle()
 
     if (!data) return null

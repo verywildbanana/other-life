@@ -1486,7 +1486,15 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     fetch(`/api/feed/${targetPersona.id}?offset=0&limit=50&skip_count=1`)
       .then(r => r.ok ? r.json() : null)
       .then(data => {
-        if (cancelled || !data?.videos) return
+        if (cancelled) return
+        // data가 null이거나 videos 배열이 없으면 → 빈 피드 (신규 유저 페르소나 등)
+        // isInitialLoading은 반드시 해제해야 추후 영상 추가 시 그리드가 렌더됨
+        if (!data?.videos) {
+          setIsInitialLoading(false)
+          setContentReady(true)
+          setIsEmpty(true)
+          return
+        }
         const shuffled = epochShuffle(data.videos, viewed)
         stage1Displayed = shuffled.slice(0, FEED_PAGE)
         allVideosRef.current = shuffled

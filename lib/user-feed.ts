@@ -21,14 +21,17 @@ export async function getPaginatedUserFeed(
 ): Promise<FeedPageResponse | null> {
   const supabase = getSupabase()
 
-  // 페르소나 존재 + 공개 확인 (비공개/밴된 페르소나는 null 반환)
-  const { data: persona } = await supabase
+  // 페르소나 존재 확인 (is_banned 필터는 어드민 기능에서 별도 처리)
+  const { data: persona, error: personaError } = await supabase
     .from('user_personas')
     .select('persona_id, name_i18n, video_count')
     .eq('persona_id', personaId)
-    .eq('is_banned', false)
     .maybeSingle()
 
+  if (personaError) {
+    console.error('[user-feed] persona query error:', personaError.message)
+    return null
+  }
   if (!persona) return null
 
   // collected_at: DB 컬럼명 (플랜 SQL 기준)
