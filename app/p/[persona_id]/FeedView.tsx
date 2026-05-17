@@ -263,7 +263,7 @@ function TermsModal({ lang, onAgree }: { lang: Lang; onAgree: () => void }) {
         <div
           ref={contentRef}
           onScroll={handleScroll}
-          className="flex-1 overflow-y-auto px-5 py-4 text-xs text-zinc-300 leading-relaxed whitespace-pre-wrap"
+          className="flex-1 overflow-y-auto px-5 py-4 text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap"
           style={{ WebkitOverflowScrolling: 'touch' }}
         >
           {TERMS_CONTENT[activeLang]}
