@@ -1502,6 +1502,20 @@ function shuffle<T>(arr: T[]): T[] {
   return a
 }
 
+// 유저 피드 정렬 — 서버 순서(최신 추가순) 유지, 시청한 영상만 뒤로
+function userFeedSort(videos: Video[], viewed: Set<string>): Video[] {
+  const unseen = videos.filter(v => !viewed.has(v.video_id))
+  const seen   = videos.filter(v => viewed.has(v.video_id))
+  return [...unseen, ...seen]
+}
+
+// 페르소나 종류에 따라 정렬 방식 분기
+function sortVideos(personaId: string, videos: Video[], viewed: Set<string>): Video[] {
+  return personaId.startsWith('u_')
+    ? userFeedSort(videos, viewed)
+    : epochShuffle(videos, viewed)
+}
+
 // Epoch 셔플 — 한 번만 실행하고 cursor로 이동 (weightedShuffle 대체)
 // 우선순위: fresh+summary > fresh > rest+summary > rest > seen
 // viewed: localStorage 시청 이력 → 본 영상은 뒤쪽 seen 버킷으로 패널티
@@ -1695,7 +1709,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
       .then(r => r.ok ? r.json() : null)
       .then(d => {
         if (!cancelled && d?.videos) {
-          const shuffledShorts = epochShuffle(d.videos, getViewedSet())
+          const shuffledShorts = sortVideos(currentPersona.id, d.videos, getViewedSet())
           shortsOrderCacheRef.current.set(currentPersona.id, shuffledShorts)  // 순서 캐시 저장
           setShorts(shuffledShorts)
           setShortsHasMore(false)
@@ -1897,7 +1911,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
         if (!feedRes.ok) throw new Error('fetch failed')
 
         const data: FeedPageResponse = await feedRes.json()
-        const shuffled = epochShuffle(data.videos, viewed)
+        const shuffled = sortVideos(currentPersona.id, data.videos, viewed)
         const ptrStage1Displayed = shuffled.slice(0, FEED_PAGE)
         allVideosRef.current = shuffled
         setVideos(ptrStage1Displayed)
@@ -1908,7 +1922,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
         if (shortsRes.ok) {
           const shortsData = await shortsRes.json()
           if (shortsData?.videos) {
-            const newShorts = epochShuffle(shortsData.videos, viewed)
+            const newShorts = sortVideos(currentPersona.id, shortsData.videos, viewed)
             stopAllPlayback()
             shortsOrderCacheRef.current.set(currentPersona.id, newShorts)
             setShorts(newShorts)
@@ -1923,7 +1937,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
         const fullRes = await fetch(`/api/feed/${currentPersona.id}?offset=0&limit=300`)
         if (fullRes.ok) {
           const fullData: FeedPageResponse = await fullRes.json()
-          const fullShuffled = epochShuffle(fullData.videos, viewed)
+          const fullShuffled = sortVideos(currentPersona.id, fullData.videos, viewed)
           // Stage 1 표시분 보존 + 나머지 붙임 (dedup 버그 방지)
           const shownIds = new Set(ptrStage1Displayed.map(v => v.video_id))
           const remaining = fullShuffled.filter(v => !shownIds.has(v.video_id))
@@ -2004,7 +2018,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
           setIsEmpty(true)
           return
         }
-        const shuffled = epochShuffle(data.videos, viewed)
+        const shuffled = sortVideos(targetPersona.id, data.videos, viewed)
         stage1Displayed = shuffled.slice(0, FEED_PAGE)
         allVideosRef.current = shuffled
         setVideos(stage1Displayed)
@@ -2020,7 +2034,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
       .then(r => r?.ok ? r.json() : null)
       .then(fullData => {
         if (cancelled || !fullData?.videos) return
-        const fullShuffled = epochShuffle(fullData.videos, viewed)
+        const fullShuffled = sortVideos(targetPersona.id, fullData.videos, viewed)
         // Stage 1 표시분을 앞에 보존 + 나머지를 뒤에 붙임 → loadMore가 slice(20~)부터 읽으면 중복 없음
         const shownIds = new Set(stage1Displayed.map(v => v.video_id))
         const remaining = fullShuffled.filter(v => !shownIds.has(v.video_id))
@@ -2083,7 +2097,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
       if (!res.ok) throw new Error('fetch failed')
       const data: FeedPageResponse = await res.json()
 
-      const shuffled = epochShuffle(data.videos, viewed)
+      const shuffled = sortVideos(nextPersonaId, data.videos, viewed)
       allVideosRef.current = shuffled
       setVideos(shuffled.slice(0, FEED_PAGE))
       updateHasMore(true)
@@ -2096,7 +2110,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
       const fullRes = await fetch(`/api/feed/${nextPersonaId}?offset=0&limit=300`)
       if (fullRes.ok) {
         const fullData: FeedPageResponse = await fullRes.json()
-        const fullShuffled = epochShuffle(fullData.videos, viewed)
+        const fullShuffled = sortVideos(nextPersonaId, fullData.videos, viewed)
         // Stage 1 표시분 보존 + 나머지 붙임 (dedup 버그 방지)
         const shownIds = new Set(shuffled.slice(0, FEED_PAGE).map(v => v.video_id))
         const remaining = fullShuffled.filter(v => !shownIds.has(v.video_id))
