@@ -131,7 +131,7 @@ interface AddVideoModalProps {
   lang: Lang
   personaId: string
   onClose: () => void
-  onAdded: (video: { video_id: string; title: string; channel: string; thumbnail_url: string; added_at: string }) => void
+  onAdded: (video: { video_id: string; title: string; channel: string; thumbnail_url: string; added_at: string; db_id: number; user_intro: Record<string, string> | null }) => void
 }
 
 function AddVideoModal({ lang, personaId, onClose, onAdded }: AddVideoModalProps) {
@@ -194,7 +194,12 @@ function AddVideoModal({ lang, personaId, onClose, onAdded }: AddVideoModalProps
       if (!res.ok) throw new Error(data.error ?? 'error')
       setStatus('done')
       setTimeout(() => {
-        onAdded({ ...preview, added_at: new Date().toISOString() })
+        onAdded({
+          ...preview,
+          added_at: new Date().toISOString(),
+          db_id: data.video?.id ?? 0,
+          user_intro: intro.trim() ? { ko: intro.trim(), en: intro.trim(), ja: intro.trim() } : null,
+        })
         onClose()
       }, 800)
     } catch (err) {
@@ -1781,7 +1786,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
   // IntersectionObserver는 sentinelRef callback ref 안에서 직접 처리됨 (위 sentinelRef 정의 참조)
 
   // 영상 추가 완료 → 피드 맨 앞에 삽입
-  const handleVideoAdded = useCallback((added: { video_id: string; title: string; channel: string; thumbnail_url: string; added_at: string }) => {
+  const handleVideoAdded = useCallback((added: { video_id: string; title: string; channel: string; thumbnail_url: string; added_at: string; db_id: number; user_intro: Record<string, string> | null }) => {
     const newVideo: Video = {
       video_id: added.video_id,
       persona_id: currentPersona.id,
@@ -1797,7 +1802,8 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
       collected_date: added.added_at.split('T')[0],
       published_at: null,
       titles_i18n: { ko: added.title, en: added.title, ja: added.title },
-      summary_i18n: null,
+      summary_i18n: added.user_intro ?? null,
+      db_id: added.db_id,
     }
     setVideos(prev => [newVideo, ...prev])
     setTotal(prev => prev + 1)
