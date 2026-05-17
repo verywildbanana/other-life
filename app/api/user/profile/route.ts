@@ -51,20 +51,27 @@ export async function PATCH(req: NextRequest) {
   const supabase = await createAuthClient()
   const now = new Date().toISOString()
 
-  // 기존 row UPDATE 시도 → 없으면 INSERT (nickname 없이도 저장 가능하도록)
-  const { error: updateError, count } = await supabase
+  // row 존재 여부 확인
+  const { data: existing } = await supabase
     .from('user_profiles')
-    .update({ terms_version, terms_agreed_at: now })
+    .select('id')
     .eq('id', user.id)
+    .maybeSingle()
 
-  if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 })
-
-  // UPDATE가 0행이면 row 없음 → INSERT
-  if ((count ?? 0) === 0) {
-    const { error: insertError } = await supabase
+  if (existing) {
+    // 기존 row: terms 필드만 UPDATE
+    const { error } = await supabase
       .from('user_profiles')
-      .insert({ id: user.id, terms_version, terms_agreed_at: now, tos_agreed: true })
-    if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 })
+      .update({ terms_version, terms_agreed_at: now })
+      .eq('id', user.id)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  } else {
+    // 신규 row: nickname은 이메일 앞부분으로 채움
+    const fallbackNickname = (user.email ?? '').split('@')[0].slice(0, 20) || 'user'
+    const { error } = await supabase
+      .from('user_profiles')
+      .insert({ id: user.id, terms_version, terms_agreed_at: now, tos_agreed: true, nickname: fallbackNickname })
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
   return NextResponse.json({ ok: true })
