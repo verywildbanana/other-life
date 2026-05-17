@@ -34,13 +34,17 @@ export default function CookieBanner({ lang: langProp }: { lang?: Lang }) {
   useEffect(() => {
     const consent = localStorage.getItem(COOKIE_CONSENT_KEY)
     if (!consent) setVisible(true)
-    // langProp이 있으면 우선 사용, 없으면 URL 파라미터에서 읽기
+    // 우선순위: langProp > URL 파라미터 > localStorage feed_lang > 기본값 ko
     if (langProp) {
       setLang(langProp)
     } else {
       const params = new URLSearchParams(window.location.search)
-      const l = params.get('lang') as Lang | null
-      if (l && l in t) setLang(l)
+      const urlLang = params.get('lang') as Lang | null
+      const savedLang = localStorage.getItem('feed_lang') as Lang | null
+      const resolved = (urlLang && urlLang in t ? urlLang : null)
+        ?? (savedLang && savedLang in t ? savedLang : null)
+        ?? 'ko'
+      setLang(resolved)
     }
   }, [langProp])
 
