@@ -1,10 +1,82 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 
-export default function CreatePersonaPage() {
+type Lang = 'ko' | 'en' | 'ja'
+
+const t: Record<Lang, {
+  pageTitle: string
+  nameSection: string
+  descSection: string
+  namePlaceholderKo: string
+  namePlaceholderEn: string
+  namePlaceholderJa: string
+  descPlaceholderKo: string
+  descPlaceholderEn: string
+  descPlaceholderJa: string
+  nameRequired: string
+  cancel: string
+  creating: string
+  create: string
+  networkError: string
+}> = {
+  ko: {
+    pageTitle: '내 피드 만들기',
+    nameSection: '페르소나 이름',
+    descSection: '한 줄 소개 (선택)',
+    namePlaceholderKo: '예: 재즈 좋아하는 30대',
+    namePlaceholderEn: 'e.g. Jazz Lover in 30s (optional)',
+    namePlaceholderJa: '例: ジャズ好きな30代 (optional)',
+    descPlaceholderKo: '이 피드는 어떤 사람의 알고리즘인가요?',
+    descPlaceholderEn: "What's this person's YouTube taste?",
+    descPlaceholderJa: 'このフィードはどんな人のアルゴリズムですか？',
+    nameRequired: '한국어 이름은 2자 이상 입력해주세요.',
+    cancel: '취소',
+    creating: '생성 중...',
+    create: '피드 만들기',
+    networkError: '네트워크 오류',
+  },
+  en: {
+    pageTitle: 'Create My Feed',
+    nameSection: 'Persona Name',
+    descSection: 'Short Description (optional)',
+    namePlaceholderKo: 'e.g. 재즈 좋아하는 30대 (Korean)',
+    namePlaceholderEn: 'e.g. Jazz Lover in 30s',
+    namePlaceholderJa: 'e.g. ジャズ好きな30代 (Japanese, optional)',
+    descPlaceholderKo: '이 피드는 어떤 사람의 알고리즘인가요? (Korean)',
+    descPlaceholderEn: "What's this person's YouTube taste?",
+    descPlaceholderJa: 'このフィードはどんな人のアルゴリズムですか？ (Japanese)',
+    nameRequired: 'Korean name must be at least 2 characters.',
+    cancel: 'Cancel',
+    creating: 'Creating...',
+    create: 'Create Feed',
+    networkError: 'Network error',
+  },
+  ja: {
+    pageTitle: 'マイフィードを作成',
+    nameSection: 'ペルソナ名',
+    descSection: '一言紹介 (任意)',
+    namePlaceholderKo: '例: 재즈 좋아하는 30대 (韓国語)',
+    namePlaceholderEn: 'e.g. Jazz Lover in 30s (英語, 任意)',
+    namePlaceholderJa: '例: ジャズ好きな30代',
+    descPlaceholderKo: '이 피드는 어떤 사람의 알고리즘인가요？ (韓国語)',
+    descPlaceholderEn: "What's this person's YouTube taste? (英語)",
+    descPlaceholderJa: 'このフィードはどんな人のアルゴリズムですか？',
+    nameRequired: '韓国語名を2文字以上入力してください。',
+    cancel: 'キャンセル',
+    creating: '作成中...',
+    create: 'フィードを作成',
+    networkError: 'ネットワークエラー',
+  },
+}
+
+function CreatePersonaContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const lang = (searchParams.get('lang') ?? 'ko') as Lang
+  const s = t[lang] ?? t.ko
+
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -18,12 +90,11 @@ export default function CreatePersonaPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (nameKo.trim().length < 2) {
-      setError('한국어 이름은 2자 이상 입력해주세요.')
+      setError(s.nameRequired)
       return
     }
     setLoading(true)
     setError('')
-
     try {
       const res = await fetch('/api/user/personas', {
         method: 'POST',
@@ -43,12 +114,12 @@ export default function CreatePersonaPage() {
       })
       const data = await res.json()
       if (!res.ok) {
-        setError(data.error ?? '생성 실패')
+        setError(data.error ?? s.networkError)
         return
       }
-      router.push(`/p/${data.persona.persona_id}`)
+      router.push(`/p/${data.persona.persona_id}?lang=${lang}`)
     } catch {
-      setError('네트워크 오류')
+      setError(s.networkError)
     } finally {
       setLoading(false)
     }
@@ -56,19 +127,19 @@ export default function CreatePersonaPage() {
 
   return (
     <main className="min-h-screen bg-zinc-950 text-zinc-100 px-4 py-12 max-w-xl mx-auto">
-      <h1 className="text-2xl font-bold mb-8">내 피드 만들기</h1>
+      <h1 className="text-2xl font-bold mb-8">{s.pageTitle}</h1>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* 이름 */}
         <section className="space-y-3">
-          <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wide">페르소나 이름</h2>
+          <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wide">{s.nameSection}</h2>
           <div className="space-y-2">
             <div className="flex gap-2 items-center">
               <span className="text-xs text-zinc-500 w-6">KO</span>
               <input
                 value={nameKo}
                 onChange={e => setNameKo(e.target.value)}
-                placeholder="예: 재즈 좋아하는 30대"
+                placeholder={s.namePlaceholderKo}
                 maxLength={30}
                 required
                 className="flex-1 bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-indigo-500"
@@ -79,7 +150,7 @@ export default function CreatePersonaPage() {
               <input
                 value={nameEn}
                 onChange={e => setNameEn(e.target.value)}
-                placeholder="e.g. Jazz Lover in 30s (optional)"
+                placeholder={s.namePlaceholderEn}
                 maxLength={40}
                 className="flex-1 bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-indigo-500"
               />
@@ -89,7 +160,7 @@ export default function CreatePersonaPage() {
               <input
                 value={nameJa}
                 onChange={e => setNameJa(e.target.value)}
-                placeholder="例: ジャズ好きな30代 (optional)"
+                placeholder={s.namePlaceholderJa}
                 maxLength={40}
                 className="flex-1 bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-indigo-500"
               />
@@ -99,15 +170,15 @@ export default function CreatePersonaPage() {
 
         {/* 소개 */}
         <section className="space-y-3">
-          <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wide">한 줄 소개 (선택)</h2>
+          <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wide">{s.descSection}</h2>
           <div className="space-y-2">
             {[
-              { lang: 'KO', value: descKo, set: setDescKo, placeholder: '이 피드는 어떤 사람의 알고리즘인가요?' },
-              { lang: 'EN', value: descEn, set: setDescEn, placeholder: "What's this person's YouTube taste?" },
-              { lang: 'JA', value: descJa, set: setDescJa, placeholder: 'このフィードはどんな人のアルゴリズムですか？' },
-            ].map(({ lang, value, set, placeholder }) => (
-              <div key={lang} className="flex gap-2 items-center">
-                <span className="text-xs text-zinc-500 w-6">{lang}</span>
+              { lang: 'KO', value: descKo, set: setDescKo, placeholder: s.descPlaceholderKo },
+              { lang: 'EN', value: descEn, set: setDescEn, placeholder: s.descPlaceholderEn },
+              { lang: 'JA', value: descJa, set: setDescJa, placeholder: s.descPlaceholderJa },
+            ].map(({ lang: l, value, set, placeholder }) => (
+              <div key={l} className="flex gap-2 items-center">
+                <span className="text-xs text-zinc-500 w-6">{l}</span>
                 <input
                   value={value}
                   onChange={e => set(e.target.value)}
@@ -128,17 +199,25 @@ export default function CreatePersonaPage() {
             onClick={() => router.back()}
             className="flex-1 py-2.5 rounded-xl border border-zinc-700 text-zinc-400 hover:text-zinc-200 text-sm transition-colors"
           >
-            취소
+            {s.cancel}
           </button>
           <button
             type="submit"
             disabled={loading}
             className="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-medium transition-colors"
           >
-            {loading ? '생성 중...' : '피드 만들기'}
+            {loading ? s.creating : s.create}
           </button>
         </div>
       </form>
     </main>
+  )
+}
+
+export default function CreatePersonaPage() {
+  return (
+    <Suspense>
+      <CreatePersonaContent />
+    </Suspense>
   )
 }
