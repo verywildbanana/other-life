@@ -5,14 +5,6 @@ import { createClient } from '@/lib/supabase/client'
 import { Suspense, useEffect, useState } from 'react'
 import AnoHeader from '@/components/AnoHeader'
 
-/** 카카오톡·라인·인스타그램 등 인앱 브라우저 여부 감지 */
-function detectInAppBrowser(): boolean {
-  if (typeof navigator === 'undefined') return false
-  const ua = navigator.userAgent
-  return /KAKAOTALK|kakaotalk|Line\/|Instagram|FBAN|FBAV|FB_IAB|NaverApp|naver/i.test(ua)
-    || /Android.*wv\)/i.test(ua)  // Android WebView
-}
-
 type Lang = 'ko' | 'en' | 'ja'
 
 const t: Record<Lang, {
@@ -53,6 +45,14 @@ const t: Record<Lang, {
   },
 }
 
+/** 카카오톡·라인·인스타그램 등 인앱 브라우저 여부 감지 */
+function detectInAppBrowser(): boolean {
+  if (typeof navigator === 'undefined') return false
+  const ua = navigator.userAgent
+  return /KAKAOTALK|kakaotalk|Line\/|Instagram|FBAN|FBAV|FB_IAB|NaverApp|naver/i.test(ua)
+    || /Android.*wv\)/i.test(ua)
+}
+
 function LoginContent() {
   const searchParams = useSearchParams()
   const redirectTo = searchParams.get('redirectTo') ?? '/'
@@ -63,13 +63,11 @@ function LoginContent() {
   const [isInApp, setIsInApp] = useState(false)
   useEffect(() => { setIsInApp(detectInAppBrowser()) }, [])
 
-  /** Android intent URL로 Chrome에서 열기, 실패 시 일반 URL로 fallback */
+  /** Android: Chrome intent URL로 열기, iOS: window.open fallback */
   function openInBrowser() {
     const url = window.location.href
-    // Android: Chrome intent URL
     const intentUrl = `intent://${window.location.host}${window.location.pathname}${window.location.search}#Intent;scheme=https;package=com.android.chrome;end`
     window.location.href = intentUrl
-    // iOS / fallback: 300ms 후 일반 URL로 시도 (intent가 동작하면 이미 이동된 상태)
     setTimeout(() => { window.open(url, '_blank') }, 300)
   }
 
@@ -116,7 +114,7 @@ function LoginContent() {
           </div>
         )}
 
-        {/* 인앱 브라우저 경고 (카카오톡 등) */}
+        {/* 인앱 브라우저 감지 시 외부 브라우저 안내 / 일반 환경 Google 버튼 */}
         {isInApp ? (
           <div className="space-y-4">
             <div className="bg-amber-950/50 border border-amber-700 rounded-xl px-4 py-4 text-center space-y-2">
@@ -139,7 +137,6 @@ function LoginContent() {
             </button>
           </div>
         ) : (
-          /* Google 로그인 버튼 */
           <button
             onClick={handleGoogleLogin}
             className="w-full flex items-center justify-center gap-3 bg-white hover:bg-gray-50 text-gray-900 font-medium py-3 px-4 rounded-xl transition-colors"
