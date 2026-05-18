@@ -624,10 +624,10 @@ function CommentsModal({ lang, personaId, user, onClose }: CommentsModalProps) {
             <button
               onClick={handleLike}
               disabled={!user || liking}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium transition-all ${
+              className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium transition-all ${
                 liked
-                  ? 'border-rose-600 bg-rose-600/15 text-rose-400'
-                  : 'border-zinc-700 text-zinc-500 hover:border-rose-700 hover:text-rose-400'
+                  ? 'text-rose-400'
+                  : 'text-zinc-500 hover:text-rose-400'
               } disabled:cursor-not-allowed`}
               title={!user ? { ko: '로그인 후 좋아요', en: 'Log in to like', ja: 'ログインして高評価' }[lang] : undefined}
             >
