@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const supabaseAuth = await createAuthClient()
   const { data: { user } } = await supabaseAuth.auth.getUser()
-  if (!user) return NextResponse.json({ error: '로그인 필요' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Login required' }, { status: 401 })
 
   const body = await req.json().catch(() => null)
   if (!body) return NextResponse.json({ error: 'Invalid body' }, { status: 400 })
@@ -46,10 +46,10 @@ export async function POST(req: NextRequest) {
   }
 
   if (!persona_id || !content?.trim()) {
-    return NextResponse.json({ error: 'persona_id, content 필수' }, { status: 400 })
+    return NextResponse.json({ error: 'persona_id and content are required' }, { status: 400 })
   }
   if (content.trim().length > 500) {
-    return NextResponse.json({ error: '댓글은 500자 이하입니다.' }, { status: 400 })
+    return NextResponse.json({ error: 'Comment must be 500 characters or less' }, { status: 400 })
   }
 
   const supabase = createServiceClient()
@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
       .maybeSingle()
 
     if (!persona || persona.user_id !== user.id) {
-      return NextResponse.json({ error: '답글은 페르소나 오너만 작성할 수 있습니다.' }, { status: 403 })
+      return NextResponse.json({ error: 'Only the feed owner can reply to comments' }, { status: 403 })
     }
   }
 
@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
 
   if ((recentCount ?? 0) >= RATE_LIMIT) {
     return NextResponse.json(
-      { error: '잠시 후 다시 시도해주세요.' },
+      { error: 'You\'re commenting too fast. Please wait a moment.' },
       { status: 429, headers: { 'Retry-After': '60' } },
     )
   }

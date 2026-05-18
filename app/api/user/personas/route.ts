@@ -15,7 +15,7 @@ function generatePersonaId(): string {
 export async function GET() {
   const supabaseAuth = await createAuthClient()
   const { data: { user } } = await supabaseAuth.auth.getUser()
-  if (!user) return NextResponse.json({ error: '로그인 필요' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Login required' }, { status: 401 })
 
   const supabase = await createAuthClient()
   const { data, error } = await supabase
@@ -32,7 +32,7 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const supabaseAuth = await createAuthClient()
   const { data: { user } } = await supabaseAuth.auth.getUser()
-  if (!user) return NextResponse.json({ error: '로그인 필요' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Login required' }, { status: 401 })
 
   const supabase = await createAuthClient()
 
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
   if (countError) return NextResponse.json({ error: countError.message }, { status: 500 })
   if ((count ?? 0) >= MAX_PERSONAS) {
     return NextResponse.json(
-      { error: `페르소나는 최대 ${MAX_PERSONAS}개까지 만들 수 있습니다.` },
+      { error: `You can create up to ${MAX_PERSONAS} feeds.` },
       { status: 400 },
     )
   }
@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
 
   // 이름 검증
   if (!name_i18n?.ko || name_i18n.ko.trim().length < 2) {
-    return NextResponse.json({ error: '한국어 이름은 2자 이상 입력해주세요.' }, { status: 400 })
+    return NextResponse.json({ error: 'Korean name must be at least 2 characters.' }, { status: 400 })
   }
 
   // 충돌 방지: 최대 3회 재시도

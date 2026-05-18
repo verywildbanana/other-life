@@ -40,7 +40,7 @@ async function fetchOEmbed(videoId: string): Promise<{ title: string; author_nam
 export async function POST(req: NextRequest) {
   const supabase = await createAuthClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: '로그인 필요' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Login required' }, { status: 401 })
 
   const body = await req.json()
   const { persona_id, url: videoUrl, user_intro, titles_i18n } = body as {
@@ -51,15 +51,15 @@ export async function POST(req: NextRequest) {
   }
 
   if (!persona_id?.startsWith('u_')) {
-    return NextResponse.json({ error: '유효하지 않은 페르소나 ID' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid feed ID' }, { status: 400 })
   }
   if (!videoUrl) {
-    return NextResponse.json({ error: 'YouTube URL을 입력해주세요.' }, { status: 400 })
+    return NextResponse.json({ error: 'YouTube URL is required' }, { status: 400 })
   }
 
   const videoId = extractVideoId(videoUrl.trim())
   if (!videoId) {
-    return NextResponse.json({ error: '유효한 YouTube URL이 아닙니다.' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid YouTube URL' }, { status: 400 })
   }
 
   // 페르소나 본인 소유 + 500개 제한 확인
@@ -69,16 +69,16 @@ export async function POST(req: NextRequest) {
     .eq('persona_id', persona_id)
     .maybeSingle()
 
-  if (!persona) return NextResponse.json({ error: '페르소나 없음' }, { status: 404 })
-  if (persona.user_id !== user.id) return NextResponse.json({ error: '권한 없음' }, { status: 403 })
+  if (!persona) return NextResponse.json({ error: 'Feed not found' }, { status: 404 })
+  if (persona.user_id !== user.id) return NextResponse.json({ error: 'You do not have permission to add videos to this feed' }, { status: 403 })
   if ((persona.video_count as number) >= MAX_VIDEOS) {
     return NextResponse.json(
-      { error: `영상은 최대 ${MAX_VIDEOS}개까지 추가할 수 있습니다. 오래된 영상을 먼저 삭제해주세요.` },
+      { error: `You've reached the ${MAX_VIDEOS}-video limit. Please delete some older videos to add new ones.` },
       { status: 400 },
     )
   }
 
-  // Rate Limit: 분당 10개 (access_logs 기반 대신 user_videos 삽입 시도 횟수)
+  // Rate Limit: 분당 10개
   const since = new Date(Date.now() - RATE_LIMIT_MS).toISOString()
   const { count: recentCount } = await supabase
     .from('user_videos')
@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
 
   if ((recentCount ?? 0) >= RATE_LIMIT_MAX) {
     return NextResponse.json(
-      { error: '너무 빠르게 추가하고 있습니다. 잠시 후 다시 시도해주세요.' },
+      { error: 'You\'re adding videos too fast. Please wait a moment and try again.' },
       { status: 429, headers: { 'Retry-After': '60' } },
     )
   }
@@ -102,13 +102,13 @@ export async function POST(req: NextRequest) {
     .maybeSingle()
 
   if (existing) {
-    return NextResponse.json({ error: '이미 추가된 영상입니다.' }, { status: 409 })
+    return NextResponse.json({ error: 'This video is already in your feed' }, { status: 409 })
   }
 
   // oEmbed로 메타데이터 조회
   const meta = await fetchOEmbed(videoId)
   if (!meta) {
-    return NextResponse.json({ error: '영상 정보를 가져올 수 없습니다. 공개된 영상인지 확인해주세요.' }, { status: 422 })
+    return NextResponse.json({ error: 'Could not fetch video info. Make sure the video is public.' }, { status: 422 })
   }
 
   const { data, error } = await supabase

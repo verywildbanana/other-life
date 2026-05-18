@@ -13,7 +13,7 @@ export async function DELETE(
 
   const supabaseAuth = await createAuthClient()
   const { data: { user } } = await supabaseAuth.auth.getUser()
-  if (!user) return NextResponse.json({ error: '로그인 필요' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Login required' }, { status: 401 })
 
   const supabase = createServiceClient()
 
@@ -24,7 +24,7 @@ export async function DELETE(
     .eq('id', commentId)
     .maybeSingle()
 
-  if (!comment) return NextResponse.json({ error: '댓글 없음' }, { status: 404 })
+  if (!comment) return NextResponse.json({ error: 'Comment not found' }, { status: 404 })
 
   // 본인 댓글이면 바로 삭제
   if (comment.user_id === user.id) {
@@ -46,5 +46,5 @@ export async function DELETE(
     return NextResponse.json({ ok: true })
   }
 
-  return NextResponse.json({ error: '권한 없음' }, { status: 403 })
+  return NextResponse.json({ error: 'You do not have permission to delete this comment' }, { status: 403 })
 }

@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const supabaseAuth = await createAuthClient()
   const { data: { user } } = await supabaseAuth.auth.getUser()
-  if (!user) return NextResponse.json({ error: '로그인 필요' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Login required' }, { status: 401 })
 
   const { persona_id } = await req.json() as { persona_id: string }
   if (!persona_id) return NextResponse.json({ error: 'persona_id required' }, { status: 400 })
