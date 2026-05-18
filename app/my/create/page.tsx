@@ -25,13 +25,9 @@ type Lang = 'ko' | 'en' | 'ja'
 const t: Record<Lang, {
   pageTitle: string
   nameSection: string
-  descSection: string
   namePlaceholderKo: string
   namePlaceholderEn: string
   namePlaceholderJa: string
-  descPlaceholderKo: string
-  descPlaceholderEn: string
-  descPlaceholderJa: string
   nameRequired: string
   cancel: string
   creating: string
@@ -41,13 +37,9 @@ const t: Record<Lang, {
   ko: {
     pageTitle: '내 피드 만들기',
     nameSection: '페르소나 이름',
-    descSection: '한 줄 소개 (선택)',
     namePlaceholderKo: '예: 재즈 좋아하는 30대',
     namePlaceholderEn: 'e.g. Jazz Lover in 30s (optional)',
     namePlaceholderJa: '例: ジャズ好きな30代 (optional)',
-    descPlaceholderKo: '이 피드는 어떤 사람의 알고리즘인가요?',
-    descPlaceholderEn: "What's this person's YouTube taste?",
-    descPlaceholderJa: 'このフィードはどんな人のアルゴリズムですか？',
     nameRequired: '한국어 이름은 2자 이상 입력해주세요.',
     cancel: '취소',
     creating: '생성 중...',
@@ -57,13 +49,9 @@ const t: Record<Lang, {
   en: {
     pageTitle: 'Create My Feed',
     nameSection: 'Persona Name',
-    descSection: 'Short Description (optional)',
     namePlaceholderKo: 'e.g. 재즈 좋아하는 30대 (Korean)',
     namePlaceholderEn: 'e.g. Jazz Lover in 30s',
     namePlaceholderJa: 'e.g. ジャズ好きな30代 (Japanese, optional)',
-    descPlaceholderKo: '이 피드는 어떤 사람의 알고리즘인가요? (Korean)',
-    descPlaceholderEn: "What's this person's YouTube taste?",
-    descPlaceholderJa: 'このフィードはどんな人のアルゴリズムですか？ (Japanese)',
     nameRequired: 'Korean name must be at least 2 characters.',
     cancel: 'Cancel',
     creating: 'Creating...',
@@ -73,13 +61,9 @@ const t: Record<Lang, {
   ja: {
     pageTitle: 'マイフィードを作成',
     nameSection: 'ペルソナ名',
-    descSection: '一言紹介 (任意)',
     namePlaceholderKo: '例: 재즈 좋아하는 30대 (韓国語)',
     namePlaceholderEn: 'e.g. Jazz Lover in 30s (英語, 任意)',
     namePlaceholderJa: '例: ジャズ好きな30代',
-    descPlaceholderKo: '이 피드는 어떤 사람의 알고리즘인가요？ (韓国語)',
-    descPlaceholderEn: "What's this person's YouTube taste? (英語)",
-    descPlaceholderJa: 'このフィードはどんな人のアルゴリズムですか？',
     nameRequired: '韓国語名を2文字以上入力してください。',
     cancel: 'キャンセル',
     creating: '作成中...',
@@ -100,10 +84,6 @@ function CreatePersonaContent() {
   const [nameKo, setNameKo] = useState('')
   const [nameEn, setNameEn] = useState('')
   const [nameJa, setNameJa] = useState('')
-  const [descKo, setDescKo] = useState('')
-  const [descEn, setDescEn] = useState('')
-  const [descJa, setDescJa] = useState('')
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (nameKo.trim().length < 2) {
@@ -122,11 +102,7 @@ function CreatePersonaContent() {
             en: nameEn.trim() || nameKo.trim(),
             ja: nameJa.trim() || nameKo.trim(),
           },
-          description_i18n: {
-            ko: descKo.trim(),
-            en: descEn.trim(),
-            ja: descJa.trim(),
-          },
+          description_i18n: {},
         }),
       })
       const data = await res.json()
@@ -195,32 +171,6 @@ function CreatePersonaContent() {
                 className="flex-1 bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-indigo-500"
               />
             </div>
-          </div>
-        </section>
-
-        {/* 소개 */}
-        <section className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wide">{s.descSection}</h2>
-            <OpenTranslatorBtn label={{ ko: '번역기 열기', en: 'Open Translator', ja: '翻訳ツールを開く' }[lang]} />
-          </div>
-          <div className="space-y-2">
-            {([
-              { lbl: 'KO', value: descKo, set: setDescKo, placeholder: s.descPlaceholderKo },
-              { lbl: 'EN', value: descEn, set: setDescEn, placeholder: s.descPlaceholderEn },
-              { lbl: 'JA', value: descJa, set: setDescJa, placeholder: s.descPlaceholderJa },
-            ]).map(({ lbl, value, set, placeholder }) => (
-              <div key={lbl} className="flex gap-2 items-center">
-                <span className="text-xs text-zinc-500 w-6">{lbl}</span>
-                <input
-                  value={value}
-                  onChange={e => set(e.target.value)}
-                  placeholder={placeholder}
-                  maxLength={100}
-                  className="flex-1 bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-indigo-500"
-                />
-              </div>
-            ))}
           </div>
         </section>
 
