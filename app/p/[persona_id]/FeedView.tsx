@@ -2089,6 +2089,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
   }, [user])
 
   // ── 유저 페르소나 오너 체크 + 내 피드 ID 목록 ───────────────────────────────────
+  // livePersonas는 /api/personas(전체 공개 목록)가 source of truth — 여기서는 건드리지 않음
   useEffect(() => {
     if (!user) {
       setIsOwner(false)
@@ -2102,13 +2103,9 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
           const ids = new Set<string>(data.personas.map((p: { persona_id: string }) => p.persona_id))
           setMyPersonaIds(ids)
           setIsOwner(currentPersona.id.startsWith('u_') && ids.has(currentPersona.id))
-          // 삭제된 유저 피드를 팝업 목록에서 제거 — 시스템 피드는 항상 유지
-          setLivePersonas(prev => prev.filter(p => !p.id.startsWith('u_') || ids.has(p.id)))
         } else {
           setMyPersonaIds(new Set())
           setIsOwner(false)
-          // 비로그인 or 에러 시 유저 피드 전체 제거
-          setLivePersonas(prev => prev.filter(p => !p.id.startsWith('u_')))
         }
       })
       .catch(() => { setIsOwner(false); setMyPersonaIds(new Set()) })
