@@ -131,6 +131,14 @@ function CreatePersonaContent() {
       })
       const data = await res.json()
       if (!res.ok) {
+        if (data.error === 'ONBOARDING_REQUIRED') {
+          router.push(`/onboarding?lang=${lang}&redirectTo=/my/create`)
+          return
+        }
+        if (data.error === 'ACCOUNT_BANNED') {
+          setError('Your account has been suspended. Please contact support.')
+          return
+        }
         setError(data.error ?? s.networkError)
         return
       }

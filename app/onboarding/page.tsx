@@ -76,6 +76,7 @@ function OnboardingContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const lang = (searchParams.get('lang') ?? 'ko') as Lang
+  const redirectTo = searchParams.get('redirectTo')
   const s = t[lang] ?? t.ko
 
   const [nickname, setNickname] = useState('')
@@ -101,7 +102,7 @@ function OnboardingContent() {
         const data = await res.json()
         throw new Error(data.error ?? s.errorFallback)
       }
-      router.push('/')
+      router.push(redirectTo ?? '/')
     } catch (err) {
       setError(err instanceof Error ? err.message : s.errorFallback)
     } finally {

@@ -937,7 +937,16 @@ function AddVideoModal({ lang, personaId, onClose, onAdded }: AddVideoModalProps
         onClose()
       }, 800)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'error')
+      const raw = err instanceof Error ? err.message : 'error'
+      // 500개 한도 도달 — 사용자 친화적 영어 메시지로 교체
+      const friendlyError = raw.includes('500') || raw.includes('최대')
+        ? 'You\'ve reached the 500-video limit. Please delete some older videos to add new ones.'
+        : raw.includes('이미 추가') || raw.includes('already')
+          ? 'This video is already in your feed.'
+          : raw.includes('권한') || raw.includes('403')
+            ? 'You don\'t have permission to add videos to this feed.'
+            : raw
+      setError(friendlyError)
       setStatus('idle')
     }
   }

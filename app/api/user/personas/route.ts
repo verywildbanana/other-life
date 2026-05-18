@@ -36,6 +36,26 @@ export async function POST(req: NextRequest) {
 
   const supabase = await createAuthClient()
 
+  // 온보딩 완료 + 밴 여부 확인
+  const { data: profile } = await supabase
+    .from('user_profiles')
+    .select('tos_agreed, is_banned')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  if (!profile || !profile.tos_agreed) {
+    return NextResponse.json(
+      { error: 'ONBOARDING_REQUIRED' },
+      { status: 403 },
+    )
+  }
+  if (profile.is_banned) {
+    return NextResponse.json(
+      { error: 'ACCOUNT_BANNED' },
+      { status: 403 },
+    )
+  }
+
   // 페르소나 수 제한 확인
   const { count, error: countError } = await supabase
     .from('user_personas')
