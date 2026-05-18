@@ -508,10 +508,10 @@ function CommentsModal({ lang, personaId, user, onClose }: CommentsModalProps) {
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="text-xs font-medium text-zinc-200">{c.nickname}</span>
             {isMe && (
-              <span className="text-[10px] px-1 py-0.5 rounded bg-indigo-900/60 text-indigo-300 border border-indigo-700/50">나</span>
+              <span className="text-[10px] px-1 py-0.5 rounded bg-indigo-900/60 text-indigo-300 border border-indigo-700/50">me</span>
             )}
             {isCommentOwner && (
-              <span className="text-[10px] px-1 py-0.5 rounded bg-amber-900/60 text-amber-300 border border-amber-700/50">오너</span>
+              <span className="text-[10px] px-1 py-0.5 rounded bg-amber-900/60 text-amber-300 border border-amber-700/50">owner</span>
             )}
             <span className="text-[10px] text-zinc-600 ml-auto">{relativeTime(c.created_at, lang)}</span>
             {/* 삭제 버튼 — 본인 댓글 또는 오너만 */}
