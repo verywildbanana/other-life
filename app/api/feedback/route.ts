@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { createHash } from 'crypto'
-import { sendFeedbackNotification } from '@/lib/resend'
 
 function getClientIp(req: NextRequest): string {
   return (
@@ -64,12 +63,6 @@ export async function POST(req: NextRequest) {
   if (error) {
     console.error('[feedback] insert error:', error.message)
     return NextResponse.json({ error: 'Failed to save' }, { status: 500 })
-  }
-
-  // 유저 페르소나 피드백 → 오너 이메일 알림 (fire-and-forget, 실패해도 응답에 영향 없음)
-  if (persona_id?.startsWith('u_') && content_suggestion?.trim()) {
-    sendFeedbackNotification({ personaId: persona_id, suggestion: content_suggestion.trim(), lang: lang ?? 'ko', supabase })
-      .catch(e => console.error('[feedback] email error:', e))
   }
 
   return NextResponse.json({ status: 'ok' })

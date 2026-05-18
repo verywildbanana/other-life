@@ -357,6 +357,306 @@ function TermsModal({ lang, onAgree }: { lang: Lang; onAgree: () => void }) {
   )
 }
 
+// ── 아바타 색상 — 닉네임 해시로 배경색 결정 ────────────────────────────────────
+const AVATAR_COLORS = [
+  'bg-indigo-600', 'bg-violet-600', 'bg-blue-600', 'bg-teal-600',
+  'bg-emerald-600', 'bg-amber-600', 'bg-rose-600', 'bg-pink-600',
+]
+
+function avatarColor(nickname: string): string {
+  let hash = 0
+  for (let i = 0; i < nickname.length; i++) hash = (hash * 31 + nickname.charCodeAt(i)) >>> 0
+  return AVATAR_COLORS[hash % AVATAR_COLORS.length]
+}
+
+// ── 댓글 타입 ──────────────────────────────────────────────────────────────────
+interface CommentRow {
+  id: number
+  persona_id: string
+  user_id: string
+  parent_id: number | null
+  content: string
+  nickname: string
+  created_at: string
+  replies?: CommentRow[]
+}
+
+// 상대시간 — "방금", "N분 전", "N시간 전", "N일 전"
+function relativeTime(iso: string, lang: Lang): string {
+  const diff = Date.now() - new Date(iso).getTime()
+  const mins = Math.floor(diff / 60000)
+  const hrs  = Math.floor(diff / 3600000)
+  const days = Math.floor(diff / 86400000)
+  if (mins < 1) return { ko: '방금', en: 'just now', ja: 'たった今' }[lang]
+  if (mins < 60) return { ko: `${mins}분 전`, en: `${mins}m ago`, ja: `${mins}分前` }[lang]
+  if (hrs < 24)  return { ko: `${hrs}시간 전`, en: `${hrs}h ago`, ja: `${hrs}時間前` }[lang]
+  return { ko: `${days}일 전`, en: `${days}d ago`, ja: `${days}日前` }[lang]
+}
+
+// ── CommentsModal ──────────────────────────────────────────────────────────────
+interface CommentsModalProps {
+  lang: Lang
+  personaId: string
+  user: import('@supabase/supabase-js').User | null
+  onClose: () => void
+}
+
+function CommentsModal({ lang, personaId, user, onClose }: CommentsModalProps) {
+  const [comments, setComments] = useState<CommentRow[]>([])
+  const [loading, setLoading] = useState(true)
+  const [input, setInput] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [replyTarget, setReplyTarget] = useState<number | null>(null)
+  const [replyInput, setReplyInput] = useState('')
+  const [replySubmitting, setReplySubmitting] = useState(false)
+  const [personaOwnerId, setPersonaOwnerId] = useState<string | null>(null)
+
+  // 페르소나 오너 user_id 조회
+  useEffect(() => {
+    fetch(`/api/user/personas/owner?persona_id=${personaId}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.owner_id) setPersonaOwnerId(d.owner_id) })
+      .catch(() => {})
+  }, [personaId])
+
+  // 댓글 목록 조회
+  useEffect(() => {
+    setLoading(true)
+    fetch(`/api/comments?persona_id=${personaId}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.comments) setComments(d.comments) })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [personaId])
+
+  const isOwner = user != null && user.id === personaOwnerId
+
+  const labels = {
+    title:       { ko: '댓글', en: 'Comments', ja: 'コメント' }[lang],
+    placeholder: { ko: '댓글을 입력하세요...', en: 'Write a comment...', ja: 'コメントを入力...' }[lang],
+    send:        { ko: '전송', en: 'Send', ja: '送信' }[lang],
+    reply:       { ko: '답글', en: 'Reply', ja: '返信' }[lang],
+    empty:       { ko: '아직 댓글이 없습니다. 첫 댓글을 남겨보세요!', en: 'No comments yet. Be the first!', ja: 'まだコメントがありません。最初のコメントを残しましょう！' }[lang],
+    close:       { ko: '닫기', en: 'Close', ja: '閉じる' }[lang],
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!input.trim() || submitting) return
+    setSubmitting(true)
+    try {
+      const res = await fetch('/api/comments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ persona_id: personaId, content: input.trim() }),
+      })
+      const data = await res.json()
+      if (res.ok && data.comment) {
+        setComments(prev => [...prev, { ...data.comment, replies: [] }])
+        setInput('')
+      }
+    } catch { /* 무시 */ } finally { setSubmitting(false) }
+  }
+
+  async function handleReply(parentId: number) {
+    if (!replyInput.trim() || replySubmitting) return
+    setReplySubmitting(true)
+    try {
+      const res = await fetch('/api/comments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ persona_id: personaId, content: replyInput.trim(), parent_id: parentId }),
+      })
+      const data = await res.json()
+      if (res.ok && data.comment) {
+        setComments(prev => prev.map(c =>
+          c.id === parentId
+            ? { ...c, replies: [...(c.replies ?? []), data.comment] }
+            : c,
+        ))
+        setReplyInput('')
+        setReplyTarget(null)
+      }
+    } catch { /* 무시 */ } finally { setReplySubmitting(false) }
+  }
+
+  async function handleDelete(commentId: number, parentId: number | null) {
+    const res = await fetch(`/api/comments/${commentId}`, { method: 'DELETE' })
+    if (!res.ok) return
+    if (parentId == null) {
+      setComments(prev => prev.filter(c => c.id !== commentId))
+    } else {
+      setComments(prev => prev.map(c =>
+        c.id === parentId
+          ? { ...c, replies: (c.replies ?? []).filter(r => r.id !== commentId) }
+          : c,
+      ))
+    }
+  }
+
+  const CommentItem = ({ c, parentId }: { c: CommentRow; parentId: number | null }) => {
+    const isMe = user?.id === c.user_id
+    const isCommentOwner = c.user_id === personaOwnerId
+
+    return (
+      <div className={`flex gap-2.5 ${parentId != null ? 'pl-8 mt-2' : 'mt-3'}`}>
+        {/* 아바타 */}
+        <div className={`shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white ${avatarColor(c.nickname)}`}>
+          {c.nickname[0]?.toUpperCase() ?? 'U'}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-xs font-medium text-zinc-200">{c.nickname}</span>
+            {isMe && (
+              <span className="text-[10px] px-1 py-0.5 rounded bg-indigo-900/60 text-indigo-300 border border-indigo-700/50">나</span>
+            )}
+            {isCommentOwner && (
+              <span className="text-[10px] px-1 py-0.5 rounded bg-amber-900/60 text-amber-300 border border-amber-700/50">오너</span>
+            )}
+            <span className="text-[10px] text-zinc-600 ml-auto">{relativeTime(c.created_at, lang)}</span>
+            {/* 삭제 버튼 — 본인 댓글 또는 오너만 */}
+            {(isMe || isOwner) && (
+              <button
+                onClick={() => handleDelete(c.id, parentId)}
+                className="text-zinc-600 hover:text-red-400 transition-colors"
+                aria-label="삭제"
+              >
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                  <path d="M1.5 1.5l7 7M8.5 1.5l-7 7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+                </svg>
+              </button>
+            )}
+          </div>
+          <p className="text-sm text-zinc-300 mt-0.5 leading-relaxed break-words">{c.content}</p>
+          {/* 답글 버튼 — 오너만, 최상위 댓글에만 (1단계 깊이) */}
+          {isOwner && parentId == null && (
+            <button
+              onClick={() => setReplyTarget(replyTarget === c.id ? null : c.id)}
+              className="mt-1 text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors"
+            >
+              {labels.reply}
+            </button>
+          )}
+          {/* 인라인 답글 입력창 */}
+          {replyTarget === c.id && (
+            <div className="mt-2 flex gap-2">
+              <input
+                autoFocus
+                value={replyInput}
+                onChange={e => setReplyInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleReply(c.id)}
+                placeholder={labels.placeholder}
+                maxLength={500}
+                className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-zinc-500"
+              />
+              <button
+                onClick={() => handleReply(c.id)}
+                disabled={!replyInput.trim() || replySubmitting}
+                className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white text-xs rounded-lg transition-colors"
+              >
+                {labels.send}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/70 px-4 pb-4 sm:pb-0">
+      <div className="bg-zinc-900 border border-zinc-700 rounded-2xl w-full max-w-lg shadow-2xl flex flex-col max-h-[85vh]">
+        {/* 헤더 */}
+        <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-zinc-800 shrink-0">
+          <h2 className="text-sm font-semibold">
+            💬 {labels.title} {comments.length > 0 && <span className="text-zinc-500">{comments.length}</span>}
+          </h2>
+          <button
+            onClick={onClose}
+            className="text-zinc-500 hover:text-zinc-300 p-1 rounded-lg hover:bg-zinc-800 transition-colors"
+            aria-label={labels.close}
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M2 2l10 10M12 2L2 12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+            </svg>
+          </button>
+        </div>
+
+        {/* 댓글 목록 */}
+        <div className="flex-1 overflow-y-auto px-5 py-3" style={{ WebkitOverflowScrolling: 'touch' }}>
+          {loading ? (
+            <div className="flex justify-center py-8">
+              <svg className="animate-spin h-5 w-5 text-zinc-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+              </svg>
+            </div>
+          ) : comments.length === 0 ? (
+            <p className="text-center text-zinc-500 text-sm py-8">{labels.empty}</p>
+          ) : (
+            comments.map(c => (
+              <div key={c.id} className="border-b border-zinc-800/60 pb-3 last:border-0">
+                <CommentItem c={c} parentId={null} />
+                {(c.replies ?? []).map(r => (
+                  <CommentItem key={r.id} c={r} parentId={c.id} />
+                ))}
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* 입력창 */}
+        <form onSubmit={handleSubmit} className="px-5 pb-5 pt-3 border-t border-zinc-800 flex gap-2 shrink-0">
+          <input
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            placeholder={labels.placeholder}
+            maxLength={500}
+            className="flex-1 bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-500"
+          />
+          <button
+            type="submit"
+            disabled={!input.trim() || submitting}
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white text-sm font-medium rounded-xl transition-colors shrink-0"
+          >
+            {labels.send}
+          </button>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// ── 비로그인 알림 팝업 ─────────────────────────────────────────────────────────
+function LoginPromptModal({ lang, onClose, onLogin }: { lang: Lang; onClose: () => void; onLogin: () => void }) {
+  const labels = {
+    msg:     { ko: '댓글을 쓰려면 로그인이 필요합니다.', en: 'Please log in to write a comment.', ja: 'コメントを書くにはログインが必要です。' }[lang],
+    confirm: { ko: '로그인하기', en: 'Log in', ja: 'ログイン' }[lang],
+    cancel:  { ko: '취소', en: 'Cancel', ja: 'キャンセル' }[lang],
+  }
+  return (
+    <div className="fixed inset-0 z-[65] flex items-center justify-center bg-black/70 px-6">
+      <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-6 w-full max-w-xs shadow-2xl text-center">
+        <p className="text-sm text-zinc-200 mb-5">{labels.msg}</p>
+        <div className="flex gap-2">
+          <button
+            onClick={onClose}
+            className="flex-1 py-2 rounded-xl border border-zinc-700 text-zinc-400 text-sm transition-colors hover:text-zinc-200"
+          >
+            {labels.cancel}
+          </button>
+          <button
+            onClick={onLogin}
+            className="flex-1 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors"
+          >
+            {labels.confirm}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── 피드백 모달 컴포넌트 ──────────────────────────────────────────────────────
 interface FeedbackModalProps {
   lang: Lang
@@ -1598,6 +1898,8 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
   const [isEmpty, setIsEmpty] = useState(false)
   const [viewStats, setViewStats] = useState<{ weekly: number; total: number } | null>(null)
   const [showFeedback, setShowFeedback] = useState(false)
+  const [showComments, setShowComments] = useState(false)
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false)
   const [showPersonaSheet, setShowPersonaSheet] = useState(false)
   const [navigating, setNavigating] = useState(false)
   const [user, setUser] = useState<User | null>(null)
@@ -2546,11 +2848,21 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
         </main>
       )}
 
-      {/* 피드백 플로팅 버튼 */}
+      {/* 피드백/댓글 플로팅 버튼 */}
       <button
         onClick={() => {
           gtag('feedback_click', { persona_id: currentPersona.id, lang })
-          setShowFeedback(true)
+          if (currentPersona.id.startsWith('u_')) {
+            // 유저 피드 → 댓글 모달 (비로그인이면 로그인 안내 팝업)
+            if (!user) {
+              setShowLoginPrompt(true)
+            } else {
+              setShowComments(true)
+            }
+          } else {
+            // 시스템 피드 → 기존 피드백 모달
+            setShowFeedback(true)
+          }
         }}
         className="fixed bottom-6 left-6 z-40 flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-medium px-4 py-2.5 rounded-full shadow-lg border border-zinc-700 transition-colors"
         aria-label={t('feedback', lang)}
@@ -2561,13 +2873,35 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
         {t('feedback', lang)}
       </button>
 
-      {/* 피드백 모달 */}
+      {/* 시스템 피드 피드백 모달 */}
       {showFeedback && (
         <FeedbackModal
           lang={lang}
           personaId={currentPersona.id}
           personaName={currentPersona.name}
           onClose={() => setShowFeedback(false)}
+        />
+      )}
+
+      {/* 유저 피드 댓글 모달 */}
+      {showComments && (
+        <CommentsModal
+          lang={lang}
+          personaId={currentPersona.id}
+          user={user}
+          onClose={() => setShowComments(false)}
+        />
+      )}
+
+      {/* 비로그인 안내 팝업 */}
+      {showLoginPrompt && (
+        <LoginPromptModal
+          lang={lang}
+          onClose={() => setShowLoginPrompt(false)}
+          onLogin={() => {
+            setShowLoginPrompt(false)
+            window.location.href = `/login?redirectTo=${encodeURIComponent(window.location.pathname + window.location.search)}`
+          }}
         />
       )}
 
