@@ -14,6 +14,7 @@ export interface Video {
   published_at: string | null  // YouTube 실제 업로드 날짜 (YYYY-MM-DD)
   titles_i18n: Record<string, string>
   summary_i18n?: Record<string, string> | null  // Gemini 3개국어 요약 {"ko","en","ja"}
+  db_id?: number  // user_videos 테이블 bigserial PK — 삭제 API용 (유저 피드 전용)
 }
 
 export interface DateGroup {

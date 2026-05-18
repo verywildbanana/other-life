@@ -80,6 +80,38 @@ export default function AdminPage() {
   const [shortsLoading, setShortsLoading] = useState(false)
   const [shortsMsg, setShortsMsg] = useState('')
   const [shortsChecked, setShortsChecked] = useState<Set<string>>(new Set())
+  // 유저 페르소나 모더레이션
+  type UserPersonaRow = { persona_id: string; user_id: string; name: string; video_count: number; last_updated: string; days_since_update: number; is_inactive: boolean; is_public: boolean }
+  const [userPersonas, setUserPersonas] = useState<UserPersonaRow[]>([])
+  const [userPersonasLoading, setUserPersonasLoading] = useState(false)
+  const [userPersonaAction, setUserPersonaAction] = useState<Record<string, string>>({})
+
+  async function loadUserPersonas() {
+    setUserPersonasLoading(true)
+    const res = await fetch('/api/admin/user-personas', { credentials: 'include', cache: 'no-store' })
+    if (res.ok) {
+      const d = await res.json()
+      setUserPersonas(d.personas ?? [])
+    }
+    setUserPersonasLoading(false)
+  }
+
+  async function userPersonaAction_(personaId: string, action: 'notify' | 'delete') {
+    setUserPersonaAction(prev => ({ ...prev, [personaId]: action === 'notify' ? '발송 중...' : '삭제 중...' }))
+    const res = await fetch('/api/admin/user-personas', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, persona_id: personaId }),
+    })
+    const d = await res.json()
+    if (action === 'notify') {
+      setUserPersonaAction(prev => ({ ...prev, [personaId]: res.ok ? `✓ ${d.sent_to}` : `✗ ${d.error}` }))
+    } else {
+      if (res.ok) setUserPersonas(prev => prev.filter(p => p.persona_id !== personaId))
+      else setUserPersonaAction(prev => ({ ...prev, [personaId]: `✗ ${d.error}` }))
+    }
+  }
 
   // 진입 시 인증 확인 — stats, personas, feedbacks 병렬 로드
   useEffect(() => {
@@ -824,6 +856,88 @@ export default function AdminPage() {
           )}
         </div>
 
+      </section>
+
+      {/* ── 유저 페르소나 모더레이션 ── */}
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold">👤 유저 페르소나</h2>
+          <button
+            onClick={loadUserPersonas}
+            disabled={userPersonasLoading}
+            className="text-xs px-3 py-1 rounded border border-zinc-700 hover:border-zinc-500 disabled:opacity-50"
+          >
+            {userPersonasLoading ? '로딩 중...' : '목록 불러오기'}
+          </button>
+        </div>
+
+        {userPersonas.length > 0 && (
+          <>
+            <p className="text-xs text-zinc-500">
+              전체 {userPersonas.length}개 · 비활성(7일↑) {userPersonas.filter(p => p.is_inactive).length}개
+            </p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-zinc-500 text-xs border-b border-zinc-800">
+                    <th className="pb-2 text-left pr-4">페르소나</th>
+                    <th className="pb-2 text-right pr-4">영상</th>
+                    <th className="pb-2 text-left pr-4">마지막 업데이트</th>
+                    <th className="pb-2 text-right pr-4">경과</th>
+                    <th className="pb-2 text-left">액션</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {userPersonas.map(p => (
+                    <tr key={p.persona_id} className={`border-b border-zinc-800/50 ${p.is_inactive ? 'bg-amber-950/20' : ''}`}>
+                      <td className="py-2 pr-4">
+                        <a
+                          href={`/p/${p.persona_id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="hover:text-zinc-300"
+                        >
+                          {p.name}
+                        </a>
+                        {p.is_inactive && (
+                          <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-amber-900/60 text-amber-300 border border-amber-700/50">비활성</span>
+                        )}
+                      </td>
+                      <td className="py-2 pr-4 text-right text-zinc-400">{p.video_count}</td>
+                      <td className="py-2 pr-4 text-zinc-500 text-xs">{p.last_updated.slice(0, 10)}</td>
+                      <td className="py-2 pr-4 text-right text-xs text-zinc-400">{p.days_since_update}일</td>
+                      <td className="py-2">
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => userPersonaAction_(p.persona_id, 'notify')}
+                            disabled={!!userPersonaAction[p.persona_id]}
+                            className="text-xs px-2 py-0.5 rounded border border-zinc-700 hover:border-indigo-500 hover:text-indigo-400 disabled:opacity-50"
+                          >
+                            이메일 발송
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (confirm(`"${p.name}" 페르소나를 삭제할까요?`)) {
+                                userPersonaAction_(p.persona_id, 'delete')
+                              }
+                            }}
+                            disabled={!!userPersonaAction[p.persona_id]}
+                            className="text-xs px-2 py-0.5 rounded border border-red-900 text-red-400 hover:text-red-300 disabled:opacity-50"
+                          >
+                            삭제
+                          </button>
+                          {userPersonaAction[p.persona_id] && (
+                            <span className="text-xs text-zinc-400">{userPersonaAction[p.persona_id]}</span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
       </section>
     </>
   )

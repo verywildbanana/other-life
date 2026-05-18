@@ -1,6 +1,6 @@
 import { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { loadPersona, listPersonas } from '@/lib/personas'
+import { loadPersonaAsync, listPersonas, listAllPersonas } from '@/lib/personas'
 import FeedView from './FeedView'
 
 interface Props {
@@ -9,7 +9,7 @@ interface Props {
 
 const BASE_URL = 'https://play.anomess.com'
 
-// 빌드 시 알려진 페르소나 경로 사전 생성
+// 빌드 시 시스템 페르소나 경로만 사전 생성 (유저 페르소나는 동적 라우팅)
 export async function generateStaticParams() {
   return listPersonas().map(p => ({ persona_id: p.id }))
 }
@@ -17,7 +17,7 @@ export async function generateStaticParams() {
 // 페르소나별 메타태그 (SEO + OG)
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { persona_id } = await params
-  const persona = loadPersona(persona_id)
+  const persona = await loadPersonaAsync(persona_id)
   if (!persona) return {}
 
   const title = `${persona.name} — YouTube 알고리즘 피드 | Anomess`
@@ -57,10 +57,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function PersonaPage({ params }: Props) {
   const { persona_id } = await params
-  const persona = loadPersona(persona_id)
+  // 시스템 페르소나(파일) + 유저 페르소나(DB) 모두 처리
+  const [persona, allPersonas] = await Promise.all([
+    loadPersonaAsync(persona_id),
+    listAllPersonas(),
+  ])
   if (!persona) notFound()
-
-  const allPersonas = listPersonas()
 
   return <FeedView feed={null} persona={persona} allPersonas={allPersonas} />
 }

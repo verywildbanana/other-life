@@ -1,24 +1,50 @@
 /**
- * middleware.ts — 피드 세션 토큰 자동 발급
+ * middleware.ts — 피드 세션 토큰 자동 발급 + Supabase Auth 세션 갱신
  *
- * /p/* 페이지 진입 시 feed_token 쿠키가 없거나 만료되면 새로 발급
- * 발급된 토큰은 /api/feed/* 호출 시 자동으로 쿠키에 포함됨
+ * 1. Supabase Auth 세션 쿠키 갱신 (만료 전 자동 refresh)
+ * 2. /p/* 페이지 진입 시 feed_token 쿠키 발급
+ * 3. /admin 접근 제어
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { createServerClient } from '@supabase/ssr'
 import { issueToken, verifyToken, COOKIE_NAME, TOKEN_TTL_MS } from '@/lib/feed-token'
 import { logAdminAccess } from '@/lib/admin-log'
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
 
-  // /admin, /api/admin/* 접근 로깅
+  // ── Supabase Auth 세션 갱신 ────────────────────────────────────────────
+  // Server Component에서 쿠키를 안전하게 읽으려면 미들웨어에서 먼저 갱신해야 함
+  let res = NextResponse.next({ request: { headers: req.headers } })
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return req.cookies.getAll()
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => req.cookies.set(name, value))
+          res = NextResponse.next({ request: { headers: req.headers } })
+          cookiesToSet.forEach(({ name, value, options }) =>
+            res.cookies.set(name, value, options),
+          )
+        },
+      },
+    },
+  )
+
+  // getUser()로 세션 검증 + 필요 시 자동 refresh
+  await supabase.auth.getUser()
+
+  // ── 어드민 접근 로깅 + 인증 ────────────────────────────────────────────
   if (pathname === '/admin' || pathname.startsWith('/api/admin/')) {
     logAdminAccess(req)
   }
 
-  // /admin 페이지: 토큰 없으면 /admin/login으로 redirect (미들웨어 레벨 접근 제어)
-  // /admin/login 자체는 체크 제외 (redirect 루프 방지)
   if (pathname === '/admin') {
     const adminToken = req.cookies.get('admin_token')?.value
     const expected   = process.env.ADMIN_SECRET_TOKEN
@@ -29,23 +55,20 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-  // /p/* 페이지 진입 시만 토큰 발급
-  if (!pathname.startsWith('/p/')) return NextResponse.next()
+  // ── feed_token 발급 (/p/* 전용) ────────────────────────────────────────
+  if (!pathname.startsWith('/p/')) return res
 
   const ua = req.headers.get('user-agent') ?? ''
   const existing = req.cookies.get(COOKIE_NAME)?.value
 
-  // 기존 토큰이 유효하면 그대로 통과
-  const result = await verifyToken(existing, ua)
-  if (result.ok) return NextResponse.next()
+  const tokenResult = await verifyToken(existing, ua)
+  if (tokenResult.ok) return res
 
-  // 신규 발급 (만료, 없음, UA 불일치 모두 재발급)
   const token = await issueToken(ua)
-  const res = NextResponse.next()
   res.cookies.set(COOKIE_NAME, token, {
-    httpOnly: true,          // JS에서 접근 불가 (XSS 방지)
-    secure: true,            // HTTPS only
-    sameSite: 'strict',      // CSRF 방지
+    httpOnly: true,
+    secure: true,
+    sameSite: 'strict',
     maxAge: TOKEN_TTL_MS / 1000,
     path: '/',
   })
@@ -53,5 +76,7 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/', '/p/:path*', '/admin', '/admin/login', '/api/admin/:path*'],
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|images/).*)',
+  ],
 }
