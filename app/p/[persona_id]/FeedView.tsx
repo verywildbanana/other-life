@@ -1981,6 +1981,8 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
   })
   const [currentPersona, setCurrentPersona] = useState<Persona>(() => {
     if (typeof window === 'undefined') return persona
+    // URL이 유저 피드(u_*)로 직접 진입한 경우 — localStorage 복원 무시하고 URL 페르소나 사용
+    if (persona.id.startsWith('u_')) return persona
     const savedId = localStorage.getItem('feed_last_persona')
     if (!savedId) return persona
     return allPersonas.find(p => p.id === savedId) ?? persona
@@ -2404,7 +2406,8 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     }
 
     // 최초 마운트 + 복원 페르소나가 URL과 다를 경우 URL을 조용히 교체
-    if (isFirst && currentPersona.id !== persona.id) {
+    // 단, URL이 유저 피드(u_*)인 경우 복원하지 않음 (생성 직후 진입 등)
+    if (isFirst && currentPersona.id !== persona.id && !persona.id.startsWith('u_')) {
       window.history.replaceState(null, '', `/p/${currentPersona.id}`)
     }
 
