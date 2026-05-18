@@ -410,6 +410,10 @@ function CommentsModal({ lang, personaId, user, onClose }: CommentsModalProps) {
   const [replyInput, setReplyInput] = useState('')
   const [replySubmitting, setReplySubmitting] = useState(false)
   const [personaOwnerId, setPersonaOwnerId] = useState<string | null>(null)
+  // 좋아요
+  const [likeCount, setLikeCount] = useState(0)
+  const [liked, setLiked] = useState(false)
+  const [liking, setLiking] = useState(false)
 
   // 페르소나 오너 user_id 조회
   useEffect(() => {
@@ -418,6 +422,50 @@ function CommentsModal({ lang, personaId, user, onClose }: CommentsModalProps) {
       .then(d => { if (d?.owner_id) setPersonaOwnerId(d.owner_id) })
       .catch(() => {})
   }, [personaId])
+
+  // 좋아요 수 + 내가 눌렀는지 조회
+  useEffect(() => {
+    fetch(`/api/likes?persona_id=${personaId}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (d != null) {
+          setLikeCount(d.count)
+          setLiked(d.liked)
+        }
+      })
+      .catch(() => {})
+  }, [personaId])
+
+  async function handleLike() {
+    if (!user) return  // 비로그인 무시 (버튼 자체를 비활성화)
+    if (liking) return
+    setLiking(true)
+    // optimistic update
+    const wasLiked = liked
+    setLiked(!wasLiked)
+    setLikeCount(c => wasLiked ? c - 1 : c + 1)
+    try {
+      const res = await fetch('/api/likes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ persona_id: personaId }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setLiked(data.liked)
+        setLikeCount(data.count)
+      } else {
+        // 실패 시 롤백
+        setLiked(wasLiked)
+        setLikeCount(c => wasLiked ? c + 1 : c - 1)
+      }
+    } catch {
+      setLiked(wasLiked)
+      setLikeCount(c => wasLiked ? c + 1 : c - 1)
+    } finally {
+      setLiking(false)
+    }
+  }
 
   // 댓글 목록 조회
   useEffect(() => {
@@ -568,9 +616,35 @@ function CommentsModal({ lang, personaId, user, onClose }: CommentsModalProps) {
       <div className="bg-zinc-900 border border-zinc-700 rounded-2xl w-full max-w-lg shadow-2xl flex flex-col max-h-[85vh]">
         {/* 헤더 */}
         <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-zinc-800 shrink-0">
-          <h2 className="text-sm font-semibold">
-            💬 {labels.title} {comments.length > 0 && <span className="text-zinc-500">{comments.length}</span>}
-          </h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-sm font-semibold flex items-center gap-1.5">
+              💬 {labels.title} {comments.length > 0 && <span className="text-zinc-500">{comments.length}</span>}
+            </h2>
+            {/* 좋아요 버튼 */}
+            <button
+              onClick={handleLike}
+              disabled={!user || liking}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium transition-all ${
+                liked
+                  ? 'border-rose-600 bg-rose-600/15 text-rose-400'
+                  : 'border-zinc-700 text-zinc-500 hover:border-rose-700 hover:text-rose-400'
+              } disabled:cursor-not-allowed`}
+              title={!user ? { ko: '로그인 후 좋아요', en: 'Log in to like', ja: 'ログインして高評価' }[lang] : undefined}
+            >
+              {liked ? (
+                /* 채워진 하트 */
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                </svg>
+              ) : (
+                /* 빈 하트 */
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                </svg>
+              )}
+              <span>{likeCount > 0 ? likeCount : ''}</span>
+            </button>
+          </div>
           <button
             onClick={onClose}
             className="text-zinc-500 hover:text-zinc-300 p-1 rounded-lg hover:bg-zinc-800 transition-colors"
