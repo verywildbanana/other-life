@@ -2058,6 +2058,14 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
   // loadMore 동시 실행 방지 — state는 리렌더 전까지 반영 안 되므로 ref로 동기 가드
   const isLoadingRef = useRef(false)
 
+  // ── 전체 페르소나 목록 실시간 로드 (신규 유저 피드 즉시 반영) ──────────────────
+  useEffect(() => {
+    fetch('/api/personas')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data?.personas) setLivePersonas(data.personas) })
+      .catch(() => {})
+  }, [])
+
   // ── 로그인 유저 상태 로드 ─────────────────────────────────────────────────────
   useEffect(() => {
     const supabase = createClient()
