@@ -2028,6 +2028,8 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [isOwner, setIsOwner] = useState(false)
   const [myPersonaIds, setMyPersonaIds] = useState<Set<string>>(new Set())
+  // allPersonas에서 삭제된 유저 피드를 제거한 live 목록
+  const [livePersonas, setLivePersonas] = useState<Persona[]>(allPersonas)
   const [showTerms, setShowTerms] = useState(false)
   const [addVideoOpen, setAddVideoOpen] = useState(false)
   // PTR 완료 후 fade-in 제어 — false: 콘텐츠 숨김(no-transition), true: fade-in(300ms)
@@ -2092,9 +2094,13 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
           const ids = new Set<string>(data.personas.map((p: { persona_id: string }) => p.persona_id))
           setMyPersonaIds(ids)
           setIsOwner(currentPersona.id.startsWith('u_') && ids.has(currentPersona.id))
+          // 삭제된 유저 피드를 팝업 목록에서 제거 — 시스템 피드는 항상 유지
+          setLivePersonas(prev => prev.filter(p => !p.id.startsWith('u_') || ids.has(p.id)))
         } else {
           setMyPersonaIds(new Set())
           setIsOwner(false)
+          // 비로그인 or 에러 시 유저 피드 전체 제거
+          setLivePersonas(prev => prev.filter(p => !p.id.startsWith('u_')))
         }
       })
       .catch(() => { setIsOwner(false); setMyPersonaIds(new Set()) })
@@ -3030,7 +3036,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
 
       {showPersonaSheet && (
         <PersonaBottomSheet
-          personas={allPersonas}
+          personas={livePersonas}
           currentId={currentPersona.id}
           lang={lang}
           myPersonaIds={myPersonaIds}
