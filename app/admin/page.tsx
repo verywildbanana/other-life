@@ -415,14 +415,14 @@ export default function AdminPage() {
               <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
                 <p className="text-xs text-zinc-500 mb-1">외부 방문자 <span className="text-zinc-600">(나 제외)</span></p>
                 <p className="text-3xl font-bold text-emerald-400">{accessLogs.external_unique_ips.toLocaleString()}</p>
-                <p className="text-xs text-zinc-600 mt-1">7일간 unique IP · 전체 {accessLogs.unique_ips}명</p>
+                <p className="text-xs text-zinc-600 mt-1">{{ '7d': '7일', '30d': '30일', '90d': '90일' }[statPeriod]}간 unique IP · 전체 {accessLogs.unique_ips}명</p>
               </div>
 
               {/* 총 요청 */}
               <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
                 <p className="text-xs text-zinc-500 mb-1">총 API 요청</p>
                 <p className="text-3xl font-bold">{accessLogs.total_7d.toLocaleString()}</p>
-                <p className="text-xs text-zinc-600 mt-1">7일간 누적</p>
+                <p className="text-xs text-zinc-600 mt-1">{{ '7d': '7일', '30d': '30일', '90d': '90일' }[statPeriod]}간 누적</p>
               </div>
 
               {/* 페르소나별 */}
