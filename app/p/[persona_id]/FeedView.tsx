@@ -413,7 +413,8 @@ function CommentsModal({ lang, personaId, user, onClose }: CommentsModalProps) {
   // 좋아요
   const [likeCount, setLikeCount] = useState(0)
   const [liked, setLiked] = useState(false)
-  const [liking, setLiking] = useState(false)
+  const likeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pendingLikedRef = useRef<boolean | null>(null)
 
   // 페르소나 오너 user_id 조회
   useEffect(() => {
@@ -436,35 +437,42 @@ function CommentsModal({ lang, personaId, user, onClose }: CommentsModalProps) {
       .catch(() => {})
   }, [personaId])
 
-  async function handleLike() {
-    if (!user) return  // 비로그인 무시 (버튼 자체를 비활성화)
-    if (liking) return
-    setLiking(true)
-    // optimistic update
-    const wasLiked = liked
-    setLiked(!wasLiked)
-    setLikeCount(c => wasLiked ? c - 1 : c + 1)
-    try {
-      const res = await fetch('/api/likes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ persona_id: personaId }),
-      })
-      const data = await res.json()
-      if (res.ok) {
-        setLiked(data.liked)
-        setLikeCount(data.count)
-      } else {
-        // 실패 시 롤백
-        setLiked(wasLiked)
-        setLikeCount(c => wasLiked ? c + 1 : c - 1)
+  function handleLike() {
+    if (!user) return
+    // optimistic update — 즉시 UI 반영
+    setLiked(prev => {
+      const next = !prev
+      setLikeCount(c => next ? c + 1 : c - 1)
+      pendingLikedRef.current = next
+      return next
+    })
+    // debounce: 마지막 클릭 후 600ms 뒤 API 1회
+    if (likeDebounceRef.current) clearTimeout(likeDebounceRef.current)
+    likeDebounceRef.current = setTimeout(async () => {
+      const targetLiked = pendingLikedRef.current
+      if (targetLiked === null) return
+      pendingLikedRef.current = null
+      try {
+        const res = await fetch('/api/likes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ persona_id: personaId }),
+        })
+        const data = await res.json()
+        if (res.ok) {
+          setLiked(data.liked)
+          setLikeCount(data.count)
+        }
+        // 실패 시: 서버 상태로 재동기화
+        else {
+          setLiked(!targetLiked)
+          setLikeCount(c => targetLiked ? c - 1 : c + 1)
+        }
+      } catch {
+        setLiked(!targetLiked)
+        setLikeCount(c => targetLiked ? c - 1 : c + 1)
       }
-    } catch {
-      setLiked(wasLiked)
-      setLikeCount(c => wasLiked ? c + 1 : c - 1)
-    } finally {
-      setLiking(false)
-    }
+    }, 600)
   }
 
   // 댓글 목록 조회
@@ -600,8 +608,14 @@ function CommentsModal({ lang, personaId, user, onClose }: CommentsModalProps) {
               <button
                 onClick={() => handleReply(c.id)}
                 disabled={!replyInput.trim() || replySubmitting}
-                className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white text-xs rounded-lg transition-colors"
+                className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white text-xs rounded-lg transition-colors flex items-center gap-1.5 shrink-0"
               >
+                {replySubmitting && (
+                  <svg className="animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                  </svg>
+                )}
                 {labels.send}
               </button>
             </div>
@@ -623,7 +637,7 @@ function CommentsModal({ lang, personaId, user, onClose }: CommentsModalProps) {
             {/* 좋아요 버튼 */}
             <button
               onClick={handleLike}
-              disabled={!user || liking}
+              disabled={!user}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all text-zinc-500 disabled:cursor-not-allowed hover:text-zinc-300 select-none"
               title={!user ? { ko: '로그인 후 좋아요', en: 'Log in to like', ja: 'ログインして高評価' }[lang] : undefined}
             >
@@ -687,8 +701,14 @@ function CommentsModal({ lang, personaId, user, onClose }: CommentsModalProps) {
           <button
             type="submit"
             disabled={!input.trim() || submitting}
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white text-sm font-medium rounded-xl transition-colors shrink-0"
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white text-sm font-medium rounded-xl transition-colors shrink-0 flex items-center gap-2"
           >
+            {submitting && (
+              <svg className="animate-spin h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+              </svg>
+            )}
             {labels.send}
           </button>
         </form>
