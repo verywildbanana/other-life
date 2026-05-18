@@ -413,8 +413,9 @@ function CommentsModal({ lang, personaId, user, onClose }: CommentsModalProps) {
   // 좋아요
   const [likeCount, setLikeCount] = useState(0)
   const [liked, setLiked] = useState(false)
+  const likedRef = useRef(false)          // 항상 최신 liked 값을 ref로 추적 (타이머 클로저용)
   const likeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const pendingLikedRef = useRef<boolean | null>(null)
+  const likeNetClicksRef = useRef(0)      // 이번 debounce 윈도우 내 클릭 수 (홀수=API, 짝수=스킵)
 
   // 페르소나 오너 user_id 조회
   useEffect(() => {
@@ -432,6 +433,7 @@ function CommentsModal({ lang, personaId, user, onClose }: CommentsModalProps) {
         if (d != null) {
           setLikeCount(d.count)
           setLiked(d.liked)
+          likedRef.current = d.liked
         }
       })
       .catch(() => {})
@@ -439,19 +441,27 @@ function CommentsModal({ lang, personaId, user, onClose }: CommentsModalProps) {
 
   function handleLike() {
     if (!user) return
-    // optimistic update — 즉시 UI 반영
-    setLiked(prev => {
-      const next = !prev
-      setLikeCount(c => next ? c + 1 : c - 1)
-      pendingLikedRef.current = next
-      return next
-    })
-    // debounce: 마지막 클릭 후 600ms 뒤 API 1회
+
+    // 즉시 UI 반영 (optimistic)
+    const next = !likedRef.current
+    likedRef.current = next
+    setLiked(next)
+    setLikeCount(c => next ? c + 1 : c - 1)
+
+    // 클릭 횟수 누적
+    likeNetClicksRef.current += 1
+
+    // debounce: 마지막 클릭 후 600ms 뒤 처리
     if (likeDebounceRef.current) clearTimeout(likeDebounceRef.current)
     likeDebounceRef.current = setTimeout(async () => {
-      const targetLiked = pendingLikedRef.current
-      if (targetLiked === null) return
-      pendingLikedRef.current = null
+      const net = likeNetClicksRef.current
+      likeNetClicksRef.current = 0
+
+      // 짝수 클릭 = 원래 상태로 복귀 → API 불필요
+      if (net % 2 === 0) return
+
+      // 홀수 클릭 = 한 번 토글 필요
+      const targetLiked = likedRef.current
       try {
         const res = await fetch('/api/likes', {
           method: 'POST',
@@ -460,17 +470,21 @@ function CommentsModal({ lang, personaId, user, onClose }: CommentsModalProps) {
         })
         const data = await res.json()
         if (res.ok) {
+          likedRef.current = data.liked
           setLiked(data.liked)
           setLikeCount(data.count)
-        }
-        // 실패 시: 서버 상태로 재동기화
-        else {
-          setLiked(!targetLiked)
-          setLikeCount(c => targetLiked ? c - 1 : c + 1)
+        } else {
+          // 실패 시 롤백
+          const rollback = !targetLiked
+          likedRef.current = rollback
+          setLiked(rollback)
+          setLikeCount(c => rollback ? c + 1 : c - 1)
         }
       } catch {
-        setLiked(!targetLiked)
-        setLikeCount(c => targetLiked ? c - 1 : c + 1)
+        const rollback = !targetLiked
+        likedRef.current = rollback
+        setLiked(rollback)
+        setLikeCount(c => rollback ? c + 1 : c - 1)
       }
     }, 600)
   }
