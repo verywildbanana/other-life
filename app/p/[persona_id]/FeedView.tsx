@@ -1070,7 +1070,8 @@ function AddVideoModal({ lang, personaId, onClose, onAdded }: AddVideoModalProps
             <div className="flex gap-2">
               <button
                 onClick={onClose}
-                className="flex-1 py-2 rounded-xl border border-zinc-700 text-zinc-400 hover:text-zinc-200 text-sm transition-colors"
+                disabled={status === 'adding'}
+                className="flex-1 py-2 rounded-xl border border-zinc-700 text-zinc-400 hover:text-zinc-200 disabled:opacity-40 disabled:cursor-not-allowed text-sm transition-colors"
               >
                 {labels.cancel}
               </button>
@@ -1078,8 +1079,14 @@ function AddVideoModal({ lang, personaId, onClose, onAdded }: AddVideoModalProps
                 <button
                   onClick={handleAdd}
                   disabled={status === 'adding'}
-                  className="flex-1 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-medium transition-colors"
+                  className="flex-1 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-medium transition-colors flex items-center justify-center gap-2"
                 >
+                  {status === 'adding' && (
+                    <svg className="animate-spin h-4 w-4 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                    </svg>
+                  )}
                   {status === 'adding' ? labels.adding : labels.addBtn}
                 </button>
               )}
