@@ -13,7 +13,13 @@ const geist = Geist({
 
 const BASE_URL = 'https://play.anomess.com'
 
+// production 아닌 환경(dev 프리뷰, release 프리뷰 등)에서 noindex
+const isProduction = process.env.VERCEL_ENV === 'production'
+
 export const metadata: Metadata = {
+  robots: isProduction
+    ? { index: true, follow: true }
+    : { index: false, follow: false },
   manifest: '/manifest.json',
   icons: {
     icon: [
