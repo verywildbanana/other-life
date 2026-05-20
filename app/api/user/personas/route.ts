@@ -81,6 +81,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Korean name must be at least 2 characters.' }, { status: 400 })
   }
 
+  // 전체 서비스 이름 중복 체크 (ko 기준, 대소문자·공백 무시)
+  const { data: nameConflict } = await supabase
+    .from('user_personas')
+    .select('persona_id')
+    .ilike('name_i18n->>ko', name_i18n.ko.trim())
+    .maybeSingle()
+
+  if (nameConflict) {
+    return NextResponse.json(
+      { error: 'NAME_TAKEN' },
+      { status: 409 },
+    )
+  }
+
   // 충돌 방지: 최대 3회 재시도
   let personaId = generatePersonaId()
   for (let i = 0; i < 3; i++) {

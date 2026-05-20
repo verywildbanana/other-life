@@ -29,6 +29,7 @@ const t: Record<Lang, {
   namePlaceholderEn: string
   namePlaceholderJa: string
   nameRequired: string
+  nameTaken: string
   cancel: string
   creating: string
   create: string
@@ -39,8 +40,9 @@ const t: Record<Lang, {
     nameSection: '페르소나 이름',
     namePlaceholderKo: '예: 재즈 좋아하는 30대',
     namePlaceholderEn: 'e.g. Jazz Lover in 30s (optional)',
-    namePlaceholderJa: '例: ジャズ好きな30代 (optional)',
+    namePlaceholderJa: '例: ジャズ好きな30대 (optional)',
     nameRequired: '한국어 이름은 2자 이상 입력해주세요.',
+    nameTaken: '이미 사용 중인 이름입니다. 다른 이름을 사용해주세요.',
     cancel: '취소',
     creating: '생성 중...',
     create: '피드 만들기',
@@ -53,6 +55,7 @@ const t: Record<Lang, {
     namePlaceholderEn: 'e.g. Jazz Lover in 30s',
     namePlaceholderJa: 'e.g. ジャズ好きな30代 (Japanese, optional)',
     nameRequired: 'Korean name must be at least 2 characters.',
+    nameTaken: 'This name is already taken. Please choose a different name.',
     cancel: 'Cancel',
     creating: 'Creating...',
     create: 'Create Feed',
@@ -61,10 +64,11 @@ const t: Record<Lang, {
   ja: {
     pageTitle: 'マイフィードを作成',
     nameSection: 'ペルソナ名',
-    namePlaceholderKo: '例: 재즈 좋아하는 30대 (韓国語)',
+    namePlaceholderKo: '例: 재즈 좋아하는 30代 (韓国語)',
     namePlaceholderEn: 'e.g. Jazz Lover in 30s (英語, 任意)',
     namePlaceholderJa: '例: ジャズ好きな30代',
     nameRequired: '韓国語名を2文字以上入力してください。',
+    nameTaken: 'この名前はすでに使用されています。別の名前をお選びください。',
     cancel: 'キャンセル',
     creating: '作成中...',
     create: 'フィードを作成',
@@ -113,6 +117,10 @@ function CreatePersonaContent() {
         }
         if (data.error === 'ACCOUNT_BANNED') {
           setError('Your account has been suspended. Please contact support.')
+          return
+        }
+        if (data.error === 'NAME_TAKEN') {
+          setError(s.nameTaken)
           return
         }
         setError(data.error ?? s.networkError)
