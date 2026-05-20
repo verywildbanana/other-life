@@ -35,7 +35,7 @@ export async function GET(
       total: totalRes.count ?? 0,
     },
     {
-      headers: { 'Cache-Control': 'public, max-age=300, stale-while-revalidate=60' },
+      headers: { 'Cache-Control': 'no-store' },
     },
   )
 }

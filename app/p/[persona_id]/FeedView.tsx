@@ -2378,6 +2378,12 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
         }
       } catch { /* 실패 시 현재 피드 유지 */ }
       finally { setIsRefreshing(false) }
+
+      // pull to refresh 후 조회수 즉시 갱신
+      fetch(`/api/feed/stats/${currentPersona.id}`)
+        .then(r => r.ok ? r.json() : null)
+        .then(data => { if (data) setViewStats(data) })
+        .catch(() => {/* 에러 무시 */})
     }
 
     function onTouchStart(e: TouchEvent) {
