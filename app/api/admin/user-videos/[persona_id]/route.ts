@@ -82,6 +82,7 @@ export async function POST(
         title: item.title,
         channel: item.channel,
         thumbnail_url: item.thumbnail ?? `https://i.ytimg.com/vi/${item.id}/hqdefault.jpg`,
+        titles_i18n: item.titles_i18n ?? { ko: item.title, en: item.title, ja: item.title },
         user_intro: item.summary_i18n
           ? { ko: item.summary_i18n.ko ?? null, en: item.summary_i18n.en ?? null, ja: item.summary_i18n.ja ?? null }
           : null,
