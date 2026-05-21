@@ -62,54 +62,32 @@ export async function POST(
   // 기존 video_id 목록 조회
   const { data: existing } = await supabase
     .from('user_videos')
-    .select('video_id, titles_i18n, summary_i18n')
+    .select('video_id')
     .eq('persona_id', persona_id)
 
-  const existingMap = new Map(
-    (existing ?? []).map(r => [
-      r.video_id as string,
-      { titles_i18n: r.titles_i18n, summary_i18n: r.summary_i18n },
-    ])
-  )
+  const existingSet = new Set((existing ?? []).map(r => r.video_id as string))
 
-  const now = new Date().toISOString()
   const toInsert = []
-  const toUpdate: { video_id: string; titles_i18n?: Record<string, string>; summary_i18n?: Record<string, string> }[] = []
   let skipped = 0
 
   for (const item of items) {
     if (!item.id || item.id.length !== 11) { skipped++; continue }
 
-    const existingRow = existingMap.get(item.id)
-
-    if (!existingRow) {
-      // 신규 영상 INSERT
+    if (!existingSet.has(item.id)) {
+      // 신규 영상 INSERT (DDL: id, persona_id, user_id, video_id, title, channel, thumbnail_url, user_intro, added_at)
       toInsert.push({
         persona_id,
         user_id: ADMIN_USER_ID,
         video_id: item.id,
         title: item.title,
         channel: item.channel,
-        url: item.url || `https://www.youtube.com/watch?v=${item.id}`,
         thumbnail_url: item.thumbnail ?? `https://i.ytimg.com/vi/${item.id}/hqdefault.jpg`,
-        collected_at: now,
-        published_at: item.published_at ?? null,
-        titles_i18n: item.titles_i18n ?? {},
-        summary_i18n: item.summary_i18n ?? null,
-        user_intro: null, // 어드민 ingest는 user_intro 없음
+        user_intro: item.summary_i18n
+          ? { ko: item.summary_i18n.ko ?? null, en: item.summary_i18n.en ?? null, ja: item.summary_i18n.ja ?? null }
+          : null,
       })
     } else {
-      // 기존 영상 — 번역/요약 보강
-      const needsTitleUpdate = !existingRow.titles_i18n && item.titles_i18n
-      const needsSummaryUpdate = !existingRow.summary_i18n && item.summary_i18n
-      if (needsTitleUpdate || needsSummaryUpdate) {
-        const patch: { video_id: string; titles_i18n?: Record<string, string>; summary_i18n?: Record<string, string> } = { video_id: item.id }
-        if (needsTitleUpdate) patch.titles_i18n = item.titles_i18n
-        if (needsSummaryUpdate) patch.summary_i18n = item.summary_i18n ?? undefined
-        toUpdate.push(patch)
-      } else {
-        skipped++
-      }
+      skipped++
     }
   }
 
@@ -131,7 +109,7 @@ export async function POST(
         .from('user_videos')
         .select('video_id')
         .eq('persona_id', persona_id)
-        .order('collected_at', { ascending: true })
+        .order('added_at', { ascending: true })
         .limit(deleteCount)
 
       if (old && old.length > 0) {
@@ -149,20 +127,9 @@ export async function POST(
       .eq('persona_id', persona_id)
   }
 
-  // 보강 UPDATE
-  for (const patch of toUpdate) {
-    const { video_id, ...fields } = patch
-    await supabase
-      .from('user_videos')
-      .update(fields)
-      .eq('video_id', video_id)
-      .eq('persona_id', persona_id)
-  }
-
   return NextResponse.json({
     status: 'ok',
     saved: toInsert.length,
-    updated: toUpdate.length,
     skipped,
   })
 }
