@@ -56,12 +56,11 @@ export async function getPaginatedUserFeed(
     thumbnail_url: string
     user_intro: Record<string, string> | null
     titles_i18n: Record<string, string> | null
-    collected_at?: string
-    created_at?: string
+    added_at?: string
   }>
 
   const mappedVideos: Video[] = rows.map(row => {
-    const ts = row.collected_at ?? row.created_at ?? new Date().toISOString()
+    const ts = row.added_at ?? new Date().toISOString()
     // titles_i18n이 있으면 우선 사용, 없으면 원본 title로 3개 언어 채움
     const titlesI18n = row.titles_i18n ?? { ko: row.title, en: row.title, ja: row.title }
     return {
@@ -93,7 +92,7 @@ export async function getPaginatedUserFeed(
     persona_name: personaName,
     total_accumulated: videoCount,
     videos: mappedVideos,
-    has_more: false,   // 유저 피드는 전체 일괄 로드 — 클라이언트 epochShuffle 담당
-    next_offset: rows.length,
+    has_more: offset + rows.length < videoCount,
+    next_offset: offset + rows.length,
   }
 }
