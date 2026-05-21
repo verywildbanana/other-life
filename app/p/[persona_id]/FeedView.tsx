@@ -2487,7 +2487,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
 
   // 클라이언트사이드 페르소나 전환 (새로고침 없음)
   const switchPersona = useCallback(async (nextPersonaId: string) => {
-    const nextPersona = allPersonas.find(p => p.id === nextPersonaId)
+    const nextPersona = livePersonas.find(p => p.id === nextPersonaId)
     if (!nextPersona || nextPersonaId === currentPersona.id) return
 
     gtag('persona_switch', { from: currentPersona.id, to: nextPersonaId, lang })
@@ -2562,7 +2562,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     } finally {
       setNavigating(false)
     }
-  }, [currentPersona.id, allPersonas, lang])
+  }, [currentPersona.id, livePersonas, lang])
 
   const loadMore = useCallback(() => {
     // isLoadingRef: 동기 가드 — IntersectionObserver 중복 발화 방지
