@@ -2858,11 +2858,13 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
         <div className="px-4 py-2 text-xs text-zinc-400 border-b border-zinc-800">
           <div className="flex items-center justify-between flex-wrap gap-1">
             <span>
-              {getPersonaName(currentPersona, lang)} · {(LABELS.accumulated[lang] as (n: number) => string)(total)}
+              {getPersonaName(currentPersona, lang)}{!currentPersona.id.startsWith('u_') && ` · ${(LABELS.accumulated[lang] as (n: number) => string)(total)}`}
             </span>
-            <span className="text-zinc-600">
-              {(LABELS.showing[lang] as (n: number, total: number) => string)(videos.length, total)}
-            </span>
+            {!currentPersona.id.startsWith('u_') && (
+              <span className="text-zinc-600">
+                {(LABELS.showing[lang] as (n: number, total: number) => string)(videos.length, total)}
+              </span>
+            )}
           </div>
           {viewStats && (
             <div className="mt-0.5 text-zinc-500">
@@ -2874,10 +2876,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
 
       {/* 오너 전용 영상 추가 버튼 */}
       {isOwner && currentPersona.id.startsWith('u_') && (
-        <div className="px-4 py-2 border-b border-zinc-800 flex items-center justify-between gap-3">
-          <span className="text-xs text-zinc-500">
-            {total}/500
-          </span>
+        <div className="px-4 py-2 border-b border-zinc-800 flex items-center justify-end gap-3">
           {total >= 500 ? (
             <p className="text-xs text-amber-500">
               {{ ko: '500개 한도 도달 — 오래된 영상 삭제 후 추가 가능', en: '500 limit reached — delete older videos first', ja: '500件上限 — 古い動画を削除してから追加可能' }[lang]}
