@@ -2853,26 +2853,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
         </button>
       </header>
 
-      {/* 상태 바 */}
-      {videos.length > 0 && (
-        <div className="px-4 py-2 text-xs text-zinc-400 border-b border-zinc-800">
-          <div className="flex items-center justify-between flex-wrap gap-1">
-            <span>
-              {getPersonaName(currentPersona, lang)}{!currentPersona.id.startsWith('u_') && ` · ${(LABELS.accumulated[lang] as (n: number) => string)(total)}`}
-            </span>
-            {!currentPersona.id.startsWith('u_') && (
-              <span className="text-zinc-600">
-                {(LABELS.showing[lang] as (n: number, total: number) => string)(videos.length, total)}
-              </span>
-            )}
-          </div>
-          {viewStats && (
-            <div className="mt-0.5 text-zinc-500">
-              {(LABELS.viewCount[lang] as (w: number, t: number) => string)(viewStats.weekly, viewStats.total)}
-            </div>
-          )}
-        </div>
-      )}
+      {/* 상태 바 — 제거됨 */}
 
       {/* 오너 전용 영상 추가 버튼 */}
       {isOwner && currentPersona.id.startsWith('u_') && (
