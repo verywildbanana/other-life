@@ -17,17 +17,30 @@ export async function GET(
   const { persona_id } = await params
   const supabase = createServiceClient()
 
-  const { data, error } = await supabase
+  // 전체 개수 먼저 확인
+  const { count } = await supabase
     .from('videos')
-    .select('video_id, title, channel, url, score, collected_date, feed_source, titles_i18n')
+    .select('*', { count: 'exact', head: true })
     .eq('persona_id', persona_id)
-    .order('collected_date', { ascending: false })
-    .order('score', { ascending: false })
-    .limit(200)
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+  const total = count ?? 0
+  const PAGE = 1000
+  const allVideos: unknown[] = []
+
+  for (let from = 0; from < total; from += PAGE) {
+    const { data, error } = await supabase
+      .from('videos')
+      .select('video_id, title, channel, url, score, collected_date, feed_source, titles_i18n')
+      .eq('persona_id', persona_id)
+      .order('collected_date', { ascending: false })
+      .order('score', { ascending: false })
+      .range(from, from + PAGE - 1)
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+    allVideos.push(...(data ?? []))
   }
 
-  return NextResponse.json({ videos: data ?? [] })
+  return NextResponse.json({ videos: allVideos })
 }
