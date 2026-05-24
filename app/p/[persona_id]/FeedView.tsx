@@ -2858,11 +2858,13 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
         <div className="px-4 py-2 text-xs text-zinc-400 border-b border-zinc-800">
           <div className="flex items-center justify-between flex-wrap gap-1">
             <span>
-              {getPersonaName(currentPersona, lang)} · {(LABELS.accumulated[lang] as (n: number) => string)(total)}
+              {getPersonaName(currentPersona, lang)}{!currentPersona.id.startsWith('u_') && ` · ${(LABELS.accumulated[lang] as (n: number) => string)(total)}`}
             </span>
-            <span className="text-zinc-600">
-              {(LABELS.showing[lang] as (n: number, total: number) => string)(videos.length, total)}
-            </span>
+            {!currentPersona.id.startsWith('u_') && (
+              <span className="text-zinc-600">
+                {(LABELS.showing[lang] as (n: number, total: number) => string)(videos.length, total)}
+              </span>
+            )}
           </div>
           {viewStats && (
             <div className="mt-0.5 text-zinc-500">
