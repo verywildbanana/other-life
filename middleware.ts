@@ -14,6 +14,22 @@ import { logAdminAccess } from '@/lib/admin-log'
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
 
+  // ── other-life.vercel.app 일반 방문자 → play.anomess.com 리다이렉트 ─────
+  // /api, /admin 경로 및 admin_token 쿠키 보유자(어드민 본인)는 제외
+  const host = req.headers.get('host') ?? ''
+  const hasAdminToken = !!req.cookies.get('admin_token')?.value
+  if (
+    host === 'other-life.vercel.app' &&
+    !hasAdminToken &&
+    !pathname.startsWith('/api/') &&
+    !pathname.startsWith('/admin')
+  ) {
+    const target = new URL(req.url)
+    target.host = 'play.anomess.com'
+    target.protocol = 'https:'
+    return NextResponse.redirect(target.toString(), { status: 301 })
+  }
+
   // ── Supabase Auth 세션 갱신 ────────────────────────────────────────────
   // Server Component에서 쿠키를 안전하게 읽으려면 미들웨어에서 먼저 갱신해야 함
   let res = NextResponse.next({ request: { headers: req.headers } })
