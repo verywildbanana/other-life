@@ -14,11 +14,13 @@ import { logAdminAccess } from '@/lib/admin-log'
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
 
-  // ── other-life.vercel.app 방문자 → play.anomess.com 리다이렉트 ──────────
-  // /api, /admin 경로는 Ubuntu ingest·어드민용이므로 제외
+  // ── other-life.vercel.app 일반 방문자 → play.anomess.com 리다이렉트 ─────
+  // /api, /admin 경로 및 admin_token 쿠키 보유자(어드민 본인)는 제외
   const host = req.headers.get('host') ?? ''
+  const hasAdminToken = !!req.cookies.get('admin_token')?.value
   if (
     host === 'other-life.vercel.app' &&
+    !hasAdminToken &&
     !pathname.startsWith('/api/') &&
     !pathname.startsWith('/admin')
   ) {
