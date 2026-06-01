@@ -640,9 +640,9 @@ function CommentsModal({ lang, personaId, user, onClose }: CommentsModalProps) {
 }
 
 // ── 비로그인 알림 팝업 ─────────────────────────────────────────────────────────
-function LoginPromptModal({ lang, onClose, onLogin }: { lang: Lang; onClose: () => void; onLogin: () => void }) {
+function LoginPromptModal({ lang, onClose, onLogin, message }: { lang: Lang; onClose: () => void; onLogin: () => void; message?: string }) {
   const labels = {
-    msg:     { ko: '댓글을 쓰려면 로그인이 필요합니다.', en: 'Please log in to write a comment.', ja: 'コメントを書くにはログインが必要です。' }[lang],
+    msg:     message ?? { ko: '댓글을 쓰려면 로그인이 필요합니다.', en: 'Please log in to write a comment.', ja: 'コメントを書くにはログインが必要です。' }[lang],
     confirm: { ko: '로그인하기', en: 'Log in', ja: 'ログイン' }[lang],
     cancel:  { ko: '취소', en: 'Cancel', ja: 'キャンセル' }[lang],
   }
@@ -1949,6 +1949,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
   const [showFeedback, setShowFeedback] = useState(false)
   const [showComments, setShowComments] = useState(false)
   const [showLoginPrompt, setShowLoginPrompt] = useState(false)
+  const [showLikeLoginPrompt, setShowLikeLoginPrompt] = useState(false)
   const [showPersonaSheet, setShowPersonaSheet] = useState(false)
   const [navigating, setNavigating] = useState(false)
   const [user, setUser] = useState<User | null>(null)
@@ -2085,7 +2086,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
 
   // ── 타이틀 하트 토글 핸들러 ──────────────────────────────────────────────────
   function handleLikeTitle() {
-    if (!user) { setShowLoginPrompt(true); return }
+    if (!user) { setShowLikeLoginPrompt(true); return }
 
     const personaId = currentPersona.id
     // optimistic UI
@@ -2154,7 +2155,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
 
   // ── 피커에서 하트 토글 (비로그인 시 로그인 팝업) ─────────────────────────────────
   function handlePickerLike(personaId: string) {
-    if (!user) { setShowLoginPrompt(true); return }
+    if (!user) { setShowLikeLoginPrompt(true); return }
 
     const isCurrentlyLiked = likedPersonaIds.has(personaId)
     const next = !isCurrentlyLiked
@@ -2966,7 +2967,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
             </button>
             {/* liked 상태이거나 count > 0이면 항상 표시 (optimistic 중 사라지지 않도록) */}
             {(liked || likeCount > 0) && (
-              <span className={liked ? 'text-rose-400' : 'text-zinc-500'}>{likeCount}</span>
+              <span className="text-zinc-400">{likeCount}</span>
             )}
           </div>
           {/* 구분선 */}
@@ -3147,6 +3148,18 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
           onClose={() => setShowLoginPrompt(false)}
           onLogin={() => {
             setShowLoginPrompt(false)
+            window.location.href = `/login?redirectTo=${encodeURIComponent(window.location.pathname + window.location.search)}`
+          }}
+        />
+      )}
+
+      {showLikeLoginPrompt && (
+        <LoginPromptModal
+          lang={lang}
+          message={{ ko: '좋아요를 하려면 로그인이 필요합니다.', en: 'Please log in to like this feed.', ja: 'いいねするにはログインが必要です。' }[lang]}
+          onClose={() => setShowLikeLoginPrompt(false)}
+          onLogin={() => {
+            setShowLikeLoginPrompt(false)
             window.location.href = `/login?redirectTo=${encodeURIComponent(window.location.pathname + window.location.search)}`
           }}
         />
