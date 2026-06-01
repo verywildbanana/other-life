@@ -1025,11 +1025,10 @@ interface PersonaSheetProps {
   myPersonaIds: Set<string>
   likedPersonaIds: Set<string>
   onSelect: (id: string) => void
-  onToggleLike: (id: string) => void
   onClose: () => void
 }
 
-function PersonaBottomSheet({ personas, currentId, lang, myPersonaIds, likedPersonaIds, onSelect, onToggleLike, onClose }: PersonaSheetProps) {
+function PersonaBottomSheet({ personas, currentId, lang, myPersonaIds, likedPersonaIds, onSelect, onClose }: PersonaSheetProps) {
   const sheetRef = useRef<HTMLDivElement>(null)
   const listRef  = useRef<HTMLDivElement>(null)
   const [hasScrollBelow, setHasScrollBelow] = useState(true)
@@ -1133,22 +1132,18 @@ function PersonaBottomSheet({ personas, currentId, lang, myPersonaIds, likedPers
                     ${isActive ? 'bg-zinc-800 text-zinc-100' : 'text-zinc-300 hover:bg-zinc-800/60'}`}
                 >
                   <div className="flex items-center gap-2 min-w-0">
-                    {/* 하트 아이콘 */}
-                    <button
-                      onClick={e => { e.stopPropagation(); onToggleLike(p.id) }}
-                      className="shrink-0 p-0.5 rounded transition-colors hover:opacity-80"
-                      aria-label={isLiked ? '좋아요 취소' : '좋아요'}
-                    >
+                    {/* 하트 아이콘 — 뷰잉 전용 (클릭 불가) */}
+                    <span className="shrink-0 p-0.5">
                       {isLiked ? (
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="text-rose-500">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" className="text-rose-500">
                           <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
                         </svg>
                       ) : (
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-500">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-600">
                           <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
                         </svg>
                       )}
-                    </button>
+                    </span>
                     <span className={`text-sm truncate ${isActive ? 'font-medium' : ''}`}>{name}</span>
                     {badge === 'my' && (
                       <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-indigo-900/60 text-indigo-300 border border-indigo-700/50">MY</span>
@@ -2932,52 +2927,49 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
           </div>
         </div>
 
-        {/* 페르소나 선택 버튼 + 하트 */}
-        <div className="flex items-center gap-1.5 w-full">
-          {/* 하트 버튼 — 모든 피드 */}
-          <button
-            onClick={handleLikeTitle}
-            className="shrink-0 p-1.5 rounded-lg transition-colors hover:bg-zinc-700/60 focus:outline-none"
-            aria-label={liked ? '좋아요 취소' : '좋아요'}
-            title={!user ? { ko: '로그인 후 좋아요', en: 'Log in to like', ja: 'ログインして高評価' }[lang] : undefined}
-          >
-            {liked ? (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="text-rose-500">
-                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-              </svg>
-            ) : (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-400">
-                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-              </svg>
-            )}
-          </button>
-          {/* 페르소나 선택 버튼 */}
-          <button
-            onClick={() => setShowPersonaSheet(true)}
-            className="flex-1 flex items-center justify-between gap-2
-                       bg-zinc-800 border border-zinc-700 hover:border-zinc-500
-                       text-sm text-zinc-100 rounded-lg px-3 py-1.5
-                       transition-colors focus:outline-none focus:ring-1 focus:ring-zinc-500"
-            aria-label={t('selectPersona', lang)}
-          >
-            <span className="truncate">{getPersonaName(currentPersona, lang)}</span>
-            <svg className="shrink-0 text-zinc-400" width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </button>
-        </div>
+        {/* 페르소나 선택 버튼 */}
+        <button
+          onClick={() => setShowPersonaSheet(true)}
+          className="w-full flex items-center justify-between gap-2
+                     bg-zinc-800 border border-zinc-700 hover:border-zinc-500
+                     text-sm text-zinc-100 rounded-lg px-3 py-1.5
+                     transition-colors focus:outline-none focus:ring-1 focus:ring-zinc-500"
+          aria-label={t('selectPersona', lang)}
+        >
+          <span className="truncate">{getPersonaName(currentPersona, lang)}</span>
+          <svg className="shrink-0 text-zinc-400" width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
       </header>
 
-      {/* 상태 바 */}
+      {/* 상태 바 — 피드 타이틀 + 하트 */}
       {videos.length > 0 && (
         <div className="px-4 py-2 text-xs text-zinc-400 border-b border-zinc-800">
-          <div className="flex items-center justify-between flex-wrap gap-1">
+          <div className="flex items-center gap-2">
+            {/* 하트 버튼 */}
+            <button
+              onClick={handleLikeTitle}
+              className="shrink-0 p-0.5 rounded transition-colors hover:opacity-80 focus:outline-none"
+              aria-label={liked ? '좋아요 취소' : '좋아요'}
+              title={!user ? { ko: '로그인 후 좋아요', en: 'Log in to like', ja: 'ログインして高評価' }[lang] : undefined}
+            >
+              {liked ? (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="text-rose-500">
+                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                </svg>
+              ) : (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-500">
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                </svg>
+              )}
+            </button>
             <span>
               {getPersonaName(currentPersona, lang)}{!currentPersona.id.startsWith('u_') && ` · ${(LABELS.accumulated[lang] as (n: number) => string)(total)}`}
             </span>
           </div>
           {viewStats && (
-            <div className="mt-0.5 text-zinc-500">
+            <div className="mt-0.5 text-zinc-500 pl-5">
               {(LABELS.viewCount[lang] as (w: number, t: number) => string)(viewStats.weekly, viewStats.total)}
             </div>
           )}
@@ -3162,7 +3154,6 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
           myPersonaIds={myPersonaIds}
           likedPersonaIds={likedPersonaIds}
           onSelect={switchPersona}
-          onToggleLike={handlePickerLike}
           onClose={() => setShowPersonaSheet(false)}
         />
       )}
