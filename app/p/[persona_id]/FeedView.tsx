@@ -1117,7 +1117,7 @@ function PersonaBottomSheet({ personas, currentId, lang, myPersonaIds, likedPers
             const labels = {
               my:        { ko: '내 피드',   en: 'My Feeds',       ja: 'マイフィード' }[lang],
               system:    { ko: '시스템 피드', en: 'System Feeds',   ja: 'システムフィード' }[lang],
-              community: { ko: '인기 피드',  en: 'Popular Feeds',  ja: '人気フィード' }[lang],
+              community: { ko: '유저 피드',  en: 'User Feeds',  ja: 'ユーザーフィード' }[lang],
             }
 
             const renderItem = (p: import('@/types').Persona, badge?: 'my') => {
