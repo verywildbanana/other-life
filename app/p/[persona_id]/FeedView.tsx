@@ -2966,6 +2966,9 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
           <span>
             {getPersonaName(currentPersona, lang)}{videos.length > 0 && !currentPersona.id.startsWith('u_') && ` · ${(LABELS.accumulated[lang] as (n: number) => string)(total)}`}
           </span>
+          {likeCount > 0 && (
+            <span className="text-zinc-500">{likeCount}</span>
+          )}
         </div>
         {viewStats && videos.length > 0 && (
           <div className="mt-0.5 text-zinc-500 pl-5">
