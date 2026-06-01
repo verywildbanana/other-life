@@ -410,12 +410,6 @@ function CommentsModal({ lang, personaId, user, onClose }: CommentsModalProps) {
   const [replyInput, setReplyInput] = useState('')
   const [replySubmitting, setReplySubmitting] = useState(false)
   const [personaOwnerId, setPersonaOwnerId] = useState<string | null>(null)
-  // 좋아요
-  const [likeCount, setLikeCount] = useState(0)
-  const [liked, setLiked] = useState(false)
-  const likedRef = useRef(false)          // 항상 최신 liked 값을 ref로 추적 (타이머 클로저용)
-  const likeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const likeNetClicksRef = useRef(0)      // 이번 debounce 윈도우 내 클릭 수 (홀수=API, 짝수=스킵)
 
   // 페르소나 오너 user_id 조회
   useEffect(() => {
@@ -424,70 +418,6 @@ function CommentsModal({ lang, personaId, user, onClose }: CommentsModalProps) {
       .then(d => { if (d?.owner_id) setPersonaOwnerId(d.owner_id) })
       .catch(() => {})
   }, [personaId])
-
-  // 좋아요 수 + 내가 눌렀는지 조회
-  useEffect(() => {
-    fetch(`/api/likes?persona_id=${personaId}`)
-      .then(r => r.ok ? r.json() : null)
-      .then(d => {
-        if (d != null) {
-          setLikeCount(d.count)
-          setLiked(d.liked)
-          likedRef.current = d.liked
-        }
-      })
-      .catch(() => {})
-  }, [personaId])
-
-  function handleLike() {
-    if (!user) return
-
-    // 즉시 UI 반영 (optimistic)
-    const next = !likedRef.current
-    likedRef.current = next
-    setLiked(next)
-    setLikeCount(c => next ? c + 1 : c - 1)
-
-    // 클릭 횟수 누적
-    likeNetClicksRef.current += 1
-
-    // debounce: 마지막 클릭 후 600ms 뒤 처리
-    if (likeDebounceRef.current) clearTimeout(likeDebounceRef.current)
-    likeDebounceRef.current = setTimeout(async () => {
-      const net = likeNetClicksRef.current
-      likeNetClicksRef.current = 0
-
-      // 짝수 클릭 = 원래 상태로 복귀 → API 불필요
-      if (net % 2 === 0) return
-
-      // 홀수 클릭 = 한 번 토글 필요
-      const targetLiked = likedRef.current
-      try {
-        const res = await fetch('/api/likes', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ persona_id: personaId }),
-        })
-        const data = await res.json()
-        if (res.ok) {
-          likedRef.current = data.liked
-          setLiked(data.liked)
-          setLikeCount(data.count)
-        } else {
-          // 실패 시 롤백
-          const rollback = !targetLiked
-          likedRef.current = rollback
-          setLiked(rollback)
-          setLikeCount(c => rollback ? c + 1 : c - 1)
-        }
-      } catch {
-        const rollback = !targetLiked
-        likedRef.current = rollback
-        setLiked(rollback)
-        setLikeCount(c => rollback ? c + 1 : c - 1)
-      }
-    }, 600)
-  }
 
   // 댓글 목록 조회
   useEffect(() => {
@@ -644,31 +574,9 @@ function CommentsModal({ lang, personaId, user, onClose }: CommentsModalProps) {
       <div className="bg-zinc-900 border border-zinc-700 rounded-2xl w-full max-w-lg shadow-2xl flex flex-col max-h-[85vh]">
         {/* 헤더 */}
         <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-zinc-800 shrink-0">
-          <div className="flex items-center gap-3">
-            <h2 className="text-sm font-semibold flex items-center gap-1.5">
-              💬 {labels.title} {comments.length > 0 && <span className="text-zinc-500">{comments.length}</span>}
-            </h2>
-            {/* 좋아요 버튼 */}
-            <button
-              onClick={handleLike}
-              disabled={!user}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all text-zinc-500 disabled:cursor-not-allowed hover:text-zinc-300 select-none"
-              title={!user ? { ko: '로그인 후 좋아요', en: 'Log in to like', ja: 'ログインして高評価' }[lang] : undefined}
-            >
-              {liked ? (
-                /* 채워진 하트 — 빨간 */
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" className="text-rose-500 shrink-0">
-                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-                </svg>
-              ) : (
-                /* 빈 하트 — 흰색 테두리 */
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
-                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-                </svg>
-              )}
-              <span>{likeCount > 0 ? likeCount : ''}</span>
-            </button>
-          </div>
+          <h2 className="text-sm font-semibold flex items-center gap-1.5">
+            💬 {labels.title} {comments.length > 0 && <span className="text-zinc-500">{comments.length}</span>}
+          </h2>
           <button
             onClick={onClose}
             className="text-zinc-500 hover:text-zinc-300 p-1 rounded-lg hover:bg-zinc-800 transition-colors"
@@ -1115,11 +1023,13 @@ interface PersonaSheetProps {
   currentId: string
   lang: Lang
   myPersonaIds: Set<string>
+  likedPersonaIds: Set<string>
   onSelect: (id: string) => void
+  onToggleLike: (id: string) => void
   onClose: () => void
 }
 
-function PersonaBottomSheet({ personas, currentId, lang, myPersonaIds, onSelect, onClose }: PersonaSheetProps) {
+function PersonaBottomSheet({ personas, currentId, lang, myPersonaIds, likedPersonaIds, onSelect, onToggleLike, onClose }: PersonaSheetProps) {
   const sheetRef = useRef<HTMLDivElement>(null)
   const listRef  = useRef<HTMLDivElement>(null)
   const [hasScrollBelow, setHasScrollBelow] = useState(true)
@@ -1197,8 +1107,13 @@ function PersonaBottomSheet({ personas, currentId, lang, myPersonaIds, onSelect,
         >
           {(() => {
             const myPersonas        = personas.filter(p => myPersonaIds.has(p.id))
-            const systemPersonas    = personas.filter(p => !p.id.startsWith('u_'))
-            const communityPersonas = personas.filter(p => p.id.startsWith('u_') && !myPersonaIds.has(p.id))
+            // 좋아요 누른 것 상위로 정렬
+            const systemPersonas    = personas
+              .filter(p => !p.id.startsWith('u_'))
+              .sort((a, b) => (likedPersonaIds.has(b.id) ? 1 : 0) - (likedPersonaIds.has(a.id) ? 1 : 0))
+            const communityPersonas = personas
+              .filter(p => p.id.startsWith('u_') && !myPersonaIds.has(p.id))
+              .sort((a, b) => (likedPersonaIds.has(b.id) ? 1 : 0) - (likedPersonaIds.has(a.id) ? 1 : 0))
 
             const labels = {
               my:        { ko: '내 피드',   en: 'My Feeds',       ja: 'マイフィード' }[lang],
@@ -1208,6 +1123,7 @@ function PersonaBottomSheet({ personas, currentId, lang, myPersonaIds, onSelect,
 
             const renderItem = (p: import('@/types').Persona, badge?: 'my') => {
               const isActive = p.id === currentId
+              const isLiked  = likedPersonaIds.has(p.id)
               const name = p.name_i18n?.[lang] ?? p.name
               return (
                 <button
@@ -1217,6 +1133,22 @@ function PersonaBottomSheet({ personas, currentId, lang, myPersonaIds, onSelect,
                     ${isActive ? 'bg-zinc-800 text-zinc-100' : 'text-zinc-300 hover:bg-zinc-800/60'}`}
                 >
                   <div className="flex items-center gap-2 min-w-0">
+                    {/* 하트 아이콘 */}
+                    <button
+                      onClick={e => { e.stopPropagation(); onToggleLike(p.id) }}
+                      className="shrink-0 p-0.5 rounded transition-colors hover:opacity-80"
+                      aria-label={isLiked ? '좋아요 취소' : '좋아요'}
+                    >
+                      {isLiked ? (
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="text-rose-500">
+                          <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                        </svg>
+                      ) : (
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-500">
+                          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                        </svg>
+                      )}
+                    </button>
                     <span className={`text-sm truncate ${isActive ? 'font-medium' : ''}`}>{name}</span>
                     {badge === 'my' && (
                       <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-indigo-900/60 text-indigo-300 border border-indigo-700/50">MY</span>
@@ -2028,6 +1960,12 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [isOwner, setIsOwner] = useState(false)
   const [myPersonaIds, setMyPersonaIds] = useState<Set<string>>(new Set())
+  const [likedPersonaIds, setLikedPersonaIds] = useState<Set<string>>(new Set())
+  const [likeCount, setLikeCount] = useState(0)
+  const [liked, setLiked] = useState(false)
+  const likedRef = useRef(false)
+  const likeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const likeNetClicksRef = useRef(0)
   // allPersonas에서 삭제된 유저 피드를 제거한 live 목록
   const [livePersonas, setLivePersonas] = useState<Persona[]>(allPersonas)
   const [showTerms, setShowTerms] = useState(false)
@@ -2110,6 +2048,163 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
       })
       .catch(() => { setIsOwner(false); setMyPersonaIds(new Set()) })
   }, [user, currentPersona.id])
+
+  // ── 좋아요 목록 로드 (localStorage → 로그인 시 DB 동기화) ──────────────────────
+  useEffect(() => {
+    // localStorage에서 즉시 복원
+    try {
+      const stored = localStorage.getItem('feed_liked_personas')
+      if (stored) {
+        const ids: string[] = JSON.parse(stored)
+        setLikedPersonaIds(new Set(ids))
+      }
+    } catch { /* 무시 */ }
+
+    // 로그인 상태면 DB에서 bulk sync
+    if (!user) return
+    fetch('/api/likes/my')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (d?.persona_ids) {
+          const ids: string[] = d.persona_ids
+          setLikedPersonaIds(new Set(ids))
+          try { localStorage.setItem('feed_liked_personas', JSON.stringify(ids)) } catch { /* 무시 */ }
+        }
+      })
+      .catch(() => {})
+  }, [user])
+
+  // ── 현재 페르소나 좋아요 수 + 내가 눌렀는지 로드 ────────────────────────────────
+  useEffect(() => {
+    fetch(`/api/likes?persona_id=${currentPersona.id}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (d != null) {
+          setLikeCount(d.count)
+          setLiked(d.liked)
+          likedRef.current = d.liked
+        }
+      })
+      .catch(() => {})
+  }, [currentPersona.id])
+
+  // ── 타이틀 하트 토글 핸들러 ──────────────────────────────────────────────────
+  function handleLikeTitle() {
+    if (!user) { setShowLoginPrompt(true); return }
+
+    const personaId = currentPersona.id
+    // optimistic UI
+    const next = !likedRef.current
+    likedRef.current = next
+    setLiked(next)
+    setLikeCount(c => next ? c + 1 : c - 1)
+
+    // likedPersonaIds + localStorage 즉시 업데이트
+    setLikedPersonaIds(prev => {
+      const updated = new Set(prev)
+      if (next) updated.add(personaId)
+      else updated.delete(personaId)
+      try { localStorage.setItem('feed_liked_personas', JSON.stringify([...updated])) } catch { /* 무시 */ }
+      return updated
+    })
+
+    likeNetClicksRef.current += 1
+    if (likeDebounceRef.current) clearTimeout(likeDebounceRef.current)
+    likeDebounceRef.current = setTimeout(async () => {
+      const net = likeNetClicksRef.current
+      likeNetClicksRef.current = 0
+      if (net % 2 === 0) return
+      const targetLiked = likedRef.current
+      try {
+        const res = await fetch('/api/likes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ persona_id: personaId }),
+        })
+        const data = await res.json()
+        if (res.ok) {
+          likedRef.current = data.liked
+          setLiked(data.liked)
+          setLikeCount(data.count)
+          // likedPersonaIds + localStorage 서버 응답으로 재조정
+          setLikedPersonaIds(prev => {
+            const updated = new Set(prev)
+            if (data.liked) updated.add(personaId)
+            else updated.delete(personaId)
+            try { localStorage.setItem('feed_liked_personas', JSON.stringify([...updated])) } catch { /* 무시 */ }
+            return updated
+          })
+        } else {
+          // 롤백
+          const rollback = !targetLiked
+          likedRef.current = rollback
+          setLiked(rollback)
+          setLikeCount(c => rollback ? c + 1 : c - 1)
+          setLikedPersonaIds(prev => {
+            const updated = new Set(prev)
+            if (rollback) updated.add(personaId)
+            else updated.delete(personaId)
+            try { localStorage.setItem('feed_liked_personas', JSON.stringify([...updated])) } catch { /* 무시 */ }
+            return updated
+          })
+        }
+      } catch {
+        const rollback = !targetLiked
+        likedRef.current = rollback
+        setLiked(rollback)
+        setLikeCount(c => rollback ? c + 1 : c - 1)
+      }
+    }, 600)
+  }
+
+  // ── 피커에서 하트 토글 (비로그인 시 로그인 팝업) ─────────────────────────────────
+  function handlePickerLike(personaId: string) {
+    if (!user) { setShowLoginPrompt(true); return }
+
+    const isCurrentlyLiked = likedPersonaIds.has(personaId)
+    const next = !isCurrentlyLiked
+
+    // localStorage + state 즉시 업데이트
+    setLikedPersonaIds(prev => {
+      const updated = new Set(prev)
+      if (next) updated.add(personaId)
+      else updated.delete(personaId)
+      try { localStorage.setItem('feed_liked_personas', JSON.stringify([...updated])) } catch { /* 무시 */ }
+      return updated
+    })
+
+    // 현재 페르소나이면 liked/likeCount도 동기화
+    if (personaId === currentPersona.id) {
+      likedRef.current = next
+      setLiked(next)
+      setLikeCount(c => next ? c + 1 : c - 1)
+    }
+
+    // API 호출
+    fetch('/api/likes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ persona_id: personaId }),
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data) {
+          setLikedPersonaIds(prev => {
+            const updated = new Set(prev)
+            if (data.liked) updated.add(personaId)
+            else updated.delete(personaId)
+            try { localStorage.setItem('feed_liked_personas', JSON.stringify([...updated])) } catch { /* 무시 */ }
+            return updated
+          })
+          if (personaId === currentPersona.id) {
+            likedRef.current = data.liked
+            setLiked(data.liked)
+            setLikeCount(data.count)
+          }
+        }
+      })
+      .catch(() => {})
+  }
 
   // ── 피드 전체 풀 (셔플 후 가상 페이지네이션용) ────────────────────────────────
   const allVideosRef = useRef<Video[]>([])
@@ -2837,20 +2932,40 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
           </div>
         </div>
 
-        {/* 페르소나 선택 버튼 */}
-        <button
-          onClick={() => setShowPersonaSheet(true)}
-          className="w-full flex items-center justify-between gap-2
-                     bg-zinc-800 border border-zinc-700 hover:border-zinc-500
-                     text-sm text-zinc-100 rounded-lg px-3 py-1.5
-                     transition-colors focus:outline-none focus:ring-1 focus:ring-zinc-500"
-          aria-label={t('selectPersona', lang)}
-        >
-          <span className="truncate">{getPersonaName(currentPersona, lang)}</span>
-          <svg className="shrink-0 text-zinc-400" width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </button>
+        {/* 페르소나 선택 버튼 + 하트 */}
+        <div className="flex items-center gap-1.5 w-full">
+          {/* 하트 버튼 — 모든 피드 */}
+          <button
+            onClick={handleLikeTitle}
+            className="shrink-0 p-1.5 rounded-lg transition-colors hover:bg-zinc-700/60 focus:outline-none"
+            aria-label={liked ? '좋아요 취소' : '좋아요'}
+            title={!user ? { ko: '로그인 후 좋아요', en: 'Log in to like', ja: 'ログインして高評価' }[lang] : undefined}
+          >
+            {liked ? (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="text-rose-500">
+                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+              </svg>
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-400">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+              </svg>
+            )}
+          </button>
+          {/* 페르소나 선택 버튼 */}
+          <button
+            onClick={() => setShowPersonaSheet(true)}
+            className="flex-1 flex items-center justify-between gap-2
+                       bg-zinc-800 border border-zinc-700 hover:border-zinc-500
+                       text-sm text-zinc-100 rounded-lg px-3 py-1.5
+                       transition-colors focus:outline-none focus:ring-1 focus:ring-zinc-500"
+            aria-label={t('selectPersona', lang)}
+          >
+            <span className="truncate">{getPersonaName(currentPersona, lang)}</span>
+            <svg className="shrink-0 text-zinc-400" width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+        </div>
       </header>
 
       {/* 상태 바 */}
@@ -3045,7 +3160,9 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
           currentId={currentPersona.id}
           lang={lang}
           myPersonaIds={myPersonaIds}
+          likedPersonaIds={likedPersonaIds}
           onSelect={switchPersona}
+          onToggleLike={handlePickerLike}
           onClose={() => setShowPersonaSheet(false)}
         />
       )}
