@@ -231,6 +231,17 @@ export async function GET(req: NextRequest) {
     // events 테이블 없으면 빈값 유지
   }
 
+  // 좋아요 집계 (persona_id별 총 좋아요 수)
+  const { data: likeRows } = await supabase
+    .from('persona_likes')
+    .select('persona_id')
+
+  const likesByPersona: Record<string, number> = {}
+  for (const r of likeRows ?? []) {
+    likesByPersona[r.persona_id] = (likesByPersona[r.persona_id] ?? 0) + 1
+  }
+  const totalLikes = (likeRows ?? []).length
+
   // 피드백 통계
   const { data: feedbackRows } = await supabase
     .from('feedback')
@@ -254,7 +265,7 @@ export async function GET(req: NextRequest) {
   })()
 
   return NextResponse.json(
-    { videos: stats, access_logs: accessLogs, admin_logs: adminLogs, user_behavior: userBehavior, feedback_stats: feedbackStats },
+    { videos: stats, access_logs: accessLogs, admin_logs: adminLogs, user_behavior: userBehavior, feedback_stats: feedbackStats, likes: { total: totalLikes, by_persona: likesByPersona } },
     { headers: { 'Cache-Control': 'no-store' } },
   )
 }
