@@ -82,24 +82,49 @@ export default function AdminPage() {
   const [shortsLoading, setShortsLoading] = useState(false)
   const [shortsMsg, setShortsMsg] = useState('')
   const [shortsChecked, setShortsChecked] = useState<Set<string>>(new Set())
-  // 유저 페르소나 모더레이션
-  type UserPersonaRow = { persona_id: string; user_id: string; name: string; video_count: number; last_updated: string; days_since_update: number; is_inactive: boolean; is_public: boolean }
-  const [userPersonas, setUserPersonas] = useState<UserPersonaRow[]>([])
-  const [userPersonasLoading, setUserPersonasLoading] = useState(false)
-  const [userPersonaAction, setUserPersonaAction] = useState<Record<string, string>>({})
+  // 유저 관리
+  type AdminPersonaEntry = { persona_id: string; name: string; video_count: number; is_public: boolean; days_since_update: number; is_inactive: boolean }
+  type AdminUserEntry = { id: string; email: string; nickname: string | null; is_banned: boolean; created_at: string; last_sign_in_at: string | null; personas: AdminPersonaEntry[] }
+  const [adminUsers, setAdminUsers] = useState<AdminUserEntry[]>([])
+  const [adminUsersLoading, setAdminUsersLoading] = useState(false)
+  const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set())
+  const [personaAction, setPersonaAction] = useState<Record<string, string>>({})
+  const [banAction, setBanAction] = useState<Record<string, string>>({})
 
-  async function loadUserPersonas() {
-    setUserPersonasLoading(true)
-    const res = await fetch('/api/admin/user-personas', { credentials: 'include', cache: 'no-store' })
+  async function loadAdminUsers() {
+    setAdminUsersLoading(true)
+    const res = await fetch('/api/admin/users', { credentials: 'include', cache: 'no-store' })
     if (res.ok) {
       const d = await res.json()
-      setUserPersonas(d.personas ?? [])
+      setAdminUsers(d.users ?? [])
     }
-    setUserPersonasLoading(false)
+    setAdminUsersLoading(false)
   }
 
-  async function userPersonaAction_(personaId: string, action: 'notify' | 'delete') {
-    setUserPersonaAction(prev => ({ ...prev, [personaId]: action === 'notify' ? '발송 중...' : '삭제 중...' }))
+  function toggleUserExpand(userId: string) {
+    setExpandedUsers(prev => {
+      const next = new Set(prev)
+      next.has(userId) ? next.delete(userId) : next.add(userId)
+      return next
+    })
+  }
+
+  async function handleBanUser(userId: string, action: 'ban' | 'unban') {
+    setBanAction(prev => ({ ...prev, [userId]: action === 'ban' ? '처리 중...' : '처리 중...' }))
+    const res = await fetch(`/api/admin/users/${userId}`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action }),
+    })
+    if (res.ok) {
+      setAdminUsers(prev => prev.map(u => u.id === userId ? { ...u, is_banned: action === 'ban' } : u))
+    }
+    setBanAction(prev => { const n = { ...prev }; delete n[userId]; return n })
+  }
+
+  async function handlePersonaAction(personaId: string, userId: string, action: 'notify' | 'delete') {
+    setPersonaAction(prev => ({ ...prev, [personaId]: action === 'notify' ? '발송 중...' : '삭제 중...' }))
     const res = await fetch('/api/admin/user-personas', {
       method: 'POST',
       credentials: 'include',
@@ -108,10 +133,16 @@ export default function AdminPage() {
     })
     const d = await res.json()
     if (action === 'notify') {
-      setUserPersonaAction(prev => ({ ...prev, [personaId]: res.ok ? `✓ ${d.sent_to}` : `✗ ${d.error}` }))
+      setPersonaAction(prev => ({ ...prev, [personaId]: res.ok ? `✓ ${d.sent_to}` : `✗ ${d.error}` }))
+      setTimeout(() => setPersonaAction(prev => { const n = { ...prev }; delete n[personaId]; return n }), 3000)
     } else {
-      if (res.ok) setUserPersonas(prev => prev.filter(p => p.persona_id !== personaId))
-      else setUserPersonaAction(prev => ({ ...prev, [personaId]: `✗ ${d.error}` }))
+      if (res.ok) {
+        setAdminUsers(prev => prev.map(u =>
+          u.id === userId ? { ...u, personas: u.personas.filter(p => p.persona_id !== personaId) } : u
+        ))
+      } else {
+        setPersonaAction(prev => ({ ...prev, [personaId]: `✗ ${d.error}` }))
+      }
     }
   }
 
@@ -871,83 +902,147 @@ export default function AdminPage() {
 
       </section>
 
-      {/* ── 유저 페르소나 모더레이션 ── */}
+      {/* ── 가입 유저 관리 ── */}
       <section className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">👤 유저 페르소나</h2>
+          <h2 className="text-lg font-semibold">👤 가입 유저</h2>
           <button
-            onClick={loadUserPersonas}
-            disabled={userPersonasLoading}
+            onClick={loadAdminUsers}
+            disabled={adminUsersLoading}
             className="text-xs px-3 py-1 rounded border border-zinc-700 hover:border-zinc-500 disabled:opacity-50"
           >
-            {userPersonasLoading ? '로딩 중...' : '목록 불러오기'}
+            {adminUsersLoading ? '로딩 중...' : '목록 불러오기'}
           </button>
         </div>
 
-        {userPersonas.length > 0 && (
+        {adminUsers.length > 0 && (
           <>
             <p className="text-xs text-zinc-500">
-              전체 {userPersonas.length}개 · 비활성(7일↑) {userPersonas.filter(p => p.is_inactive).length}개
+              전체 {adminUsers.length}명 · 밴 {adminUsers.filter(u => u.is_banned).length}명
+              · 페르소나 {adminUsers.reduce((s, u) => s + u.personas.length, 0)}개
             </p>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-zinc-500 text-xs border-b border-zinc-800">
-                    <th className="pb-2 text-left pr-4">페르소나</th>
-                    <th className="pb-2 text-right pr-4">영상</th>
-                    <th className="pb-2 text-left pr-4">마지막 업데이트</th>
-                    <th className="pb-2 text-right pr-4">경과</th>
-                    <th className="pb-2 text-left">액션</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {userPersonas.map(p => (
-                    <tr key={p.persona_id} className={`border-b border-zinc-800/50 ${p.is_inactive ? 'bg-amber-950/20' : ''}`}>
-                      <td className="py-2 pr-4">
-                        <a
-                          href={`/p/${p.persona_id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="hover:text-zinc-300"
-                        >
-                          {p.name}
-                        </a>
-                        {p.is_inactive && (
-                          <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-amber-900/60 text-amber-300 border border-amber-700/50">비활성</span>
-                        )}
-                      </td>
-                      <td className="py-2 pr-4 text-right text-zinc-400">{p.video_count}</td>
-                      <td className="py-2 pr-4 text-zinc-500 text-xs">{p.last_updated.slice(0, 10)}</td>
-                      <td className="py-2 pr-4 text-right text-xs text-zinc-400">{p.days_since_update}일</td>
-                      <td className="py-2">
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => userPersonaAction_(p.persona_id, 'notify')}
-                            disabled={!!userPersonaAction[p.persona_id]}
-                            className="text-xs px-2 py-0.5 rounded border border-zinc-700 hover:border-indigo-500 hover:text-indigo-400 disabled:opacity-50"
-                          >
-                            이메일 발송
-                          </button>
-                          <button
-                            onClick={() => {
-                              if (confirm(`"${p.name}" 페르소나를 삭제할까요?`)) {
-                                userPersonaAction_(p.persona_id, 'delete')
-                              }
-                            }}
-                            disabled={!!userPersonaAction[p.persona_id]}
-                            className="text-xs px-2 py-0.5 rounded border border-red-900 text-red-400 hover:text-red-300 disabled:opacity-50"
-                          >
-                            삭제
-                          </button>
-                          {userPersonaAction[p.persona_id] && (
-                            <span className="text-xs text-zinc-400">{userPersonaAction[p.persona_id]}</span>
+            <div className="space-y-2">
+              {adminUsers.map(u => {
+                const isExpanded = expandedUsers.has(u.id)
+                const inactiveCount = u.personas.filter(p => p.is_inactive).length
+                return (
+                  <div key={u.id} className={`rounded-xl border ${u.is_banned ? 'border-red-900/60 bg-red-950/10' : 'border-zinc-800 bg-zinc-900/50'}`}>
+                    {/* 유저 행 */}
+                    <div className="flex items-center gap-3 px-4 py-3">
+                      {/* 펼치기 토글 */}
+                      <button
+                        onClick={() => toggleUserExpand(u.id)}
+                        className="text-zinc-500 hover:text-zinc-300 shrink-0 transition-colors"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                          <path d={isExpanded ? 'M2 5l5 5 5-5' : 'M5 2l5 5-5 5'} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </button>
+
+                      {/* 유저 정보 */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-medium text-zinc-200 truncate">{u.email}</span>
+                          {u.nickname && (
+                            <span className="text-xs text-zinc-400 shrink-0">@{u.nickname}</span>
+                          )}
+                          {/* 상태 뱃지 */}
+                          {u.is_banned ? (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-900/60 text-red-300 border border-red-700/50 shrink-0">Banned</span>
+                          ) : (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-900/40 text-emerald-400 border border-emerald-700/30 shrink-0">Active</span>
                           )}
                         </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                        <div className="flex items-center gap-3 mt-0.5 text-xs text-zinc-500">
+                          <span>가입 {u.created_at.slice(0, 10)}</span>
+                          {u.last_sign_in_at && <span>최근 {u.last_sign_in_at.slice(0, 10)}</span>}
+                          <span>
+                            페르소나 {u.personas.length}개
+                            {inactiveCount > 0 && <span className="text-amber-500 ml-1">(비활성 {inactiveCount})</span>}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Ban/Unban 버튼 */}
+                      <button
+                        onClick={() => {
+                          if (confirm(u.is_banned ? `${u.email} 밴을 해제할까요?` : `${u.email}을 밴할까요?`)) {
+                            handleBanUser(u.id, u.is_banned ? 'unban' : 'ban')
+                          }
+                        }}
+                        disabled={!!banAction[u.id]}
+                        className={`text-xs px-2.5 py-1 rounded border transition-colors shrink-0 disabled:opacity-50 ${
+                          u.is_banned
+                            ? 'border-zinc-600 text-zinc-400 hover:border-emerald-600 hover:text-emerald-400'
+                            : 'border-red-900 text-red-400 hover:border-red-600 hover:text-red-300'
+                        }`}
+                      >
+                        {banAction[u.id] ? banAction[u.id] : u.is_banned ? 'Unban' : 'Ban'}
+                      </button>
+                    </div>
+
+                    {/* 페르소나 목록 (펼침) */}
+                    {isExpanded && u.personas.length > 0 && (
+                      <div className="border-t border-zinc-800/60 px-4 pb-3 pt-2 space-y-1.5">
+                        {u.personas.map(p => (
+                          <div key={p.persona_id} className={`flex items-center gap-3 rounded-lg px-3 py-2 ${p.is_inactive ? 'bg-amber-950/20' : 'bg-zinc-800/40'}`}>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <a
+                                  href={`/p/${p.persona_id}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-sm text-zinc-200 hover:text-white truncate"
+                                >
+                                  {p.name}
+                                </a>
+                                {p.is_inactive && (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-900/60 text-amber-300 border border-amber-700/50 shrink-0">비활성</span>
+                                )}
+                                {!p.is_public && (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-700 text-zinc-400 shrink-0">비공개</span>
+                                )}
+                              </div>
+                              <div className="text-xs text-zinc-500 mt-0.5">
+                                영상 {p.video_count}개 · {p.days_since_update}일 전 업데이트
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {personaAction[p.persona_id] ? (
+                                <span className="text-xs text-zinc-400">{personaAction[p.persona_id]}</span>
+                              ) : (
+                                <>
+                                  <button
+                                    onClick={() => handlePersonaAction(p.persona_id, u.id, 'notify')}
+                                    className="text-xs px-2 py-0.5 rounded border border-zinc-700 hover:border-indigo-500 hover:text-indigo-400"
+                                  >
+                                    이메일
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      if (confirm(`"${p.name}" 페르소나를 삭제할까요?`)) {
+                                        handlePersonaAction(p.persona_id, u.id, 'delete')
+                                      }
+                                    }}
+                                    className="text-xs px-2 py-0.5 rounded border border-red-900 text-red-400 hover:text-red-300"
+                                  >
+                                    삭제
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {isExpanded && u.personas.length === 0 && (
+                      <div className="border-t border-zinc-800/60 px-4 py-3 text-xs text-zinc-600">
+                        페르소나 없음
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           </>
         )}

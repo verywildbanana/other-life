@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ personas: result })
 }
 
-const ADMIN_USER_ID = '744b2031-b01a-4b8b-8535-aa40b8f138c4' // verywildbanana@gmail.com
+const ADMIN_USER_ID = process.env.ADMIN_USER_ID ?? '744b2031-b01a-4b8b-8535-aa40b8f138c4'
 const PERSONA_ID_PREFIX = 'u_'
 
 function generatePersonaId(): string {
