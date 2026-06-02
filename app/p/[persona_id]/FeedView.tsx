@@ -2047,7 +2047,16 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
 
   // ── 좋아요 목록 로드 (localStorage → 로그인 시 DB 동기화) ──────────────────────
   useEffect(() => {
-    // localStorage에서 즉시 복원
+    // 로그아웃 시 — localStorage + state 즉시 초기화
+    if (!user) {
+      try { localStorage.removeItem('feed_liked_personas') } catch { /* 무시 */ }
+      setLikedPersonaIds(new Set())
+      setLiked(false)
+      likedRef.current = false
+      return
+    }
+
+    // 로그인 상태: localStorage에서 즉시 복원 후 DB bulk sync
     try {
       const stored = localStorage.getItem('feed_liked_personas')
       if (stored) {
@@ -2056,14 +2065,14 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
       }
     } catch { /* 무시 */ }
 
-    // 로그인 상태면 DB에서 bulk sync
-    if (!user) return
     fetch('/api/likes/my')
       .then(r => r.ok ? r.json() : null)
       .then(d => {
         if (d?.persona_ids) {
           const ids: string[] = d.persona_ids
           setLikedPersonaIds(new Set(ids))
+          setLiked(ids.includes(currentPersona.id))
+          likedRef.current = ids.includes(currentPersona.id)
           try { localStorage.setItem('feed_liked_personas', JSON.stringify(ids)) } catch { /* 무시 */ }
         }
       })
