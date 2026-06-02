@@ -2965,10 +2965,6 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
                 </svg>
               )}
             </button>
-            {/* liked 상태이거나 count > 0이면 항상 표시 (optimistic 중 사라지지 않도록) */}
-            {(liked || likeCount > 0) && (
-              <span className="text-zinc-400">{likeCount}</span>
-            )}
           </div>
           {/* 구분선 */}
           <span className="text-zinc-700">·</span>

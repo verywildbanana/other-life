@@ -23,7 +23,8 @@ type UserBehavior = {
   scroll_depth: { page1_only: number; page2_4: number; page5_plus: number }
   top_videos: { video_id: string; clicks: number }[]
 }
-type StatsResponse = { videos: VideoStats; access_logs: AccessLogs; user_behavior?: UserBehavior }
+type LikeStats = { total: number; by_persona: Record<string, number> }
+type StatsResponse = { videos: VideoStats; access_logs: AccessLogs; user_behavior?: UserBehavior; likes?: LikeStats }
 
 type VideoRow = {
   video_id: string
@@ -65,6 +66,7 @@ export default function AdminPage() {
   const [videoStats, setVideoStats] = useState<VideoStats>({})
   const [accessLogs, setAccessLogs] = useState<AccessLogs | null>(null)
   const [userBehavior, setUserBehavior] = useState<UserBehavior | null>(null)
+  const [likeStats, setLikeStats] = useState<LikeStats | null>(null)
   const [statPeriod, setStatPeriod] = useState<StatPeriod>('7d')
   const [personas, setPersonas] = useState<Persona[]>([])
   const [selectedPersona, setSelectedPersona] = useState('')
@@ -120,6 +122,7 @@ export default function AdminPage() {
         setVideoStats(data.videos)
         setAccessLogs(data.access_logs)
         if (data.user_behavior) setUserBehavior(data.user_behavior)
+        if (data.likes) setLikeStats(data.likes)
         setView('dashboard')
       }
     })
@@ -537,7 +540,12 @@ export default function AdminPage() {
 
         {/* ── 영상 누적 현황 ── */}
         <div>
-          <h2 className="text-sm font-semibold text-zinc-400 mb-3">페르소나별 누적 현황</h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold text-zinc-400">페르소나별 누적 현황</h2>
+            {likeStats && likeStats.total > 0 && (
+              <span className="text-xs text-rose-400">♥ 총 좋아요 {likeStats.total.toLocaleString()}개</span>
+            )}
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {Object.entries(videoStats).length === 0 ? (
               <p className="text-zinc-500 text-sm">데이터 없음</p>
@@ -570,7 +578,12 @@ export default function AdminPage() {
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-zinc-600 mt-2">최근: {info.latest_date ?? '-'}</p>
+                  <div className="flex items-center justify-between mt-2">
+                    <p className="text-xs text-zinc-600">최근: {info.latest_date ?? '-'}</p>
+                    {(likeStats?.by_persona[pid] ?? 0) > 0 && (
+                      <span className="text-xs text-rose-400">♥ {likeStats!.by_persona[pid]}</span>
+                    )}
+                  </div>
                 </div>
               ))
             )}
