@@ -17,6 +17,7 @@ const BASE_URL = 'https://play.anomess.com'
 const isProduction = process.env.VERCEL_ENV === 'production'
 
 export const metadata: Metadata = {
+  metadataBase: new URL(BASE_URL),
   robots: isProduction
     ? { index: true, follow: true }
     : { index: false, follow: false },
@@ -54,11 +55,13 @@ export const metadata: Metadata = {
     description:
       'Peek into other people\'s YouTube feeds and discover what you never knew you were missing. See the world beyond your own algorithm.',
     locale: 'en_US',
+    images: [{ url: '/icons/icon-512.png', width: 512, height: 512, alt: 'Anomess' }],
   },
   twitter: {
     card: 'summary',
     title: 'Anomess — See the world more than your algorithm',
     description: 'Peek into other people\'s YouTube feeds and discover what you never knew you were missing.',
+    images: ['/icons/icon-512.png'],
   },
 }
 

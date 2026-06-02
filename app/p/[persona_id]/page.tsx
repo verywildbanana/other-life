@@ -76,14 +76,16 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
       type: 'website',
       title,
       description,
-      url: `${BASE_URL}/p/${persona_id}?lang=${lang}`,
+      url: canonicalUrl,
       locale: meta.locale,
       siteName: 'Anomess',
+      images: [{ url: `${BASE_URL}/icons/icon-512.png`, width: 512, height: 512, alt: name }],
     },
     twitter: {
       card: 'summary_large_image',
       title,
       description,
+      images: [`${BASE_URL}/icons/icon-512.png`],
     },
   }
 }
