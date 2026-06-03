@@ -84,16 +84,29 @@ export async function GET(req: NextRequest) {
   const myIpHash = getAdminIpHash(req)
 
   // 기간별(7d/30d/90d) 조회 + 누적(전체) 조회 — 병렬 실행
-  const [{ data: logRows }, { data: allLogRows }] = await Promise.all([
+  // 누적 조회: Supabase max_rows=1000 한도 우회를 위해 페이지네이션 사용
+  const [{ data: logRows }, allLogRows] = await Promise.all([
     supabase
       .from('access_logs')
       .select('persona_id, country, accessed_at, ip_hash')
       .gte('accessed_at', since7d)
       .order('accessed_at', { ascending: false }),
-    supabase
-      .from('access_logs')
-      .select('persona_id, ip_hash')
-      .limit(50000),
+    (async () => {
+      const rows: { persona_id: string; ip_hash: string }[] = []
+      const PAGE = 1000
+      let from = 0
+      while (true) {
+        const { data } = await supabase
+          .from('access_logs')
+          .select('persona_id, ip_hash')
+          .range(from, from + PAGE - 1)
+        if (!data || data.length === 0) break
+        rows.push(...data)
+        if (data.length < PAGE) break
+        from += PAGE
+      }
+      return rows
+    })(),
   ])
 
   // admin IP 제외 후 전체 집계
