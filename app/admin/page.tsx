@@ -6,10 +6,12 @@ import { Persona } from '@/types'
 type VideoStats = Record<string, { total: number; with_summary: number; stt_skip: number; no_summary: number; latest_date: string | null }>
 type AccessLogs = {
   total_7d: number
+  total_all: number
   unique_ips: number
   external_unique_ips: number
   my_ip_hash: string
   by_persona: Record<string, number>
+  all_time_by_persona: Record<string, number>
   by_country: Record<string, number>
   daily: Record<string, number>
 }
@@ -572,7 +574,7 @@ export default function AdminPage() {
         {/* ── 영상 누적 현황 ── */}
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-zinc-400">페르소나별 누적 현황 <span className="font-normal text-zinc-600 text-xs ml-1">👁 조회수는 최근 7일</span></h2>
+            <h2 className="text-sm font-semibold text-zinc-400">페르소나별 누적 현황 <span className="font-normal text-zinc-600 text-xs ml-1">👁 누적 (괄호 안 7일)</span></h2>
             {likeStats && likeStats.total > 0 && (
               <span className="text-xs text-rose-400">♥ 총 좋아요 {likeStats.total.toLocaleString()}개</span>
             )}
@@ -612,8 +614,15 @@ export default function AdminPage() {
                   <div className="flex items-center justify-between mt-2">
                     <p className="text-xs text-zinc-600">최근: {info.latest_date ?? '-'}</p>
                     <div className="flex items-center gap-2">
+                      {(accessLogs?.all_time_by_persona[pid] ?? 0) > 0 && (
+                        <span className="text-xs text-sky-300" title="누적 조회수">
+                          👁 {(accessLogs!.all_time_by_persona[pid]).toLocaleString()}
+                        </span>
+                      )}
                       {(accessLogs?.by_persona[pid] ?? 0) > 0 && (
-                        <span className="text-xs text-sky-400">👁 {accessLogs!.by_persona[pid]}회</span>
+                        <span className="text-xs text-sky-600" title="최근 7일 조회수">
+                          ({accessLogs!.by_persona[pid]})
+                        </span>
                       )}
                       {(likeStats?.by_persona[pid] ?? 0) > 0 && (
                         <span className="text-xs text-rose-400">♥ {likeStats!.by_persona[pid]}</span>
@@ -1008,10 +1017,18 @@ export default function AdminPage() {
                                   <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-700 text-zinc-400 shrink-0">비공개</span>
                                 )}
                               </div>
-                              <div className="text-xs text-zinc-500 mt-0.5 flex items-center gap-2">
+                              <div className="text-xs text-zinc-500 mt-0.5 flex items-center gap-2 flex-wrap">
                                 <span>영상 {p.video_count}개 · {p.days_since_update}일 전 업데이트</span>
-                                {(accessLogs?.by_persona[p.persona_id] ?? 0) > 0 && (
-                                  <span className="text-sky-400">👁 {accessLogs!.by_persona[p.persona_id]}회</span>
+                                {(accessLogs?.all_time_by_persona[p.persona_id] ?? 0) > 0 && (
+                                  <span className="text-sky-300" title="누적 조회수">
+                                    👁 {(accessLogs!.all_time_by_persona[p.persona_id]).toLocaleString()}
+                                    {(accessLogs?.by_persona[p.persona_id] ?? 0) > 0 && (
+                                      <span className="text-sky-600 ml-1">({accessLogs!.by_persona[p.persona_id]})</span>
+                                    )}
+                                  </span>
+                                )}
+                                {(likeStats?.by_persona[p.persona_id] ?? 0) > 0 && (
+                                  <span className="text-rose-400">♥ {likeStats!.by_persona[p.persona_id]}</span>
                                 )}
                               </div>
                             </div>
