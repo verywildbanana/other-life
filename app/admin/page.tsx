@@ -1027,6 +1027,9 @@ export default function AdminPage() {
                                     )}
                                   </span>
                                 )}
+                                {(likeStats?.by_persona[p.persona_id] ?? 0) > 0 && (
+                                  <span className="text-rose-400">♥ {likeStats!.by_persona[p.persona_id]}</span>
+                                )}
                               </div>
                             </div>
                             <div className="flex items-center gap-1.5 shrink-0">
