@@ -572,7 +572,7 @@ export default function AdminPage() {
         {/* ── 영상 누적 현황 ── */}
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-zinc-400">페르소나별 누적 현황</h2>
+            <h2 className="text-sm font-semibold text-zinc-400">페르소나별 누적 현황 <span className="font-normal text-zinc-600 text-xs ml-1">👁 조회수는 최근 7일</span></h2>
             {likeStats && likeStats.total > 0 && (
               <span className="text-xs text-rose-400">♥ 총 좋아요 {likeStats.total.toLocaleString()}개</span>
             )}
@@ -611,9 +611,14 @@ export default function AdminPage() {
                   </div>
                   <div className="flex items-center justify-between mt-2">
                     <p className="text-xs text-zinc-600">최근: {info.latest_date ?? '-'}</p>
-                    {(likeStats?.by_persona[pid] ?? 0) > 0 && (
-                      <span className="text-xs text-rose-400">♥ {likeStats!.by_persona[pid]}</span>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {(accessLogs?.by_persona[pid] ?? 0) > 0 && (
+                        <span className="text-xs text-sky-400">👁 {accessLogs!.by_persona[pid]}회</span>
+                      )}
+                      {(likeStats?.by_persona[pid] ?? 0) > 0 && (
+                        <span className="text-xs text-rose-400">♥ {likeStats!.by_persona[pid]}</span>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))
@@ -1003,8 +1008,11 @@ export default function AdminPage() {
                                   <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-700 text-zinc-400 shrink-0">비공개</span>
                                 )}
                               </div>
-                              <div className="text-xs text-zinc-500 mt-0.5">
-                                영상 {p.video_count}개 · {p.days_since_update}일 전 업데이트
+                              <div className="text-xs text-zinc-500 mt-0.5 flex items-center gap-2">
+                                <span>영상 {p.video_count}개 · {p.days_since_update}일 전 업데이트</span>
+                                {(accessLogs?.by_persona[p.persona_id] ?? 0) > 0 && (
+                                  <span className="text-sky-400">👁 {accessLogs!.by_persona[p.persona_id]}회</span>
+                                )}
                               </div>
                             </div>
                             <div className="flex items-center gap-1.5 shrink-0">
