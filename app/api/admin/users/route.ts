@@ -76,15 +76,15 @@ export async function GET(req: NextRequest) {
   const { data: latestVideos } = personaIds.length > 0
     ? await supabase
         .from('user_videos')
-        .select('persona_id, created_at')
+        .select('persona_id, added_at')
         .in('persona_id', personaIds)
-        .order('created_at', { ascending: false })
+        .order('added_at', { ascending: false })
     : { data: [] }
 
   const latestMap: Record<string, string> = {}
   for (const v of latestVideos ?? []) {
     const pid = v.persona_id as string
-    if (!latestMap[pid]) latestMap[pid] = v.created_at as string
+    if (!latestMap[pid]) latestMap[pid] = v.added_at as string
   }
 
   // 5. 유저별 페르소나 그룹핑

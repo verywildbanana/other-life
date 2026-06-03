@@ -92,7 +92,8 @@ export async function GET(req: NextRequest) {
       .order('accessed_at', { ascending: false }),
     supabase
       .from('access_logs')
-      .select('persona_id, ip_hash'),
+      .select('persona_id, ip_hash')
+      .limit(50000),
   ])
 
   // admin IP 제외 후 전체 집계
