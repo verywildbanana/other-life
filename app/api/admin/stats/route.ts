@@ -83,16 +83,24 @@ export async function GET(req: NextRequest) {
   const since7d = new Date(Date.now() - periodDays * 24 * 60 * 60 * 1000).toISOString()
   const myIpHash = getAdminIpHash(req)
 
-  const { data: logRows } = await supabase
-    .from('access_logs')
-    .select('persona_id, country, accessed_at, ip_hash')
-    .gte('accessed_at', since7d)
-    .order('accessed_at', { ascending: false })
+  // 기간별(7d/30d/90d) 조회 + 누적(전체) 조회 — 병렬 실행
+  const [{ data: logRows }, { data: allLogRows }] = await Promise.all([
+    supabase
+      .from('access_logs')
+      .select('persona_id, country, accessed_at, ip_hash')
+      .gte('accessed_at', since7d)
+      .order('accessed_at', { ascending: false }),
+    supabase
+      .from('access_logs')
+      .select('persona_id, ip_hash'),
+  ])
 
   // admin IP 제외 후 전체 집계
   const externalRows = (logRows ?? []).filter((r) => r.ip_hash !== myIpHash)
+  const allExternalRows = (allLogRows ?? []).filter((r) => r.ip_hash !== myIpHash)
 
   const accessByPersona: Record<string, number> = {}
+  const allTimeByPersona: Record<string, number> = {}
   const countryCount: Record<string, number> = {}
   const dailyCount: Record<string, number> = {}
   const uniqueIps = new Set<string>()
@@ -105,12 +113,19 @@ export async function GET(req: NextRequest) {
     if (row.ip_hash) uniqueIps.add(row.ip_hash)
   }
 
+  // 누적 집계
+  for (const row of allExternalRows) {
+    allTimeByPersona[row.persona_id] = (allTimeByPersona[row.persona_id] ?? 0) + 1
+  }
+
   const accessLogs = {
-    total_7d: externalRows.length,          // admin 제외 총 요청 수
-    unique_ips: uniqueIps.size,             // admin 제외 고유 방문자 수 (= external_unique_ips)
-    external_unique_ips: uniqueIps.size,    // 하위 호환성 유지
+    total_7d: externalRows.length,
+    total_all: allExternalRows.length,
+    unique_ips: uniqueIps.size,
+    external_unique_ips: uniqueIps.size,
     my_ip_hash: myIpHash,
-    by_persona: accessByPersona,
+    by_persona: accessByPersona,              // 기간별 (7d/30d/90d)
+    all_time_by_persona: allTimeByPersona,    // 누적 전체
     by_country: Object.entries(countryCount)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 10)
