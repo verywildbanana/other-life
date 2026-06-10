@@ -47,7 +47,8 @@ export const metadata: Metadata = {
     },
   },
   verification: {
-    google: '-efCTUv6tXM5wHSb8WsTQ6ekRBdwBAKtCVeuK_ZGJxk',
+    // play.anomess.com 인증 + other-life.vercel.app 인증 (GSC 주소 변경용)
+    google: ['-efCTUv6tXM5wHSb8WsTQ6ekRBdwBAKtCVeuK_ZGJxk', 'ARx7X1sVLfQHWKRkaF2bRaxvzfA-8nHXxJpQS4wMTSc'],
   },
   openGraph: {
     type: 'website',
