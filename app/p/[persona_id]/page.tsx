@@ -1,6 +1,7 @@
 import { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { loadPersonaAsync, listPersonas, listAllPersonas } from '@/lib/personas'
+import { getPaginatedFeed } from '@/lib/feed'
 import FeedView from './FeedView'
 
 interface Props {
@@ -96,11 +97,13 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
 export default async function PersonaPage({ params }: Props) {
   const { persona_id } = await params
   // 시스템 페르소나(파일) + 유저 페르소나(DB) 모두 처리
-  const [persona, allPersonas] = await Promise.all([
+  // initialFeed: SSR HTML에 영상 목록 포함 → Googlebot이 콘텐츠 읽을 수 있음
+  const [persona, allPersonas, initialFeed] = await Promise.all([
     loadPersonaAsync(persona_id),
     listAllPersonas(),
+    getPaginatedFeed(persona_id, 0, 20, true).catch(() => null),
   ])
   if (!persona) notFound()
 
-  return <FeedView feed={null} persona={persona} allPersonas={allPersonas} />
+  return <FeedView feed={initialFeed} persona={persona} allPersonas={allPersonas} />
 }
