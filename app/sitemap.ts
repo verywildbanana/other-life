@@ -15,13 +15,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.9,
   }))
 
-  return [
-    {
-      url: BASE_URL,
-      lastModified: new Date(),
-      changeFrequency: 'daily' as const,
-      priority: 1.0,
-    },
-    ...personaRoutes,
-  ]
+  // 루트 URL은 리디렉트되므로 제외 — GSC "리디렉션이 포함된 페이지" 오류 방지
+  return personaRoutes
 }

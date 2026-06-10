@@ -70,7 +70,7 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
         'ko': `${BASE_URL}/p/${persona_id}?lang=ko`,
         'ja': `${BASE_URL}/p/${persona_id}?lang=ja`,
         'en': `${BASE_URL}/p/${persona_id}?lang=en`,
-        'x-default': `${BASE_URL}/p/${persona_id}?lang=en`,
+        'x-default': canonicalUrl,
       },
     },
     openGraph: {

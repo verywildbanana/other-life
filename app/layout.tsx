@@ -66,6 +66,23 @@ export const metadata: Metadata = {
   },
 }
 
+const websiteJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: 'Anomess',
+  alternateName: 'anomess',
+  url: BASE_URL,
+  description: 'Peek into other people\'s YouTube feeds and discover what you never knew you were missing. See the world beyond your own algorithm.',
+  potentialAction: {
+    '@type': 'SearchAction',
+    target: {
+      '@type': 'EntryPoint',
+      urlTemplate: `${BASE_URL}/p/{persona_id}`,
+    },
+    'query-input': 'required name=persona_id',
+  },
+}
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -74,6 +91,11 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${geist.variable} h-full dark`}>
       <head>
+        {/* WebSite JSON-LD — Google 브랜드명 "anomess" 인식용 */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
+        />
         {/* PWA */}
         <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
         <meta name="mobile-web-app-capable" content="yes" />
