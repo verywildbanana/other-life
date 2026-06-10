@@ -1,25 +1,15 @@
-'use client'
+import { headers } from 'next/headers'
+import { redirect } from 'next/navigation'
 
-import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-
-// 루트(/) — 브라우저 언어 감지 후 언어별 피드로 리디렉션
+// 루트(/) — Accept-Language 헤더로 언어 감지 후 서버사이드 리디렉션
 // ko → ?lang=ko, ja → ?lang=ja, 그 외 → ?lang=en
-export default function RootPage() {
-  const router = useRouter()
+export default async function RootPage() {
+  const headersList = await headers()
+  const acceptLang = headersList.get('accept-language') ?? ''
 
-  useEffect(() => {
-    const browserLang = navigator.language ?? ''
-    let lang = 'en'
-    if (browserLang.startsWith('ko')) lang = 'ko'
-    else if (browserLang.startsWith('ja')) lang = 'ja'
-    router.replace(`/p/wealthy_single_30s?lang=${lang}`)
-  }, [router])
+  let lang = 'en'
+  if (acceptLang.toLowerCase().includes('ko')) lang = 'ko'
+  else if (acceptLang.toLowerCase().includes('ja')) lang = 'ja'
 
-  return (
-    <main className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center px-6 text-center">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/images/anomess-logo.png" alt="Anomess" className="h-24 w-auto rounded-2xl" />
-    </main>
-  )
+  redirect(`/p/wealthy_single_30s?lang=${lang}`)
 }

@@ -1923,7 +1923,8 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     if (!savedId) return persona
     return allPersonas.find(p => p.id === savedId) ?? persona
   })
-  const [videos, setVideos] = useState<Video[]>([])
+  // SSR에서 넘어온 initialFeed로 초기화 → HTML에 영상 제목 포함돼 Googlebot이 읽을 수 있음
+  const [videos, setVideos] = useState<Video[]>(() => feed?.videos ?? [])
   const [hasMore, setHasMore] = useState(false)
   const hasMoreRef = useRef(false)
   const [nextOffset, setNextOffset] = useState(0)
@@ -1941,8 +1942,8 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
   }, [])
   const [isLoading, setIsLoading] = useState(false)
   const [total, setTotal] = useState(0)
-  // 초기 클라이언트 fetch 완료 전 로딩 상태
-  const [isInitialLoading, setIsInitialLoading] = useState(true)
+  // SSR feed 있으면 즉시 표시, 없으면 클라이언트 fetch 완료까지 로딩
+  const [isInitialLoading, setIsInitialLoading] = useState(!(feed?.videos?.length))
   // fetch 완료 후 실제 영상이 0개인 경우 — "피드 없음" 표시용 (로딩 중에는 false 유지)
   const [isEmpty, setIsEmpty] = useState(false)
   const [viewStats, setViewStats] = useState<{ weekly: number; total: number } | null>(null)
