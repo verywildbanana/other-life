@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { Persona } from '@/types'
 
 type VideoStats = Record<string, { total: number; with_summary: number; stt_skip: number; no_summary: number; latest_date: string | null }>
