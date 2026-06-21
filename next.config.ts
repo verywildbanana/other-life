@@ -25,14 +25,6 @@ const nextConfig: NextConfig = {
         destination: 'https://play.anomess.com/:path*',
         permanent: true,
       },
-      {
-        // other-life.vercel.app → play.anomess.com 영구 리다이렉트
-        // 구글이 old URL 대신 play.anomess.com을 정식 주소로 인식하도록 유도
-        source: '/:path*',
-        has: [{ type: 'host', value: 'other-life.vercel.app' }],
-        destination: 'https://play.anomess.com/:path*',
-        permanent: true,
-      },
     ]
   },
   images: {
