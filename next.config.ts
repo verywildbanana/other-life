@@ -39,6 +39,12 @@ const nextConfig: NextConfig = {
         headers: securityHeaders,
       },
       {
+        // other-life.vercel.app: 구글 색인 제외 (play.anomess.com이 정식 주소)
+        source: '/(.*)',
+        has: [{ type: 'host', value: 'other-life.vercel.app' }],
+        headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }],
+      },
+      {
         // 피드 API: play.anomess.com + other-life.vercel.app 허용 (공개 읽기 전용)
         source: '/api/feed/:path*',
         headers: [
