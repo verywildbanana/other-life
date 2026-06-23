@@ -1,7 +1,7 @@
 import { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { loadPersonaAsync, listPersonas, listAllPersonas } from '@/lib/personas'
-import { getPaginatedFeed } from '@/lib/feed'
+import { loadPersonaAsync, listPersonas } from '@/lib/personas'
+import { getSSRFeed } from '@/lib/feed'
 import FeedView from './FeedView'
 
 interface Props {
@@ -98,10 +98,11 @@ export default async function PersonaPage({ params }: Props) {
   const { persona_id } = await params
   // 시스템 페르소나(파일) + 유저 페르소나(DB) 모두 처리
   // initialFeed: SSR HTML에 영상 목록 포함 → Googlebot이 콘텐츠 읽을 수 있음
-  const [persona, allPersonas, initialFeed] = await Promise.all([
+  // listPersonas()는 파일시스템에서 동기 읽기 (~1ms) — 유저 페르소나는 FeedView 마운트 시 /api/personas로 클라이언트 fetch
+  const allPersonas = listPersonas()
+  const [persona, initialFeed] = await Promise.all([
     loadPersonaAsync(persona_id),
-    listAllPersonas(),
-    getPaginatedFeed(persona_id, 0, 20, true).catch(() => null),
+    getSSRFeed(persona_id).catch(() => null),
   ])
   if (!persona) notFound()
 

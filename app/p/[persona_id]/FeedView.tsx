@@ -1968,8 +1968,8 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
   const [showTerms, setShowTerms] = useState(false)
   const [addVideoOpen, setAddVideoOpen] = useState(false)
   // PTR 완료 후 fade-in 제어 — false: 콘텐츠 숨김(no-transition), true: fade-in(300ms)
-  // 초기 진입 시에도 false → 클라이언트 fetch 완료 후 fade-in (SSR flash 방지)
-  const [contentReady, setContentReady] = useState(false)
+  // SSR 데이터가 있으면 즉시 표시 — 클라이언트 fetch 대기 없이 바로 렌더
+  const [contentReady, setContentReady] = useState(!!(feed?.videos?.length))
   // hover 미리보기 — 현재 hover 중인 video_id (데스크톱)
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
