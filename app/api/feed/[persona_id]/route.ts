@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getPaginatedFeed } from '@/lib/feed'
+import { getCachedFeed } from '@/lib/feed'
 import { getPaginatedUserFeed } from '@/lib/user-feed'
 import { logFeedAccess } from '@/lib/access-log'
 import { verifyToken, COOKIE_NAME } from '@/lib/feed-token'
@@ -61,7 +61,8 @@ export async function GET(
     })
   }
 
-  const feed = await getPaginatedFeed(persona_id, offset, limit, skipCount)
+  // 5분 캐시 적용 — 동일 페르소나 반복 요청 시 Supabase 쿼리 생략 (~50ms vs 1s)
+  const feed = await getCachedFeed(persona_id, skipCount)
 
   if (!feed) {
     return NextResponse.json({ error: '피드 없음' }, { status: 404 })

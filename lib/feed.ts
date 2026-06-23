@@ -1,3 +1,4 @@
+import { unstable_cache } from 'next/cache'
 import { createServiceClient } from '@/lib/supabase/server'
 import { DateGroup, FeedPageResponse, FeedResponse, Video } from '@/types'
 import { loadPersona } from '@/lib/personas'
@@ -192,3 +193,12 @@ export async function getPaginatedFeed(
     next_offset: rows.length,
   }
 }
+
+// 피드 데이터 5분 캐시 — 동일 페르소나 반복 요청 시 Supabase 쿼리 생략
+// Stage1(skipCount=true) / Stage2(skipCount=false) 별도 캐시 키
+// 영상은 하루 1회 수집이므로 5분 stale은 UX에 영향 없음
+export const getCachedFeed = unstable_cache(
+  (personaId: string, skipCount: boolean) => getPaginatedFeed(personaId, 0, 0, skipCount),
+  ['feed-data'],
+  { revalidate: 300 },
+)
