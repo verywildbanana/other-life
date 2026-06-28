@@ -68,12 +68,14 @@ export async function logSuspicious(
 
   if (error) return
 
-  // 최근 10분 내 같은 IP의 요청 수 확인
+  // 최근 10분 내 같은 IP + 같은 reason의 요청 수 확인
+  // reason별로 독립 집계 → invalid_sig 5회 임계값이 missing 트래픽에 오염되지 않음
   const since = new Date(Date.now() - 10 * 60 * 1000).toISOString()
   const { count } = await supabaseAdmin
     .from('suspicious_requests')
     .select('*', { count: 'exact', head: true })
     .eq('ip_hash', ipHash)
+    .eq('reason', reason)
     .gte('created_at', since)
 
   if (!count) return
