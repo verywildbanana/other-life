@@ -43,7 +43,7 @@ export default function DmcaPage() {
       </ul>
 
       <p className="text-zinc-600 text-xs pt-4">
-        DMCA 문의: verywildbanana@gmail.com
+        DMCA 문의: hello@anomess.com
       </p>
     </main>
   )
