@@ -30,9 +30,22 @@ async function sha256hex(value: string): Promise<string> {
     .join('')
 }
 
+// reason별 severity 설정
+// - threshold: 10분 내 이 횟수 배수마다 알람
+// - emoji / label: Telegram 메시지에 표시
+const REASON_CONFIG: Record<string, { threshold: number; emoji: string; label: string }> = {
+  invalid_sig: { threshold: 5,   emoji: '🔴', label: 'CRITICAL — 토큰 위조 시도' },
+  ua_mismatch: { threshold: 20,  emoji: '🟠', label: 'HIGH — 다른 UA로 토큰 재사용' },
+  expired:     { threshold: 30,  emoji: '🟡', label: 'MEDIUM — 만료 토큰 재사용' },
+  malformed:   { threshold: 10,  emoji: '🟠', label: 'HIGH — 토큰 형식 오류' },
+  missing:     { threshold: 200, emoji: '⚪', label: 'INFO — 토큰 없음 (크롤러 포함)' },
+}
+const DEFAULT_CONFIG = { threshold: 20, emoji: '⚠️', label: 'UNKNOWN' }
+
 /**
- * 의심 요청 기록 + 임계값 초과 시 알림
- * - 10분 내 동일 IP 20회↑ → 알림 (20배수마다 반복)
+ * 의심 요청 기록 + severity별 임계값 초과 시 Telegram 알림
+ * - missing: 200회 배수마다 (크롤러 급증 감지용, 일반 알람 제외)
+ * - invalid_sig: 5회 배수마다 (가장 민감)
  * - fire-and-forget 방식으로 호출 (await 불필요)
  */
 export async function logSuspicious(
@@ -53,28 +66,30 @@ export async function logSuspicious(
     persona_id: personaId,
   })
 
-  if (error) return // DB 에러는 무시
+  if (error) return
 
-  // 최근 10분 내 같은 IP의 요청 수 확인
+  // 최근 10분 내 같은 IP + 같은 reason의 요청 수 확인
+  // reason별로 독립 집계 → invalid_sig 5회 임계값이 missing 트래픽에 오염되지 않음
   const since = new Date(Date.now() - 10 * 60 * 1000).toISOString()
   const { count } = await supabaseAdmin
     .from('suspicious_requests')
     .select('*', { count: 'exact', head: true })
     .eq('ip_hash', ipHash)
+    .eq('reason', reason)
     .gte('created_at', since)
 
   if (!count) return
 
-  // 20회 배수일 때만 알림 (첫 알림: 20회, 이후 40, 60...)
-  if (count % 20 === 0) {
-    const now = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })
-    await sendAlert(
-      `🚨 <b>PersonaFeed API 이상 접근 감지</b>\n\n` +
-      `⏰ ${now}\n` +
-      `📍 IP hash: <code>${ipHash.slice(0, 12)}...</code>\n` +
-      `🔢 10분 내 접근: <b>${count}회</b>\n` +
-      `❌ 사유: <code>${reason}</code>\n` +
-      `🎭 페르소나: ${personaId}`,
-    )
-  }
+  const cfg = REASON_CONFIG[reason] ?? DEFAULT_CONFIG
+  if (count % cfg.threshold !== 0) return
+
+  const now = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })
+  await sendAlert(
+    `${cfg.emoji} <b>PersonaFeed API 이상 접근</b> [${cfg.label}]\n\n` +
+    `⏰ ${now}\n` +
+    `📍 IP hash: <code>${ipHash.slice(0, 12)}...</code>\n` +
+    `🔢 10분 내 접근: <b>${count}회</b>\n` +
+    `❌ 사유: <code>${reason}</code>\n` +
+    `🎭 페르소나: ${personaId}`,
+  )
 }
