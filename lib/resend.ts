@@ -50,7 +50,7 @@ export async function sendFeedbackNotification({
     from: FROM,
     to: owner.email,
     subject: subject[lang] ?? subject.ko,
-    text: `피드백 내용:\n${suggestion}\n\n---\n이 이메일은 Anomess에서 자동 발송되었습니다.\n문의: verywildbanana@gmail.com`,
+    text: `피드백 내용:\n${suggestion}\n\n---\n이 이메일은 Anomess에서 자동 발송되었습니다.\n문의: hello@anomess.com`,
   })
 }
 
@@ -81,6 +81,6 @@ Anomess에서 생성하신 "${personaName}" 피드가 ${daysSinceUpdate}일째 �
 
 ---
 이 이메일은 Anomess에서 자동 발송되었습니다.
-문의: verywildbanana@gmail.com`,
+문의: hello@anomess.com`,
   })
 }

@@ -9,7 +9,7 @@ const content: Record<Lang, { title: string; updated: string; sections: { headin
   ko: {
     title: '개인정보처리방침',
     updated: '최종 수정: 2026년 5월 17일',
-    contact: '개인정보 보호 책임자: verywildbanana@gmail.com',
+    contact: '개인정보 보호 책임자: hello@anomess.com',
     sections: [
       { heading: '1. 수집하는 개인정보', body: ['Google OAuth 인증 시: 이메일 주소, 이름, 프로필 사진 URL', '서비스 이용 시: 접속 IP 해시, 국가, 페르소나 조회 기록', '유저 생성 콘텐츠: 닉네임, 생성한 페르소나, 추가한 YouTube 링크'] },
       { heading: '2. 수집 목적', body: ['회원 인증 및 서비스 제공', '서비스 품질 향상 및 어뷰징 방지', '중요 공지사항 전달 (이메일)'] },
@@ -22,7 +22,7 @@ const content: Record<Lang, { title: string; updated: string; sections: { headin
   en: {
     title: 'Privacy Policy',
     updated: 'Last updated: May 17, 2026',
-    contact: 'Privacy contact: verywildbanana@gmail.com',
+    contact: 'Privacy contact: hello@anomess.com',
     sections: [
       { heading: '1. Information We Collect', body: ['Upon Google OAuth authentication: email address, name, profile picture URL', 'During service use: hashed IP address, country, persona view history', 'User-generated content: nickname, created personas, added YouTube links'] },
       { heading: '2. Purpose of Collection', body: ['Member authentication and service provision', 'Service quality improvement and abuse prevention', 'Delivery of important notices (via email)'] },
@@ -35,7 +35,7 @@ const content: Record<Lang, { title: string; updated: string; sections: { headin
   ja: {
     title: 'プライバシーポリシー',
     updated: '最終更新：2026年5月17日',
-    contact: '個人情報保護責任者：verywildbanana@gmail.com',
+    contact: '個人情報保護責任者：hello@anomess.com',
     sections: [
       { heading: '1. 収集する個人情報', body: ['Google OAuth認証時：メールアドレス、氏名、プロフィール画像URL', 'サービス利用時：アクセスIPハッシュ、国、ペルソナ閲覧履歴', 'ユーザー生成コンテンツ：ニックネーム、作成したペルソナ、追加したYouTubeリンク'] },
       { heading: '2. 収集目的', body: ['会員認証およびサービス提供', 'サービス品質向上および不正利用防止', '重要なお知らせの配信（メール）'] },

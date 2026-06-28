@@ -77,7 +77,7 @@ function TermsContent() {
           }
         </section>
       ))}
-      <p className="text-zinc-600 text-xs pt-4">Contact: verywildbanana@gmail.com</p>
+      <p className="text-zinc-600 text-xs pt-4">Contact: hello@anomess.com</p>
     </main>
   )
 }
