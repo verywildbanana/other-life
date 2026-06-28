@@ -6,13 +6,26 @@ import { verifyToken, COOKIE_NAME } from '@/lib/feed-token'
 import { logSuspicious } from '@/lib/suspicious'
 import { getClientIp, hashIp, checkFeedRateLimit } from '@/lib/rate-limit'
 
+// Googlebot UA 패턴 — 색인 요청 시 피드 API를 401 없이 통과시킴
+const GOOGLEBOT_RE = /Googlebot|Google-InspectionTool|AdsBot-Google/i
+
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ persona_id: string }> },
 ) {
+  const ua = req.headers.get('user-agent') ?? ''
+
+  // Googlebot은 토큰 없이 통과 — SSR HTML에 이미 콘텐츠 있으므로 빈 피드 반환
+  if (GOOGLEBOT_RE.test(ua)) {
+    const { persona_id } = await params
+    return NextResponse.json(
+      { persona_id, persona_name: '', total_accumulated: 0, videos: [], has_more: false, next_offset: 0 },
+      { headers: { 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' } },
+    )
+  }
+
   // 토큰 검증 — 우리 서비스 페이지에서 발급된 세션만 허용
   const token = req.cookies.get(COOKIE_NAME)?.value
-  const ua = req.headers.get('user-agent') ?? ''
   const verify = await verifyToken(token, ua)
 
   if (!verify.ok) {
