@@ -65,6 +65,10 @@ export async function logSuspicious(
 
   if (!count) return
 
+  // missing(토큰 없음)은 Googlebot·크롤러 정상 트래픽 포함 — 알람 제외, DB 기록만 유지
+  // invalid_sig·ua_mismatch·expired 등 실제 의심 패턴만 알람
+  if (reason === 'missing') return
+
   // 20회 배수일 때만 알림 (첫 알림: 20회, 이후 40, 60...)
   if (count % 20 === 0) {
     const now = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })
