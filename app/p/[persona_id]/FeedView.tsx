@@ -1017,187 +1017,7 @@ function AddVideoModal({ lang, personaId, onClose, onAdded }: AddVideoModalProps
 
 type Lang = 'ko' | 'en' | 'ja'
 
-// ── 페르소나 바텀시트 ──────────────────────────────────────────────────────────
-interface PersonaSheetProps {
-  personas: import('@/types').Persona[]
-  currentId: string
-  lang: Lang
-  myPersonaIds: Set<string>
-  likedPersonaIds: Set<string>
-  onSelect: (id: string) => void
-  onClose: () => void
-}
-
-function PersonaBottomSheet({ personas, currentId, lang, myPersonaIds, likedPersonaIds, onSelect, onClose }: PersonaSheetProps) {
-  const sheetRef = useRef<HTMLDivElement>(null)
-  const listRef  = useRef<HTMLDivElement>(null)
-  const [hasScrollBelow, setHasScrollBelow] = useState(true)
-
-  // 스크롤 여부 감지 — 하단에 더 내용이 있으면 마스크 표시
-  useEffect(() => {
-    const el = listRef.current
-    if (!el) return
-    const check = () => {
-      setHasScrollBelow(el.scrollTop + el.clientHeight < el.scrollHeight - 4)
-    }
-    check()
-    el.addEventListener('scroll', check, { passive: true })
-    return () => el.removeEventListener('scroll', check)
-  }, [])
-
-  // 바깥 클릭 시 닫기
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (sheetRef.current && !sheetRef.current.contains(e.target as Node)) {
-        onClose()
-      }
-    }
-    // 마운트 직후 바로 등록하면 열린 클릭이 바깥 클릭으로 판정됨 → 1 tick 지연
-    const id = setTimeout(() => document.addEventListener('mousedown', handleClick), 0)
-    return () => { clearTimeout(id); document.removeEventListener('mousedown', handleClick) }
-  }, [onClose])
-
-  // ESC 닫기
-  useEffect(() => {
-    function handleKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose() }
-    document.addEventListener('keydown', handleKey)
-    return () => document.removeEventListener('keydown', handleKey)
-  }, [onClose])
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-      {/* 오버레이 */}
-      <div className="absolute inset-0 bg-black/60" />
-
-      {/* 시트 */}
-      <div
-        ref={sheetRef}
-        className="relative w-full sm:max-w-xs bg-zinc-900 rounded-t-2xl sm:rounded-2xl
-                   border border-zinc-700 shadow-2xl
-                   max-h-[60vh] flex flex-col overflow-hidden
-                   animate-in slide-in-from-bottom-4 duration-200"
-      >
-        {/* 핸들 바 (모바일) */}
-        <div className="flex justify-center pt-3 pb-1 sm:hidden">
-          <div className="w-10 h-1 rounded-full bg-zinc-600" />
-        </div>
-
-        {/* 헤더 */}
-        <div className="flex items-center justify-between px-4 py-2.5 border-b border-zinc-800">
-          <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
-            {{ ko: '누구의 피드를 볼까요?', en: 'Whose feed are you exploring?', ja: '誰のフィードを見ますか？' }[lang]}
-          </span>
-          <button
-            onClick={onClose}
-            className="text-zinc-500 hover:text-zinc-300 p-1 rounded-lg hover:bg-zinc-800 transition-colors"
-            aria-label="닫기"
-          >
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <path d="M2 2l10 10M12 2L2 12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
-            </svg>
-          </button>
-        </div>
-
-        {/* 목록 */}
-        <div
-          ref={listRef}
-          className="overflow-y-auto flex-1 py-1"
-          style={{ WebkitOverflowScrolling: 'touch' }}
-        >
-          {(() => {
-            const myPersonas        = personas.filter(p => myPersonaIds.has(p.id))
-            // 좋아요 누른 것 상위로 정렬
-            const systemPersonas    = personas
-              .filter(p => !p.id.startsWith('u_'))
-              .sort((a, b) => (likedPersonaIds.has(b.id) ? 1 : 0) - (likedPersonaIds.has(a.id) ? 1 : 0))
-            const communityPersonas = personas
-              .filter(p => p.id.startsWith('u_') && !myPersonaIds.has(p.id))
-              .sort((a, b) => (likedPersonaIds.has(b.id) ? 1 : 0) - (likedPersonaIds.has(a.id) ? 1 : 0))
-
-            const labels = {
-              my:        { ko: '내 피드',   en: 'My Feeds',       ja: 'マイフィード' }[lang],
-              system:    { ko: '시스템 피드', en: 'System Feeds',   ja: 'システムフィード' }[lang],
-              community: { ko: '유저 피드',  en: 'User Feeds',  ja: 'ユーザーフィード' }[lang],
-            }
-
-            const renderItem = (p: import('@/types').Persona, badge?: 'my') => {
-              const isActive = p.id === currentId
-              const isLiked  = likedPersonaIds.has(p.id)
-              const name = p.name_i18n?.[lang] ?? p.name
-              return (
-                <button
-                  key={p.id}
-                  onClick={() => { onSelect(p.id); onClose() }}
-                  className={`w-full text-left px-4 py-2.5 flex items-center justify-between gap-3 transition-colors
-                    ${isActive ? 'bg-zinc-800 text-zinc-100' : 'text-zinc-300 hover:bg-zinc-800/60'}`}
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    {/* 하트 아이콘 — 뷰잉 전용 (클릭 불가) */}
-                    <span className="shrink-0 p-0.5">
-                      {isLiked ? (
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" className="text-rose-500">
-                          <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-                        </svg>
-                      ) : (
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-600">
-                          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-                        </svg>
-                      )}
-                    </span>
-                    <span className={`text-sm truncate ${isActive ? 'font-medium' : ''}`}>{name}</span>
-                    {badge === 'my' && (
-                      <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-indigo-900/60 text-indigo-300 border border-indigo-700/50">MY</span>
-                    )}
-                  </div>
-                  {isActive && (
-                    <svg className="shrink-0 text-zinc-400" width="13" height="13" viewBox="0 0 13 13" fill="none">
-                      <path d="M1.5 6.5l3.5 3.5 6-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  )}
-                </button>
-              )
-            }
-
-            const SectionHeader = ({ label, color = 'text-zinc-500' }: { label: string; color?: string }) => (
-              <div className="px-4 pt-2.5 pb-1">
-                <span className={`text-[10px] font-semibold uppercase tracking-wider ${color}`}>{label}</span>
-              </div>
-            )
-
-            const Divider = () => <div className="mx-4 my-1 border-t border-zinc-800" />
-
-            return (
-              <>
-                {myPersonas.length > 0 && (
-                  <>
-                    <SectionHeader label={labels.my} color="text-indigo-400" />
-                    {myPersonas.map(p => renderItem(p, 'my'))}
-                    <Divider />
-                  </>
-                )}
-                <SectionHeader label={labels.system} />
-                {systemPersonas.map(p => renderItem(p))}
-                {communityPersonas.length > 0 && (
-                  <>
-                    <Divider />
-                    <SectionHeader label={labels.community} color="text-amber-500/80" />
-                    {communityPersonas.map(p => renderItem(p))}
-                  </>
-                )}
-              </>
-            )
-          })()}
-        </div>
-
-        {/* 하단 페이드 마스크 — 스크롤 끝에 도달하면 사라짐 (pointer-events-none으로 스크롤 방해 안 함) */}
-        {hasScrollBelow && (
-          <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-12
-                          bg-gradient-to-t from-zinc-900 to-transparent rounded-b-2xl" />
-        )}
-      </div>
-    </div>
-  )
-}
+// ── 페르소나 바텀시트 제거됨 — 페르소나 전환은 포털(/)에서 ──────────────────
 
 const LABELS = {
   subtitle: {
@@ -1951,7 +1771,6 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
   const [showComments, setShowComments] = useState(false)
   const [showLoginPrompt, setShowLoginPrompt] = useState(false)
   const [showLikeLoginPrompt, setShowLikeLoginPrompt] = useState(false)
-  const [showPersonaSheet, setShowPersonaSheet] = useState(false)
   const [navigating, setNavigating] = useState(false)
   const [user, setUser] = useState<User | null>(null)
   const [showUserMenu, setShowUserMenu] = useState(false)
@@ -2938,20 +2757,15 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
           </div>
         </div>
 
-        {/* 페르소나 선택 버튼 */}
-        <button
-          onClick={() => setShowPersonaSheet(true)}
-          className="w-full flex items-center justify-between gap-2
-                     bg-zinc-800 border border-zinc-700 hover:border-zinc-500
-                     text-sm text-zinc-100 rounded-lg px-3 py-1.5
-                     transition-colors focus:outline-none focus:ring-1 focus:ring-zinc-500"
-          aria-label={t('selectPersona', lang)}
-        >
+        {/* 현재 페르소나 이름 표시 (읽기전용 — 변경은 포털(/)에서) */}
+        <div className="w-full flex items-center gap-2 px-1 py-1 text-sm text-zinc-400">
+          <a href={`/?lang=${lang}`} className="text-zinc-600 hover:text-zinc-400 transition-colors shrink-0" aria-label="포털로 이동">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M9 3L5 7l4 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </a>
           <span className="truncate">{getPersonaName(currentPersona, lang)}</span>
-          <svg className="shrink-0 text-zinc-400" width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </button>
+        </div>
       </header>
 
       {/* 피드 타이틀 + 하트 — 항상 표시 */}
@@ -3164,18 +2978,6 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
             setShowLikeLoginPrompt(false)
             window.location.href = `/login?redirectTo=${encodeURIComponent(window.location.pathname + window.location.search)}`
           }}
-        />
-      )}
-
-      {showPersonaSheet && (
-        <PersonaBottomSheet
-          personas={livePersonas}
-          currentId={currentPersona.id}
-          lang={lang}
-          myPersonaIds={myPersonaIds}
-          likedPersonaIds={likedPersonaIds}
-          onSelect={switchPersona}
-          onClose={() => setShowPersonaSheet(false)}
         />
       )}
 

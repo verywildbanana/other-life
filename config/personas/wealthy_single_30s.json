@@ -33,11 +33,28 @@
     "Elayna Carausu"
   ],
   "title_boost_terms": [
-    "yacht", "sailing", "luxury", "wealth", "투자", "자산",
-    "요트", "럭셔리", "financial", "freedom", "private", "quiet"
+    "yacht",
+    "sailing",
+    "luxury",
+    "wealth",
+    "투자",
+    "자산",
+    "요트",
+    "럭셔리",
+    "financial",
+    "freedom",
+    "private",
+    "quiet"
   ],
   "negative_terms": [
-    "먹방", "gaming", "게임", "리뷰", "언박싱", "드라마", "아이돌"
+    "먹방",
+    "gaming",
+    "게임",
+    "리뷰",
+    "언박싱",
+    "드라마",
+    "아이돌"
   ],
-  "max_results_per_keyword": 5
+  "max_results_per_keyword": 5,
+  "concept_image": "https://yaczdcpdedfzoghdohko.supabase.co/storage/v1/object/public/persona-images/trailer3.png"
 }

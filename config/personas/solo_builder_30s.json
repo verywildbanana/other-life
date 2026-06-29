@@ -23,17 +23,41 @@
     "SaaS pricing 전략"
   ],
   "channel_whitelist": [
-    "Fireship", "ThePrimeagen", "Traversy Media",
-    "Indie Hackers", "Starter Story", "Y Combinator",
-    "개발바닥", "노마드 코더"
+    "Fireship",
+    "ThePrimeagen",
+    "Traversy Media",
+    "Indie Hackers",
+    "Starter Story",
+    "Y Combinator",
+    "개발바닥",
+    "노마드 코더"
   ],
   "title_boost_terms": [
-    "AI", "SaaS", "indie hacker", "solo", "LLM", "RAG",
-    "1인 개발", "수익화", "MVP", "Product Hunt",
-    "pricing", "conversion", "Stripe", "자동화", "빌더"
+    "AI",
+    "SaaS",
+    "indie hacker",
+    "solo",
+    "LLM",
+    "RAG",
+    "1인 개발",
+    "수익화",
+    "MVP",
+    "Product Hunt",
+    "pricing",
+    "conversion",
+    "Stripe",
+    "자동화",
+    "빌더"
   ],
   "negative_terms": [
-    "아이돌", "먹방", "게임", "드라마", "코인 투기", "정치", "예능"
+    "아이돌",
+    "먹방",
+    "게임",
+    "드라마",
+    "코인 투기",
+    "정치",
+    "예능"
   ],
-  "max_results_per_keyword": 5
+  "max_results_per_keyword": 5,
+  "concept_image": "https://yaczdcpdedfzoghdohko.supabase.co/storage/v1/object/public/persona-images/trailer3.png"
 }

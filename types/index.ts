@@ -36,6 +36,8 @@ export interface Persona {
   description: string
   name_i18n?: Record<string, string>
   description_i18n?: Record<string, string>
+  concept_image?: string
+  isUser?: boolean
 }
 
 // 페이지네이션용 플랫 피드 응답
