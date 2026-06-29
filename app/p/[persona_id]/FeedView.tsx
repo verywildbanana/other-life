@@ -2351,10 +2351,13 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     let stage1Displayed: Video[] = []
 
     // SSR 데이터가 이미 있으면 Stage 1 fetch 스킵 — 첫 로드 시 화면 교체(리프레시) 방지
+    // side effect: setVideos(stage1Displayed)로 videos state와 allVideosRef 정렬 기준 일치 필수
+    //   미일치 시 Stage 2 dedup(shownIds 기준)이 videos state와 달라 무한스크롤 중복 노출 가능
     if (isFirst && feed?.videos?.length) {
       const sorted = sortVideos(targetPersona.id, feed.videos, viewed)
       stage1Displayed = sorted.slice(0, FEED_PAGE)
       allVideosRef.current = sorted
+      setVideos(stage1Displayed)   // state ↔ ref 정렬 기준 일치 (같은 영상 재정렬 — 새 fetch 아님)
       updateHasMore(true)
       updateNextOffset(FEED_PAGE)
       setIsEmpty(false)
