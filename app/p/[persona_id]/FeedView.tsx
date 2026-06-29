@@ -2350,7 +2350,35 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     // Stage 1에서 실제 표시된 영상 — Stage 2 재조합 시 앞에 보존 (dedup 버그 방지)
     let stage1Displayed: Video[] = []
 
-    // Stage 1: 빠른 첫 화면 (50개, COUNT 스킵)
+    // SSR 데이터가 이미 있으면 Stage 1 fetch 스킵 — 첫 로드 시 화면 교체(리프레시) 방지
+    if (isFirst && feed?.videos?.length) {
+      const sorted = sortVideos(targetPersona.id, feed.videos, viewed)
+      stage1Displayed = sorted.slice(0, FEED_PAGE)
+      allVideosRef.current = sorted
+      updateHasMore(true)
+      updateNextOffset(FEED_PAGE)
+      setIsEmpty(false)
+      setIsInitialLoading(false)
+      setContentReady(true)
+      // Stage 2: 백그라운드 풀 로드만 실행 (화면 교체 없음)
+      fetch(`/api/feed/${targetPersona.id}?offset=0&limit=300`)
+        .then(r => r?.ok ? r.json() : null)
+        .then(fullData => {
+          if (cancelled || !fullData?.videos) return
+          const fullShuffled = sortVideos(targetPersona.id, fullData.videos, viewed)
+          const shownIds = new Set(stage1Displayed.map(v => v.video_id))
+          const remaining = fullShuffled.filter(v => !shownIds.has(v.video_id))
+          allVideosRef.current = [...stage1Displayed, ...remaining]
+          updateHasMore(remaining.length > 0)
+          setTotal(fullData.total_accumulated ?? fullShuffled.length)
+          setIsEmpty(fullShuffled.length === 0)
+          setCachedFeed(targetPersona.id, fullData, allVideosRef.current)
+        })
+        .catch(() => { /* 무시 */ })
+      return () => { cancelled = true }
+    }
+
+    // Stage 1: 빠른 첫 화면 (50개, COUNT 스킵) — SSR 없을 때만 실행
     fetch(`/api/feed/${targetPersona.id}?offset=0&limit=50&skip_count=1`)
       .then(r => r.ok ? r.json() : null)
       .then(data => {
