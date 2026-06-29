@@ -18,9 +18,11 @@ function PatternA({ personas, lang }: { personas: Persona[]; lang: Props['lang']
       <div style={{ gridColumn: '1', gridRow: '1 / 3' }}>
         <PersonaCard persona={personas[0]} lang={lang} />
       </div>
-      <div style={{ gridColumn: '2 / 4', gridRow: '1' }}>
-        <PersonaCard persona={personas[1]} lang={lang} />
-      </div>
+      {personas[1] && (
+        <div style={{ gridColumn: '2 / 4', gridRow: '1' }}>
+          <PersonaCard persona={personas[1]} lang={lang} />
+        </div>
+      )}
       {personas[2] && (
         <div style={{ gridColumn: '2', gridRow: '2' }}>
           <PersonaCard persona={personas[2]} lang={lang} />
@@ -79,9 +81,11 @@ function PatternC({ personas, lang }: { personas: Persona[]; lang: Props['lang']
       <div style={{ gridColumn: '1 / 3', gridRow: '1' }}>
         <PersonaCard persona={personas[0]} lang={lang} />
       </div>
-      <div style={{ gridColumn: '3', gridRow: '1 / 3' }}>
-        <PersonaCard persona={personas[1]} lang={lang} />
-      </div>
+      {personas[1] && (
+        <div style={{ gridColumn: '3', gridRow: '1 / 3' }}>
+          <PersonaCard persona={personas[1]} lang={lang} />
+        </div>
+      )}
       {personas[2] && (
         <div style={{ gridColumn: '1', gridRow: '2' }}>
           <PersonaCard persona={personas[2]} lang={lang} />
@@ -116,9 +120,10 @@ export default function PersonaGrid({ personas, lang }: Props) {
 
   return (
     <div className="flex flex-col gap-2">
-      {chunks.map((chunk, i) => (
-        <chunk.Component key={i} personas={chunk.items} lang={lang} />
-      ))}
+      {chunks.map((chunk, i) => {
+        const PatternComponent = chunk.Component
+        return <PatternComponent key={i} personas={chunk.items} lang={lang} />
+      })}
     </div>
   )
 }

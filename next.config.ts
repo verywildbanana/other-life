@@ -16,6 +16,10 @@ const securityHeaders = [
 ]
 
 const nextConfig: NextConfig = {
+  // config/personas/*.json 파일을 Vercel 서버리스 번들에 포함 (fs.readdirSync 동적 로드 대응)
+  outputFileTracingIncludes: {
+    '/**': ['./config/personas/**/*.json'],
+  },
   async redirects() {
     return [
       {
