@@ -111,10 +111,10 @@ export async function getSSRFeed(personaId: string): Promise<FeedPageResponse | 
   const supabase = createServiceClient()
 
   // summary 있는 최신 20개 우선, score순 정렬
-  // 필드는 SEO/렌더링에 필요한 최소한만 — collected_at/published_at/titles_i18n 제외
+  // titles_i18n/collected_at/published_at 포함 — 클라이언트 언어 전환 및 epochShuffle 버킷 정확도 필수
   const { data: rows } = await supabase
     .from('videos')
-    .select('video_id, persona_id, title, channel, url, thumbnail_url, collected_date, summary_i18n')
+    .select('video_id, persona_id, title, channel, url, thumbnail_url, collected_date, collected_at, published_at, titles_i18n, summary_i18n')
     .eq('persona_id', personaId)
     .order('collected_date', { ascending: false })
     .order('score', { ascending: false })
