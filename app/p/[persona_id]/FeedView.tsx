@@ -1735,14 +1735,7 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     const saved = localStorage.getItem('feed_lang') as Lang | null
     return (saved && ['ko', 'en', 'ja'].includes(saved)) ? saved : 'ko'
   })
-  const [currentPersona, setCurrentPersona] = useState<Persona>(() => {
-    if (typeof window === 'undefined') return persona
-    // URL이 유저 피드(u_*)로 직접 진입한 경우 — localStorage 복원 무시하고 URL 페르소나 사용
-    if (persona.id.startsWith('u_')) return persona
-    const savedId = localStorage.getItem('feed_last_persona')
-    if (!savedId) return persona
-    return allPersonas.find(p => p.id === savedId) ?? persona
-  })
+  const [currentPersona, setCurrentPersona] = useState<Persona>(persona)
   // SSR에서 넘어온 initialFeed로 초기화 → HTML에 영상 제목 포함돼 Googlebot이 읽을 수 있음
   const [videos, setVideos] = useState<Video[]>(() => feed?.videos ?? [])
   const [hasMore, setHasMore] = useState(false)
@@ -2352,11 +2345,6 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
     }
 
     // 최초 마운트 + 복원 페르소나가 URL과 다를 경우 URL을 조용히 교체
-    // 단, URL이 유저 피드(u_*)인 경우 복원하지 않음 (생성 직후 진입 등)
-    if (isFirst && currentPersona.id !== persona.id && !persona.id.startsWith('u_')) {
-      window.history.replaceState(null, '', `/p/${currentPersona.id}`)
-    }
-
     let cancelled = false
     const viewed = getViewedSet()
     // Stage 1에서 실제 표시된 영상 — Stage 2 재조합 시 앞에 보존 (dedup 버그 방지)
