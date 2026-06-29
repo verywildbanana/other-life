@@ -2333,8 +2333,8 @@ export default function FeedView({ feed, persona, allPersonas }: Props) {
   // window.history.pushState 사용으로 Next.js navigation이 트리거되지 않아 이 effect는
   // 초기 마운트 시에만 발동됨 (브라우저 직접 접근 / 새로고침)
   useEffect(() => {
-    // 최초 마운트: localStorage에서 복원된 페르소나가 URL 페르소나와 다르면 복원값 사용
-    // (setCurrentPersona로 덮어쓰지 않음 — useState 초기화에서 이미 올바른 값 설정됨)
+    // 포털 도입 후 페르소나 선택 기준은 URL — 기존 localStorage 값 즉시 제거
+    try { localStorage.removeItem('feed_last_persona') } catch { /* 무시 */ }
     const isFirst = isFirstMountRef.current
     isFirstMountRef.current = false
 
